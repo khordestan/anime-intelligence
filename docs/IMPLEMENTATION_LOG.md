@@ -503,3 +503,9 @@ Added worker restart/crash/provider-delay tests, long/HTTP-date/overflow header 
 93b469c passed all seven CI jobs 43773765716 and both CodeQL analyses 43773765754. Added bounded retries only for serialization/deadlock conflicts in consistent preference/recommendation reads, with identity/verification re-resolution for every attempt and cancellation preserved. A real PostgreSQL lock-coordination test forces a concurrent session-row update, proving each read recovers from the resulting snapshot conflict.
 
 Normalized validated curation values/confidence to four-decimal storage before replay comparison, without mutating caller records. Extended database replay coverage with binary representation noise. Recommendation failures now use their own fixed error category rather than a release-operation category. No external calls, production data or deployments. Exact-commit CI pending.
+
+## 2026-11-16 — Dedicated append-only curator role
+
+9f74636 passed all seven CI jobs 43774180551 and both CodeQL analyses 43774180537. Added separate curator-role provisioning with public SELECT/observation INSERT only. feature-import now uses a bounded connection with fixed search_path and rejects elevated/owner/member/private-data roles before applying input. It cannot use migration credentials as a shortcut.
+
+Added disposable role tests proving successful curation append, rejection of private reads/observation update/delete/taxonomy mutations and rejection after a private-column grant. No production role or corpus activated. Exact-commit CI pending; shell toolchains unavailable.

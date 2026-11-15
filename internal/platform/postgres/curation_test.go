@@ -3,11 +3,15 @@ package postgres_test
 import (
 	"context"
 	"errors"
+	"net/url"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/khordestan/anime-intelligence/internal/platform/curation"
+	"github.com/khordestan/anime-intelligence/internal/platform/catalogsync"
 )
 func TestCuratedImportAtomicIdempotentAndRecommendationReady(t *testing.T){
 	db,owner,_,runtimeDSN:=testDB(t)
@@ -40,4 +44,32 @@ func TestCuratedImportAtomicIdempotentAndRecommendationReady(t *testing.T){
 	if _,err=db.Repository(account.Token).SetFeaturePreference(ctx,"synthetic.reviewed",&weight);err!=nil{t.Fatal(err)}
 	page,err:=db.Repository(account.Token).PersonalMatches(ctx,20)
 	if err!=nil||len(page.Items)!=1||page.Items[0].AnimeID!=s.Records[0].AnimeID{t.Fatal("reviewed observation not used",page,err)}
+}
+
+func TestDedicatedCuratorCanAppendWithoutPrivateOrRewriteAccess(t *testing.T){
+	_,owner,_,runtimeDSN:=testDB(t)
+	ctx:=context.Background()
+	u,err:=url.Parse(runtimeDSN);if err!=nil{t.Fatal(err)}
+	role:=u.User.Username()+"_curator"
+	script,err:=os.ReadFile("../../../deployments/curator-role.sql");if err!=nil{t.Fatal(err)}
+	if _,err=owner.Exec(ctx,strings.ReplaceAll(string(script),"anime_curator",pgx.Identifier{role}.Sanitize()));err!=nil{t.Fatal(err)}
+	t.Cleanup(func(){_,_=owner.Exec(ctx,`DROP OWNED BY `+pgx.Identifier{role}.Sanitize());_,_=owner.Exec(ctx,`DROP ROLE `+pgx.Identifier{role}.Sanitize())})
+	password,_:=u.User.Password()
+	if _,err=owner.Exec(ctx,`ALTER ROLE `+pgx.Identifier{role}.Sanitize()+` PASSWORD '`+password+`'`);err!=nil{t.Fatal(err)}
+	u.User=url.UserPassword(role,password)
+	curator,err:=pgx.Connect(ctx,u.String());if err!=nil{t.Fatal(err)}
+	t.Cleanup(func(){_=curator.Close(ctx)})
+	if err=catalogsync.CheckWriter(ctx,curator);err!=nil{t.Fatal("safe curator role rejected",err)}
+	if err=catalogsync.CheckWriter(ctx,owner);err==nil{t.Fatal("migration owner accepted")}
+	if _,err=owner.Exec(ctx,`INSERT INTO anime_features(feature_key,display_name,category) VALUES('synthetic.curator','Synthetic curator','SYNTHETIC')`);err!=nil{t.Fatal(err)}
+	value,confidence:=0.5,1.0
+	now:=time.Now().UTC().Truncate(time.Microsecond)
+	s:=curation.Snapshot{Version:1,ObservedAt:now,Records:[]curation.Record{{AnimeID:"10000000-0000-4000-8000-000000000001",FeatureKey:"synthetic.curator",Value:&value,Confidence:&confidence,Reference:"https://example.test/synthetic-curator"}}}
+	out,err:=curation.Apply(ctx,curator,s,now)
+	if err!=nil||out.Inserted!=1{t.Fatal("curator append failed",out,err)}
+	for _,sql:=range []string{`SELECT email FROM users`,`UPDATE anime_feature_observations SET confidence=0`,`DELETE FROM anime_feature_observations`,`UPDATE anime_features SET active=false`}{
+		if _,err=curator.Exec(ctx,sql);err==nil{t.Fatal("excess curator privilege",sql)}
+	}
+	if _,err=owner.Exec(ctx,`GRANT SELECT(email) ON users TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
+	if err=catalogsync.CheckWriter(ctx,curator);err==nil{t.Fatal("curator with private-column access accepted")}
 }

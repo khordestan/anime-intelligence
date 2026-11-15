@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/khordestan/anime-intelligence/internal/platform/curation"
+	"github.com/khordestan/anime-intelligence/internal/platform/catalogsync"
 )
 func run()error{
 	input:=flag.String("input","","Reviewed public feature snapshot JSON")
@@ -19,7 +20,12 @@ func run()error{
 	s,err:=curation.Decode(f,now);if err!=nil{return err}
 	dsn:=os.Getenv("CURATION_DATABASE_URL");if dsn==""{return curation.ErrImport}
 	ctx,cancel:=context.WithTimeout(context.Background(),time.Minute);defer cancel()
-	conn,err:=pgx.Connect(ctx,dsn);if err!=nil{return curation.ErrImport};defer conn.Close(context.Background())
+	settings,err:=pgx.ParseConfig(dsn);if err!=nil{return curation.ErrImport}
+	settings.ConnectTimeout=5*time.Second
+	settings.RuntimeParams["search_path"]="pg_catalog,public"
+	conn,err:=pgx.ConnectConfig(ctx,settings);if err!=nil{return curation.ErrImport}
+	defer func(){cleanup,stop:=context.WithTimeout(context.Background(),5*time.Second);defer stop();_=conn.Close(cleanup)}()
+	if catalogsync.CheckWriter(ctx,conn)!=nil{return curation.ErrImport}
 	result,err:=curation.Apply(ctx,conn,s,now);if err!=nil{return err}
 	return json.NewEncoder(os.Stdout).Encode(result)
 }
