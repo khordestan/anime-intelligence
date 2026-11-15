@@ -12,6 +12,7 @@ import (
 
 func NewRouter(logger *slog.Logger, data *store.Store) http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /readyz", readinessHandler("local-file", nil))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "local-file"})
 	})
@@ -31,7 +32,17 @@ func requestMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		logger.Info("http request", "method", r.Method, "path", r.URL.Path, "duration_ms", time.Since(start).Milliseconds())
+		method := r.Method
+		switch method {
+		case http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions, http.MethodConnect, http.MethodTrace:
+		default:
+			method = "OTHER"
+		}
+		route := r.Pattern
+		if route == "" {
+			route = "unmatched"
+		}
+		logger.Info("http request", "method", method, "route", route, "duration_ms", time.Since(start).Milliseconds())
 	})
 }
 func corsMiddleware(next http.Handler) http.Handler {

@@ -30,43 +30,19 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 	config.ConnConfig.ConnectTimeout = 5 * time.Second
 	// A compromised or stale connection must never carry identity into a request.
 	config.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
-		var unsafe bool
-		err := c.QueryRow(ctx, `SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR EXISTS (
-   SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-   WHERE n.nspname='public' AND c.relkind='r' AND pg_has_role(current_user,c.relowner,'USAGE')
-  ) FROM pg_roles r WHERE r.rolname=current_user`).Scan(&unsafe)
-		if err != nil {
+		if err := validateRuntimeRole(ctx, c); err != nil {
 			return err
 		}
-		if unsafe {
-			return errors.New("database runtime requires a non-owner role without elevated privileges")
-		}
-		_, err = c.Exec(ctx, `SELECT set_config('app.user_id','',false), set_config('app.login_email','',false), set_config('app.session_token_hash','',false),set_config('app.challenge_token_hash','',false),set_config('app.challenge_purpose','',false),set_config('app.delivery_worker','',false),set_config('app.identity_request_worker','',false)`)
+		_, err := c.Exec(ctx, `SELECT set_config('app.user_id','',false), set_config('app.login_email','',false), set_config('app.session_token_hash','',false),set_config('app.challenge_token_hash','',false),set_config('app.challenge_purpose','',false),set_config('app.delivery_worker','',false),set_config('app.identity_request_worker','',false)`)
 		return err
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}
-	if err = pool.Ping(ctx); err != nil {
+	if err = checkRuntime(ctx, pool); err != nil {
 		pool.Close()
 		return nil, err
-	}
-	var secured int
-	err = pool.QueryRow(ctx, `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
- WHERE n.nspname='public' AND c.relname IN ('users','auth_sessions','user_anime','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','auth_challenges','identity_outbox','identity_requests')
- AND c.relrowsecurity AND c.relforcerowsecurity`).Scan(&secured)
-	if err != nil || secured != 13 {
-		pool.Close()
-		return nil, errors.New("required forced row-level security is missing; apply schema migrations")
-	}
-	if _, err = pool.Exec(ctx, `SELECT login_failure_started_at FROM users LIMIT 0`); err != nil {
-		pool.Close()
-		return nil, errors.New("required login security schema is missing; apply schema migrations")
-	}
-	if _, err = pool.Exec(ctx, `SELECT outcome FROM identity_requests LIMIT 0; SELECT outcome FROM identity_outbox LIMIT 0`); err != nil {
-		pool.Close()
-		return nil, errors.New("required identity queue outcome schema is missing; apply schema migrations")
 	}
 	dummy, err := makeDummyHash()
 	if err != nil {
@@ -74,6 +50,20 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 		return nil, err
 	}
 	return &DB{pool: pool, dummyHash: dummy}, nil
+}
+func validateRuntimeRole(ctx context.Context, c *pgx.Conn) error {
+	var unsafe bool
+	err := c.QueryRow(ctx, `SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR EXISTS (
+   SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relkind='r' AND pg_has_role(current_user,c.relowner,'USAGE')
+  ) FROM pg_roles r WHERE r.rolname=current_user`).Scan(&unsafe)
+	if err != nil {
+		return err
+	}
+	if unsafe {
+		return errors.New("database runtime requires a non-owner role without elevated privileges")
+	}
+	return nil
 }
 func (d *DB) Close() { d.pool.Close() }
 

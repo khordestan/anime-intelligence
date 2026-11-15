@@ -81,7 +81,8 @@
 - [ ] LLM provider abstraction and usage controls
 
 ## Milestone 7 — Production readiness
-- [ ] Security review, rate limiting and observability
+- [x] Request-log redaction and bounded live dependency/security-schema readiness checks
+- [ ] Security review, rate limiting and broader observability
 - [ ] Backups, load and reliability tests
 - [x] Browser auth/account-switch/local-mode tests and transport race tests
 - [x] Full-stack browser tests against the real PostgreSQL API (dedicated disposable CI database and restricted runtime role)

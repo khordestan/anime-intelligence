@@ -23,6 +23,8 @@ For current implementation state, security constraints and continuation steps, s
 
 Operator queue counts, outcomes and age are available through `go run ./cmd/identity-status` (JSON) or `-format=prometheus` with a restricted database connection; see [queue operations](docs/IDENTITY_QUEUE_OPERATIONS.md) and [disabled monitoring examples](deployments/monitoring/README.md).
 
+API probes: `/healthz` checks process liveness; `/readyz` checks live runtime dependencies with a bounded, generic response. Readiness does not approve public deployment. Request logs use route templates rather than raw URL paths.
+
 ## Run locally
 
 Go 1.26+ is required. Without `DATABASE_URL`, `go run ./cmd/api` uses the local JSON store (`DATA_FILE`, default `./data/local.json`) and listens on `127.0.0.1:8080`. Run `npm install && npm run dev` in `web` for the local dashboard.

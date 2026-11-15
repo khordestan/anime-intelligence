@@ -26,10 +26,26 @@ paths:
                   identityDeliveryAvailable: { type: boolean, description: True only when the PostgreSQL runtime has explicit identity delivery configuration. }
   /healthz:
     get:
-      summary: Health check
+      summary: Process liveness independent of database readiness
       responses:
         "200":
-          description: API is healthy
+          description: API process is responding; dependency readiness is checked separately
+  /readyz:
+    get:
+      summary: Runtime readiness
+      description: Uncached dependency probe with a two-second deadline. PostgreSQL mode rechecks its restricted role and minimum required security schema. Busy or unavailable probes return a generic 503; liveness stays separate. Local mode has no external dependency. This is not approval for public deployment.
+      security: []
+      responses:
+        "200":
+          description: Runtime dependencies and minimum schema checks succeeded
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+        "503":
+          description: Database, role, schema or probe capacity is unavailable; internal details are not disclosed
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
   /api/v1/anime:
     get:
       summary: Search catalog

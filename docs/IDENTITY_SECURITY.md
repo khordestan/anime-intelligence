@@ -135,3 +135,9 @@ Prepare all readers for a future key before switching any writer. After switchin
 ### Queue outcome telemetry
 
 Migration 000010 permits only fixed operational outcomes, scoped separately to request processing and mail delivery. No addresses, IDs, credentials, provider responses or per-recipient no-action reasons are included in diagnostics. Outcome assignment shares the terminal update/payload erasure transaction and existing lease fencing. Historical completions are marked unknown rather than inferred; NULL completions from compatible old workers also remain unknown. Diagnostics still runs read-only and exposes only aggregate retained counts. Accepted SMTP DATA is not a guarantee of recipient delivery or continued proof validity.
+
+### Request-log privacy and readiness boundary
+
+HTTP request logging uses trusted matched route patterns rather than raw URL paths and normalizes nonstandard method strings to `OTHER`. Request parameters, queries, bodies and authentication/cookie headers never enter middleware log fields. Tests cover matched IDs, unknown paths, redirects and custom methods carrying synthetic secrets.
+
+The separate `/readyz` endpoint uses the same restricted-role/minimum-schema validation as startup, bounded by request cancellation, a two-second deadline and one in-flight database check. It returns only generic non-cacheable readiness status, including after forced-RLS removal, runtime privilege escalation, missing outcome columns or pool failure. `/healthz` remains process liveness. Neither endpoint guarantees complete policy correctness or authorizes deployment; readiness may change immediately after a probe and normal operation still requires all existing authorization/isolation checks.

@@ -25,6 +25,7 @@ func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
 }
 func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service) http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /readyz", readinessHandler("postgresql", db.Ready))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "postgresql"})
 	})
