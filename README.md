@@ -8,6 +8,7 @@ A data-first anime tracker and taste-intelligence platform. The initial architec
 - Next.js dashboard: starter-catalog search, add-to-library, status filters, episode progress, and ratings.
 - Local JSON persistence for the runnable single-user development slice.
 - PostgreSQL canonical schema with users, catalog, source provenance, feature observations, tracker, ratings, preferences, recommendations, schedules, events, and notifications.
+- Deterministic Personal Match ranking core with separate explicit/inferred preferences, evidence output, exclusion filters, and unit tests (not yet exposed through the API).
 - Provider-neutral catalog fixtures and a curated 40-feature taxonomy across protagonist, power system, combat, narrative, theme, setting, pacing, tone, stakes, content, and ending.
 - GitHub Actions: Go tests (including race detector), vet/build, frontend typecheck and production build.
 
