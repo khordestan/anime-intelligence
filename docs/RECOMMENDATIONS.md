@@ -8,4 +8,8 @@ Ranking reads one consistent snapshot of the owner's declared preferences, newes
 
 Own ratings derive signals in memory; no inferred profile is persisted. Responses include bounded feature-key match/mismatch evidence, not raw references, free prose, credential fields or another account's records. Scores are deterministic compatibility scores, not calibrated probabilities. Ties use canonical IDs and feature keys.
 
-Without supported evidence the result is empty. No real user history or fabricated taxonomy observations are seeded. Curated evidence ingestion/review, preference/recommendation dashboard, candidate retrieval/evaluation, global/discovery lanes, feedback learning and hybrid AI remain pending. No external AI call or public deployment is enabled.
+Without supported evidence the result is empty. No real user history or fabricated taxonomy observations are seeded. Curated evidence ingestion/review, candidate retrieval/evaluation, global/discovery lanes, feedback learning and hybrid AI remain pending. No external AI call or public deployment is enabled.
+
+## Dashboard
+
+Verified PostgreSQL accounts can open Personal Match settings to edit/reset declared feature weights and inspect supported matches with feature-key evidence. Empty evidence is stated explicitly. Inputs and results stay in memory; keyed remounts, unmount guards and session/request revisions prevent late results crossing accounts. The panel explains that scores are not probabilities and shows computation limits. It never calls an LLM.

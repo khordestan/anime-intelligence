@@ -322,6 +322,18 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
   const foreign = await request.get(API + "/follows", { headers: headers(sessions[1].token) });
   expect((await foreign.json()).items).toEqual([]);
   await panel.getByRole("button", { name: "Stop alerts Solo Leveling", exact: true }).click();
+  const taste = page.getByRole("region", { name: "Personal Match", exact: true });
+  await taste.getByRole("button", { name: "Personal Match settings", exact: true }).click();
+  const preferenceRow = taste.getByRole("list", { name: "Feature preferences", exact: true }).getByRole("listitem").first();
+  await preferenceRow.getByRole("spinbutton").fill("0.8");
+  await preferenceRow.getByRole("button", { name: /^Save preference / }).click();
+  await expect(taste.getByRole("status")).toHaveText("Preference updated.");
+  await expect(taste.getByText(/No supported matches yet/)).toBeVisible();
+  const ownPreferences = await request.get(API + "/preferences", { headers: headers(sessions[0].token) });
+  expect((await ownPreferences.json()).items.some((p: { weight: number | null }) => p.weight === 0.8)).toBe(true);
+  const foreignPreferences = await request.get(API + "/preferences", { headers: headers(sessions[1].token) });
+  expect((await foreignPreferences.json()).items.every((p: { weight: number | null }) => p.weight === null)).toBe(true);
+
   await expect(panel.getByRole("button", { name: "Follow releases Solo Leveling", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(0);

@@ -82,7 +82,8 @@
 - [ ] Explainable analytics
 - [x] Deterministic Personal Match ranking core (pure Go, explainable, unit-tested)
 - [x] Verified-owner PostgreSQL Personal Match API with conservative curated non-spoiler evidence
-- [ ] Recommendation dashboard and richer evidence coverage
+- [x] Preference editing and evidence-backed Personal Match dashboard
+- [ ] Richer curated evidence coverage and candidate retrieval
 - [ ] Personal Match, Global Essentials and Discovery lanes
 - [ ] Feedback learning and offline evaluation
 

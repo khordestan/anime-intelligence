@@ -479,3 +479,9 @@ Baseline f90800a CI 43758880391 and Security 43758880408 inspected: success. New
 Recommendation/preferences 08c6ccc passed CI 43759574712 and Security 43759574718. Added explicit Wikidata worker configuration, bounded non-overlapping cycles, cancellation and full-interval retry behavior. Approval and persisted source observation time are checked before HTTP; a session advisory lock suppresses simultaneous collectors. Import rechecks approval and commits atomically. Default worker remains idle without configuration.
 
 Added a dedicated catalog writer role that cannot enable sources, remap external identities or read/write private tables. CheckWriter rejects elevated/owner/member roles and even private column grants. Narrow label/URL update grants support PostgreSQL row-lock requirements. Added synthetic configuration/scheduler tests and disposable PostgreSQL role, approval, lock, import and persisted-due tests. No real source, scheduler host or deployment activated. Exact-commit CI pending; no local test pass claimed.
+
+## 2026-11-16 — Personal Match dashboard
+
+Worker 0a1c0c5 passed all seven CI jobs 43760194080 and both CodeQL analyses 43760194072. Added verified-account preference editing/reset, compatibility evidence and honest no-evidence results in an account-keyed client component. Unmount/request revisions and the existing in-memory session client fence stale responses.
+
+Added two automatically discovered mocked browser tests for save/reset, cold start, storage exclusion and delayed prior-account results. Extended the real PostgreSQL/browser feature test to verify preference persistence/foreign-account isolation and unsupported-match handling. No personal history or fabricated production observations seeded; no external AI calls/deployment. Exact-commit CI pending. Existing client-component guide applies; packaged framework guides/toolchains remain unavailable in this workspace.

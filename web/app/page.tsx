@@ -4,6 +4,7 @@ import SessionManager from "./session-manager";
 import ReleaseAlerts from "./release-alerts";
 import EpisodeEditor from "./episode-editor";
 import CatalogDetails from "./catalog-details";
+import PersonalMatches from "./personal-matches";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
 import { RecoveryFlow, VerificationRequest } from "./identity-actions";
@@ -456,6 +457,7 @@ export default function Home() {
       {mode === "postgres" && session?.user.emailVerified && (
         <ReleaseAlerts key={`release-alerts:${session.user.id}`} client={client} library={library} onError={handleError} />
       )}
+      {mode === "postgres" && session?.user.emailVerified && <PersonalMatches key={`matches:${session.user.id}`} client={client} onError={handleError} />}
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat label="In your library" value={library.length} />
         <Stat
