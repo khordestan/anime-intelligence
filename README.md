@@ -21,6 +21,8 @@ For current implementation state, security constraints and continuation steps, s
 - Canonical catalog/provenance schema, 40-feature taxonomy, and deterministic Personal Match ranking core (not yet exposed through HTTP).
 - CI for Go race tests, vet/build, PostgreSQL runtime/HTTP isolation, migration apply/rollback, frontend transport/session tests, mocked and real-PostgreSQL browser tests, and frontend typecheck/build; CodeQL and dependency review.
 
+Operator queue counts and age are available through `go run ./cmd/identity-status` with a restricted database connection; see [queue operations](docs/IDENTITY_QUEUE_OPERATIONS.md).
+
 ## Run locally
 
 Go 1.26+ is required. Without `DATABASE_URL`, `go run ./cmd/api` uses the local JSON store (`DATA_FILE`, default `./data/local.json`) and listens on `127.0.0.1:8080`. Run `npm install && npm run dev` in `web` for the local dashboard.

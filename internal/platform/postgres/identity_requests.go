@@ -32,7 +32,7 @@ func (o *DeliveryOutbox) SubmitRequest(ctx context.Context, purpose, value strin
 		return err
 	}
 	var full bool
-	if err = tx.QueryRow(ctx, `SELECT count(*)>=256 FROM identity_requests WHERE completed_at IS NULL AND expires_at>now()`).Scan(&full); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT count(*)>=$1 FROM identity_requests WHERE completed_at IS NULL AND expires_at>now()`, identityRequestCapacity).Scan(&full); err != nil {
 		return err
 	}
 	if full {

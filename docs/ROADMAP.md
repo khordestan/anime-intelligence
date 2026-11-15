@@ -34,7 +34,8 @@
 - [x] Encrypted durable delivery of issued identity challenges, leased claims and persisted retries
 - [x] Encrypted durable request acceptance before challenge issuance, shared queue capacity and atomic consumption
 - [x] Bounded inbox/outbox decryption keyring and planned rolling-rotation runbook
-- [ ] Queue monitoring, automated secret rollout and key/backup recovery exercises
+- [x] Read-only queue diagnostics command without private data with consistent aggregate snapshots
+- [ ] Monitoring export/alerts and terminal-outcome telemetry, automated secret rollout and key/backup recovery exercises
 - [x] Persisted per-account password-failure window shared across login, password changes, deletion and API instances
 - [ ] Production ingress/distributed abuse controls and monitoring
 - [x] User data export and password-confirmed deletion (PostgreSQL API)

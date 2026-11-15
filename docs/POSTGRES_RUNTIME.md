@@ -124,3 +124,7 @@ Request rows are anonymous operational intents, excluded from account export and
 ### Bounded decryption keyring
 
 `MAIL_OUTBOX_PREVIOUS_KEYS` is optional, with at most three canonical base64-encoded 32-byte keys separated by commas. The primary/additional keys must be distinct; empty entries, whitespace and malformed values stop startup. Primary-only configuration remains supported, and existing ciphertext requires no migration. Both inbox and outbox encryption always uses the primary; every decryption still checks authenticated purpose/domain and row binding. The [rotation runbook](IDENTITY_KEY_ROTATION.md) describes mixed-node compatibility, cutoff-based retirement and rollback without exposing private queue payloads.
+
+### Operator queue snapshot
+
+`go run ./cmd/identity-status` uses the restricted `DATABASE_URL` to report versioned aggregate JSON from one read-only repeatable-read snapshot. It requires neither mail credentials nor queue keys, never decrypts private envelopes or starts workers, and adds no HTTP route. Read [IDENTITY_QUEUE_OPERATIONS.md](IDENTITY_QUEUE_OPERATIONS.md) for exact fields and limitations: a successful read is not a provider-health verdict, completed work is not synonymous with successful delivery, and monitoring/alerts remain pending.
