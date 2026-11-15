@@ -14,12 +14,20 @@ ALTER TABLE users FORCE ROW LEVEL SECURITY;
 CREATE POLICY users_self_access ON users
   USING (id = app_current_user_id())
   WITH CHECK (id = app_current_user_id());
+-- Allow the login flow to find exactly the account named by a trusted
+-- server-populated setting before its user ID is known.
+CREATE POLICY users_login_lookup ON users FOR SELECT
+  USING (lower(email) = lower(NULLIF(current_setting('app.login_email', true), '')));
 
 ALTER TABLE auth_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auth_sessions FORCE ROW LEVEL SECURITY;
 CREATE POLICY auth_sessions_self_access ON auth_sessions
   USING (user_id = app_current_user_id())
   WITH CHECK (user_id = app_current_user_id());
+-- Resolve an opaque session before the server knows its owning user ID.
+-- The setting must contain the SHA-256 digest of the presented random token.
+CREATE POLICY auth_sessions_token_lookup ON auth_sessions FOR SELECT
+  USING (token_hash = decode(NULLIF(current_setting('app.session_token_hash', true), ''), 'hex'));
 
 ALTER TABLE user_anime ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_anime FORCE ROW LEVEL SECURITY;
