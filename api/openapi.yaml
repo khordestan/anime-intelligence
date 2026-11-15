@@ -198,10 +198,16 @@ paths:
   /api/v1/notifications:
     get:
       summary: Poll owned in-app release notifications
-      description: Materializes at most 100 eligible unique event-backed notices per request and returns the newest 100 owned in-app notices. No background delivery or email/push is enabled.
+      description: Without a cursor, materializes at most 100 eligible unique notices and returns the newest 100 owned in-app notices. A cursor reads the next already-materialized history page without generating notices. Every page rechecks the verified owner; time/UUID cursor boundaries never select an account. No background delivery or email/push is enabled.
       security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: cursor
+          description: Opaque nextCursor from a previous page; empty selects the latest page.
+          schema: { type: string, maxLength: 256 }
       responses:
-        "200": { description: Owned notification items with id, title, body, createdAt and optional readAt }
+        "200": { description: Owned items with id/title/body/createdAt/optional readAt, count, limit=100 and nextCursor (empty at end) }
+        "400": { description: Invalid notification cursor }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/notifications/{id}/read:

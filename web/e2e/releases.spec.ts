@@ -1,16 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const anime = "10000000-0000-4000-8000-000000000001";
-async function mockReleases(page: Page, holdFirst = false) {
+async function mockReleases(page: Page, holdFirst = false, history = false) {
   let issued = 0;
   let release = () => {};
   let blocked = false;
+  let historyFailed = false;
   const calls: { path: string; method: string; token: string; body: unknown }[] = [];
   const follows = new Map<string, { animeId: string; title: string; track: string; scope?: string }[]>();
   const notices = new Map<string, { id: string; title: string; body: string; createdAt: string; readAt?: string }[]>();
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    const url = new URL(request.url());
+    const path = url.pathname.replace("/api/v1", "");
     const token = (request.headers().authorization ?? "").replace("Bearer ", "");
     const headers = {
       "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
@@ -38,12 +40,16 @@ async function mockReleases(page: Page, holdFirst = false) {
       return route.fulfill({ status: 204, headers });
     }
     if (path === "/notifications") {
+      if (history && url.searchParams.has("cursor")) {
+        if (!historyFailed) { historyFailed = true; return respond({ error: "synthetic_retry" }, 500); }
+        return respond({ items: [{ id: "notice-old", title: "New episode released", body: "Older synthetic release", createdAt: "2026-01-01T00:00:00Z" }], nextCursor: "" });
+      }
       const items = notices.get(token);
       if (holdFirst && token.endsWith("1")) {
         blocked = true;
         await new Promise<void>(resolve => { release = resolve; });
       }
-      try { return await respond({ items }); } catch { return; }
+      try { return await respond({ items, nextCursor: history ? "older-page" : "" }); } catch { return; }
     }
     if (path === "/notifications/notice-one/read") {
       for (const notice of notices.get(token) ?? []) notice.readAt = new Date().toISOString();
@@ -96,4 +102,26 @@ test("late notification results do not cross accounts", async ({ page }) => {
   await page.getByRole("button", { name: "Manage release alerts", exact: true }).click();
   await expect(page.getByText("No release notifications yet.", { exact: true })).toBeVisible();
   await expect(page.getByText("Private synthetic release for account one")).toHaveCount(0);
+});
+
+test("older release history retries and returns to latest alerts", async ({ page }) => {
+  await mockReleases(page, false, true);
+  await page.goto("/");
+  await login(page, "history-browser@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
+  await panel.getByRole("button", { name: "Older notifications", exact: true }).click();
+  await expect(panel.getByText("Could not refresh release alerts. Try again.", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
+  await panel.getByRole("button", { name: "Older notifications", exact: true }).click();
+  await expect(panel.getByText("Older synthetic release", { exact: true })).toBeVisible();
+  await expect(panel.getByText(/Automatic refresh is paused/)).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Older notifications", exact: true })).toHaveCount(0);
+  await panel.getByRole("button", { name: "Back to latest alerts", exact: true }).click();
+  await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
+  await expect(panel.getByText("Older synthetic release", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
 });

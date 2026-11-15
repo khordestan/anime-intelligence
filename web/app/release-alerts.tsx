@@ -15,6 +15,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const [open, setOpen] = useState(false);
   const [follows, setFollows] = useState<Follow[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [cursor, setCursor] = useState("");
+  const [nextCursor, setNextCursor] = useState("");
   const [preferences, setPreferences] = useState<Record<string, string>>({});
   const [scopes, setScopes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -26,22 +28,23 @@ export default function ReleaseAlerts({ client, library, onError }: {
     alive.current = true;
     return () => { alive.current = false; revision.current++; };
   }, []);
-  const read = useCallback(async (current: number) => {
+  const read = useCallback(async (current: number, pageCursor = "") => {
     const [f, n] = await Promise.all([
       client.request<{ items: Follow[] }>("/follows"),
-      client.request<{ items: Notice[] }>("/notifications"),
+      client.request<{ items: Notice[]; nextCursor?: string }>("/notifications" + (pageCursor ? "?cursor=" + encodeURIComponent(pageCursor) : "")),
     ]);
     if (!alive.current || current !== revision.current) return;
     setFollows(f.items);
     setNotices(n.items);
+    setCursor(pageCursor); setNextCursor(n.nextCursor ?? "");
   }, [client]);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (pageCursor = "") => {
     if (inFlight.current) return;
     inFlight.current = true;
     const current = ++revision.current;
     setBusy(true);
     setMessage("");
-    try { await read(current); }
+    try { await read(current, pageCursor); }
     catch (error) {
       if (alive.current && current === revision.current) {
         setMessage("Could not refresh release alerts. Try again.");
@@ -55,11 +58,11 @@ export default function ReleaseAlerts({ client, library, onError }: {
     }
   }, [read, onError]);
   useEffect(() => {
-    if (!open) return;
+    if (!open || cursor) return;
     void refresh();
     const timer = setInterval(() => void refresh(), 60_000);
     return () => clearInterval(timer);
-  }, [open, refresh]);
+  }, [open, refresh, cursor]);
   async function mutate(path: string, method: string, body?: object) {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -73,7 +76,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       if (!alive.current || current !== revision.current) return;
-      await read(current);
+      await read(current, cursor);
       if (alive.current && current === revision.current) setMessage("Release alerts updated.");
     } catch (error) {
       if (alive.current && current === revision.current) {
@@ -97,8 +100,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
       </button>
       {open && <div id="release-alert-panel" className="mt-4">
         <h2 className="font-semibold">Release alerts</h2>
-        <p className="mt-2 text-sm text-slate-400">Checks every minute while this panel is open. Episode notices require confirmed releases; linked-season follows also include new announcements. Scheduled times can change.</p>
-        <button disabled={busy} onClick={() => void refresh()} className="mt-3 text-sm underline disabled:opacity-50">Refresh alerts</button>
+        <p className="mt-2 text-sm text-slate-400">Checks every minute while this panel is open on the latest page. Episode notices require confirmed releases; linked-season follows also include new announcements. Scheduled times can change.</p>
+        <button disabled={busy} onClick={() => void refresh()} className="mt-3 text-sm underline disabled:opacity-50">{cursor ? "Back to latest alerts" : "Refresh alerts"}</button>
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
         <h3 className="mt-5 font-medium">Followed releases</h3>
         {titles.size === 0 && <p className="mt-2 text-sm text-slate-400">Add an anime to your library to follow its releases.</p>}
@@ -125,7 +128,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
             </li>;
           })}
         </ul>
-        <h3 className="mt-5 font-medium">Recent notifications</h3>
+        <h3 className="mt-5 font-medium">{cursor ? "Notification history" : "Recent notifications"}</h3>
+        {cursor && <p className="mt-2 text-sm text-slate-400">Automatic refresh is paused while viewing history. Return to the latest page to check for new releases.</p>}
         {!busy && notices.length === 0 && <p className="mt-2 text-sm text-slate-400">No release notifications yet.</p>}
         <ul className="mt-3 space-y-3" aria-label="Release notifications">
           {notices.map(notice => <li key={notice.id} className="rounded-xl bg-white/5 p-3">
@@ -136,7 +140,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
               className="mt-2 text-xs underline disabled:opacity-50">Mark as read</button>}
           </li>)}
         </ul>
-        <p className="mt-4 text-xs text-slate-500">Showing up to 1,000 follows and the latest 100 notifications. Email and push alerts are not enabled.</p>
+        {nextCursor && <button disabled={busy} onClick={() => void refresh(nextCursor)} className="mt-3 text-sm underline disabled:opacity-50">Older notifications</button>}
+        <p className="mt-4 text-xs text-slate-500">Showing up to 1,000 follows and 100 notifications per page. Email and push alerts are not enabled.</p>
       </div>}
     </section>
   );

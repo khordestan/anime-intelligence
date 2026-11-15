@@ -10,6 +10,7 @@ import (
 
 func releaseError(w http.ResponseWriter,err error) {
 	switch {
+	case errors.Is(err,postgres.ErrNotificationCursor): authError(w,400,"invalid_notification_cursor")
 	case errors.Is(err,store.ErrEmailUnverified): authError(w,403,"email_verification_required")
 	case errors.Is(err,postgres.ErrUnauthorized): authError(w,401,"unauthorized")
 	case errors.Is(err,postgres.ErrFollowLimit): authError(w,409,"follow_limit_reached")
@@ -47,9 +48,9 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 		w.WriteHeader(204)
 	}))
 	mux.HandleFunc("GET /api/v1/notifications",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
-		items,err:=db.Repository(token).Notifications(r.Context())
+		page,err:=db.Repository(token).NotificationHistory(r.Context(),r.URL.Query().Get("cursor"))
 		if err!=nil {releaseError(w,err);return}
-		writeJSON(w,200,map[string]any{"items":items,"count":len(items),"limit":100})
+		writeJSON(w,200,map[string]any{"items":page.Items,"count":len(page.Items),"limit":100,"nextCursor":page.NextCursor})
 	}))
 	mux.HandleFunc("PATCH /api/v1/notifications/{id}/read",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")

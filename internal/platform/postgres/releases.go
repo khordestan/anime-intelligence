@@ -2,11 +2,15 @@ package postgres
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"strings"
 	"errors"
 	"time"
 
 )
 
+var ErrNotificationCursor = errors.New("invalid notification cursor")
 var ErrReleaseTrack = errors.New("invalid release track")
 var ErrFollowScope = errors.New("invalid follow scope")
 var ErrFollowLimit = errors.New("follow limit reached")
@@ -80,15 +84,46 @@ func (r *Repository) UnfollowScope(ctx context.Context,id,scope string) (bool,er
 	return tag.RowsAffected()>0,tx.Commit(ctx)
 }
 
-// Notifications materializes only this verified account's eligible events.
-// The bounded poll transaction requires no cross-user RLS bypass or worker
-// identity. Unique event/channel keys make overlapping sessions safe.
+type NotificationPage struct {
+	Items []Notification `json:"items"`
+	NextCursor string `json:"nextCursor,omitempty"`
+}
+func notificationCursor(n Notification) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(n.CreatedAt.UTC().Format(time.RFC3339Nano)+"|"+n.ID))
+}
+func parseNotificationCursor(cursor string)(*time.Time,*string,error){
+	if cursor==""{return nil,nil,nil}
+	if len(cursor)>256{return nil,nil,ErrNotificationCursor}
+	b,err:=base64.RawURLEncoding.DecodeString(cursor)
+	if err!=nil{return nil,nil,ErrNotificationCursor}
+	parts:=strings.Split(string(b),"|")
+	if len(parts)!=2{return nil,nil,ErrNotificationCursor}
+	stamp,err:=time.Parse(time.RFC3339Nano,parts[0])
+	if err!=nil||stamp.IsZero(){return nil,nil,ErrNotificationCursor}
+	id:=parts[1]
+	if len(id)!=36||id[8]!='-'||id[13]!='-'||id[18]!='-'||id[23]!='-'{return nil,nil,ErrNotificationCursor}
+	if _,err=hex.DecodeString(strings.ReplaceAll(id,"-",""));err!=nil{return nil,nil,ErrNotificationCursor}
+	return &stamp,&id,nil
+}
+
+// Notifications preserves the first-page repository interface.
 func (r *Repository) Notifications(ctx context.Context) ([]Notification,error) {
+	page,err:=r.NotificationHistory(ctx,"")
+	return page.Items,err
+}
+// NotificationHistory materializes a bounded batch only on the latest page.
+// History pages read already materialized notices with a stable descending
+// timestamp/ID boundary. Cursor data never determines account ownership.
+func (r *Repository) NotificationHistory(ctx context.Context,cursor string) (NotificationPage,error) {
+	out:=NotificationPage{Items:[]Notification{}}
 	tx,u,err:=r.db.productTx(ctx,r.token)
-	if err!=nil {return nil,err}
+	if err!=nil {return out,err}
 	defer rollback(tx)
-	if _,err=tx.Exec(ctx,`SET LOCAL statement_timeout='2s'`);err!=nil {return nil,err}
-	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return nil,err}
+	before,beforeID,err:=parseNotificationCursor(cursor)
+	if err!=nil{return out,err}
+	if _,err=tx.Exec(ctx,`SET LOCAL statement_timeout='2s'`);err!=nil {return out,err}
+	if cursor=="" {
+	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return out,err}
 	_,err=tx.Exec(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track,created_at) AS (
 SELECT anime_id,anime_id,release_track,created_at FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
 UNION
@@ -113,17 +148,20 @@ OR (e.event_type='SEASON_ANNOUNCED' AND f.scope='FRANCHISE'))
 AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.user_id=$1 AND n.event_id=e.id AND n.channel='IN_APP')
 ORDER BY e.occurred_at,e.id LIMIT 100
 ON CONFLICT(user_id,event_id,channel) WHERE event_id IS NOT NULL DO NOTHING`,u.ID)
-	if err!=nil {return nil,err}
-	rows,err:=tx.Query(ctx,`SELECT id::text,title,body,read_at,created_at FROM notifications WHERE user_id=$1 AND channel='IN_APP' ORDER BY created_at DESC,id DESC LIMIT 100`,u.ID)
-	if err!=nil {return nil,err}
-	out:=[]Notification{}
+	if err!=nil {return out,err}
+	}
+	rows,err:=tx.Query(ctx,`SELECT id::text,title,body,read_at,created_at FROM notifications
+WHERE user_id=$1 AND channel='IN_APP' AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
+ORDER BY created_at DESC,id DESC LIMIT 101`,u.ID,before,beforeID)
+	if err!=nil {return out,err}
 	for rows.Next() {
 		var n Notification
-		if err=rows.Scan(&n.ID,&n.Title,&n.Body,&n.ReadAt,&n.CreatedAt);err!=nil {rows.Close();return nil,err}
-		out=append(out,n)
+		if err=rows.Scan(&n.ID,&n.Title,&n.Body,&n.ReadAt,&n.CreatedAt);err!=nil {rows.Close();return out,err}
+		out.Items=append(out.Items,n)
 	}
 	rows.Close()
-	if err=rows.Err();err!=nil {return nil,err}
+	if err=rows.Err();err!=nil {return out,err}
+	if len(out.Items)>100{out.Items=out.Items[:100];out.NextCursor=notificationCursor(out.Items[99])}
 	return out,tx.Commit(ctx)
 }
 func (r *Repository) ReadNotification(ctx context.Context,id string) (bool,error) {

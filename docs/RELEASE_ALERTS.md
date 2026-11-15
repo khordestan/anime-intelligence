@@ -7,7 +7,7 @@ Migration 000012 adds per-follow track preferences and durable per-user/event/ch
 - PUT /api/v1/follows/{animeId} with {"track":"SUB"} subscribes; RAW, DUB, UNKNOWN and ALL are also supported.
 - GET /api/v1/follows returns up to 1000 owned subscriptions.
 - DELETE /api/v1/follows/{animeId} removes only the caller's subscription.
-- GET /api/v1/notifications materializes up to 100 eligible events and returns the newest 100 owned in-app notices.
+- GET /api/v1/notifications materializes up to 100 eligible events and returns the newest 100 owned in-app notices with nextCursor when older materialized notices exist. GET /api/v1/notifications?cursor=... returns the next history page without materializing new events. Invalid cursors return 400; cursors select a time/ID boundary and never an account. Every page rechecks the authenticated verified owner.
 - PATCH /api/v1/notifications/{id}/read marks an owned notice read idempotently. Foreign and missing IDs both return 404.
 
 Only administrator-imported EPISODE_RELEASED events can become automatic notices. Elapsed schedules are not events. Track preferences must match, or be ALL. Subscriptions start at their creation time; earlier releases do not replay. Updating a track retains that time, allowing newly selected tracks since the original follow. Removing/recreating a follow begins a new subscription. Removing a follow does not delete existing notices.
@@ -16,11 +16,11 @@ Materialization occurs on authenticated polling; it is not background mail, push
 
 ## Dashboard
 
-Verified accounts can open Manage release alerts, subscribe library titles, select a release track, stop alerts and mark notices read. The panel polls every minute while open and has a manual refresh button. It resets on account changes and rejects stale results. Local mode and unverified accounts do not expose the panel. Credentials and notices are never stored in browser storage.
+Verified accounts can open Manage release alerts, subscribe library titles, select a release track, stop alerts and mark notices read. The panel polls every minute while open on the latest page and has a manual refresh button. Older notifications opens one history page at a time; automatic refresh pauses there until Back to latest alerts is selected. Failed page requests preserve the current page and can be retried. Marking a historical notice read preserves the page. It resets on account changes and rejects stale results. Local mode and unverified accounts do not expose the panel. Credentials and notices are never stored in browser storage.
 
 ## Remaining work
 
-Pagination/history beyond the response limits, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
+Follow pagination, unmaterialized event backlog visibility, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
 
 ## Linked-season follows
 

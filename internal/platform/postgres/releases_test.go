@@ -97,3 +97,55 @@ func TestReleaseRoutesAuthorization(t *testing.T) {
 	if w:=call("GET","/api/v1/follows",s.Token,"");w.Code!=200 || !strings.Contains(w.Body.String(),id) || w.Header().Get("Cache-Control")!="no-store" {t.Fatal("follow response",w.Code,w.Body.String())}
 	if w:=call("GET","/api/v1/notifications",s.Token,"");w.Code!=200 || !strings.Contains(w.Body.String(),`"items":[]`) {t.Fatal("notification response",w.Code,w.Body.String())}
 }
+
+func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
+ db,owner,_,_:=testDB(t)
+ ctx:=context.Background()
+ one,err:=db.Register(ctx,"history-one@example.test","synthetic-history-password")
+ if err!=nil{t.Fatal(err)}
+ two,err:=db.Register(ctx,"history-two@example.test","synthetic-history-password")
+ if err!=nil{t.Fatal(err)}
+ verifyAccount(t,db,one.Token);verifyAccount(t,db,two.Token)
+ // Equal timestamps force the UUID tie-breaker across every page.
+ at:=time.Now().UTC().Add(-time.Hour).Truncate(time.Microsecond)
+ if _,err=owner.Exec(ctx,`INSERT INTO notifications(user_id,channel,title,body,created_at)
+ SELECT $1,'IN_APP','Synthetic history','Synthetic notice '||n,$2 FROM generate_series(1,225) n`,one.User.ID,at);err!=nil{t.Fatal(err)}
+ if _,err=owner.Exec(ctx,`INSERT INTO notifications(user_id,channel,title,body,created_at) VALUES($1,'IN_APP','Foreign history','Foreign synthetic notice',$2)`,two.User.ID,at);err!=nil{t.Fatal(err)}
+ a,b:=db.Repository(one.Token),db.Repository(two.Token)
+ page,err:=a.NotificationHistory(ctx,"")
+ if err!=nil||len(page.Items)!=100||page.NextCursor==""{t.Fatal("first page",len(page.Items),err)}
+ firstCursor:=page.NextCursor
+ seen:=map[string]bool{}
+ for _,n:=range page.Items{seen[n.ID]=true}
+ // A concurrent newer notice must not shift an older page as OFFSET would.
+ if _,err=owner.Exec(ctx,`INSERT INTO notifications(user_id,channel,title,body) VALUES($1,'IN_APP','Newer synthetic','Newer synthetic notice')`,one.User.ID);err!=nil{t.Fatal(err)}
+ for i,want:=range []int{100,25}{
+  page,err=a.NotificationHistory(ctx,page.NextCursor)
+  if err!=nil||len(page.Items)!=want{t.Fatal("history page",i,len(page.Items),err)}
+  for _,n:=range page.Items{
+   if seen[n.ID]||n.Title=="Foreign history"||n.Title=="Newer synthetic"{t.Fatal("duplicate/foreign/shifted history")}
+   seen[n.ID]=true
+  }
+  if (i==0)!=(page.NextCursor!=""){t.Fatal("end cursor",page.NextCursor)}
+ }
+ if len(seen)!=225{t.Fatal("history lost",len(seen))}
+ other,err:=b.NotificationHistory(ctx,firstCursor)
+ if err!=nil{t.Fatal(err)}
+ for _,n:=range other.Items{if n.Title!="Foreign history"{t.Fatal("cursor bypassed ownership")}}
+ // Marking an older page read does not move its sort position.
+ second,err:=a.NotificationHistory(ctx,firstCursor)
+ if err!=nil{t.Fatal(err)}
+ id:=second.Items[0].ID
+ if ok,err:=b.ReadNotification(ctx,id);err!=nil||ok{t.Fatal("foreign history read",err)}
+ if ok,err:=a.ReadNotification(ctx,id);err!=nil||!ok{t.Fatal(err)}
+ repeated,err:=a.NotificationHistory(ctx,firstCursor)
+ if err!=nil||repeated.Items[0].ID!=id||repeated.Items[0].ReadAt==nil{t.Fatal("read moved boundary",err)}
+ h:=httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard,nil)),db)
+ for _,spec:=range []struct{cursor string;status int}{{"?",400},{firstCursor,200}}{
+  r:=httptest.NewRequest("GET","/api/v1/notifications?cursor="+spec.cursor,nil)
+  r.Header.Set("Authorization","Bearer "+one.Token)
+  w:=httptest.NewRecorder();h.ServeHTTP(w,r)
+  if w.Code!=spec.status{t.Fatal("history route",w.Code,w.Body.String())}
+  if spec.status==200&&(!strings.Contains(w.Body.String(),`"nextCursor"`)||w.Header().Get("Cache-Control")!="no-store"){t.Fatal("history response contract")}
+ }
+}
