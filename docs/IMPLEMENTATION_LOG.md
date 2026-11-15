@@ -397,3 +397,7 @@ Added mocked browser coverage for preference requests, follow/removal, read stat
 Added migration 000013 with nullable exact episode-number sets in the existing forced-RLS progress table and a database consistency constraint. Verified owner-scoped GET/PUT routes explicitly distinguish aggregate counts from ordered unique exact selections. Status-only changes preserve exact data; explicit count mutations switch modes. Library exposes exactProgress, export includes numbers and existing deletion cascades apply.
 
 Added tests for gaps/order, count-mode boundaries, known-total validation, duplicates/invalid sets, empty selections, foreign IDs, status preservation, export, deletion, database constraint enforcement and HTTP authentication/verification/strict JSON. Updated migration rollback/restore count and readiness. Exact-commit CI pending; no local toolchains or deployment.
+
+## 2026-11-15 — Exact episode dashboard editing
+
+Added explicit count-to-exact replacement UI, comma-separated gap-aware selections, known-total validation, clear/cancel/retry and unmount/revision fencing. Exact-mode library cards disable the aggregate +1 shortcut. Added parser unit tests and browser coverage for replacement semantics, sorted gaps, duplicate rejection and clearing. No dependencies/framework APIs changed. Exact-commit CI pending; local toolchains unavailable.

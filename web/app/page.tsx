@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionManager from "./session-manager";
 import ReleaseAlerts from "./release-alerts";
+import EpisodeEditor from "./episode-editor";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
 import { RecoveryFlow, VerificationRequest } from "./identity-actions";
@@ -28,6 +29,7 @@ type Entry = {
   title: string;
   watchStatus: string;
   episodesWatched: number;
+  exactProgress?: boolean;
   totalEpisodes?: number;
   rating?: number;
 };
@@ -565,7 +567,8 @@ export default function Home() {
                     ))}
                   </select>
                   <button
-                    disabled={busy}
+                    disabled={busy || !!e.exactProgress}
+                    title={e.exactProgress ? "Use Edit watched episodes to preserve exact selections." : undefined}
                     onClick={() =>
                       void patch(e, { episodesWatched: e.episodesWatched + 1 })
                     }
@@ -574,6 +577,10 @@ export default function Home() {
                     +1 episode
                   </button>
                 </div>
+                {mode === "postgres" && session?.user.emailVerified && (
+                  <EpisodeEditor key={`episodes:${session.user.id}:${e.id}`} client={client} id={e.id} title={e.title} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
+                )}
+                {e.exactProgress && <p className="mt-2 text-xs text-slate-400">Exact episodes tracked; use the episode editor to change your selection.</p>}
                 <div className="mt-4 border-t border-white/10 pt-3">
                   {removal === e.id ? (
                     <div role="group" aria-label={"Remove " + e.title}>
