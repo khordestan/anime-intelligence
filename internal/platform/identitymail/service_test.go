@@ -27,7 +27,7 @@ func (i issuerStub) IssuePasswordReset(ctx context.Context, email string) (*Mess
 	if i.fail {
 		return nil, errors.New("secret-token-and-email")
 	}
-	return &Message{Purpose: PasswordReset, Recipient: email, Token: "secret-token"}, nil
+	return &Message{Purpose: PasswordReset, Recipient: email, Token: "secret-token", ExpiresAt: time.Now().Add(time.Minute)}, nil
 }
 func (i issuerStub) IssueEmailVerification(ctx context.Context, token string) (*Message, error) {
 	return i.IssuePasswordReset(ctx, token)
@@ -88,4 +88,51 @@ func TestDeliveryErrorsAndEnvelopesDoNotLogSecrets(t *testing.T) {
 	if strings.Contains(logs.String(), "secret-token") || strings.Contains(logs.String(), "synthetic@example.test") {
 		t.Fatal("delivery logging disclosed private fields")
 	}
+}
+
+func TestServiceRetriesDeliveryWithoutReissuingChallenge(t *testing.T) {
+	issuer := &countingIssuer{}
+	delivered := make(chan Message, 3)
+	attempts := 0 // Only accessed by the service's single worker.
+	sender := senderFunc(func(_ context.Context, m Message) error {
+		attempts++
+		delivered <- m
+		if attempts < 3 {
+			return errors.New("private-provider-response")
+		}
+		return nil
+	})
+	service := NewService(issuer, sender, slog.Default())
+	defer service.Close()
+	if !service.RequestPasswordReset("synthetic@example.test") {
+		t.Fatal("request rejected")
+	}
+	var first Message
+	for i := 0; i < 3; i++ {
+		select {
+		case m := <-delivered:
+			if i == 0 {
+				first = m
+			} else if m != first {
+				t.Fatal("delivery reissued the proof")
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("retry did not run")
+		}
+	}
+	service.Close()
+	if issuer.calls != 1 {
+		t.Fatalf("issued %d challenges, want one", issuer.calls)
+	}
+}
+
+type countingIssuer struct{ calls int }
+
+func (i *countingIssuer) IssuePasswordReset(_ context.Context, _ string) (*Message, error) {
+	i.calls++
+	message := retryMessage()
+	return &message, nil
+}
+func (i *countingIssuer) IssueEmailVerification(ctx context.Context, token string) (*Message, error) {
+	return i.IssuePasswordReset(ctx, token)
 }

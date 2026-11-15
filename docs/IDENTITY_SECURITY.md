@@ -12,7 +12,7 @@ The current API uses explicit `Authorization: Bearer` headers, never cookies. Th
 - Passwords must be hashed in the application with Argon2id using parameters reviewed against current OWASP guidance and the deployment's resource budget.
 - Store only the encoded Argon2id PHC string in `users.password_hash`; never store plaintext passwords or reversible encryption.
 - Password verification must use a vetted library and constant-time comparison as provided by that library.
-- Keep password reset and email verification tokens out of logs; persist only token digests with expiry and one-time-use semantics when those flows are added.
+- Keep password reset and email verification tokens out of logs; persist only token digests with expiry and one-time-use semantics, as implemented by the challenge flows.
 
 ## Session contract
 
@@ -20,7 +20,7 @@ The current API uses explicit `Authorization: Bearer` headers, never cookies. Th
 - Return the raw token once to the client; persist only its SHA-256 digest in `auth_sessions.token_hash`.
 - Enforce expiry and revocation on every authenticated request. Update last-used metadata with a bounded cadence to avoid a write on every request.
 - Revoke sessions on logout, password change/reset, account disablement, and relevant security events.
-- Use secure, HttpOnly cookies with an appropriate SameSite policy in browser deployments. Add CSRF protection for cookie-authenticated state-changing requests. Never put bearer tokens in URLs or logs.
+- Current browser authentication uses explicit bearer headers only. Any future cookie implementation must use secure, HttpOnly cookies with an appropriate SameSite policy and CSRF protection for state-changing requests. Never put session bearer tokens in URLs or logs.
 - Avoid persisting raw IP addresses or user-agent strings unless a documented security requirement and retention policy justify it.
 
 ## Authorization and tenant isolation
@@ -108,3 +108,8 @@ Account locks introduce a targeted denial-of-access tradeoff. These thresholds a
 
 
 Incorrect current-password confirmations in `POST /auth/password` and `DELETE /auth/account` charge the same persisted failure window as login. Their already-held exclusive account locks serialize the check and budget update; failures commit before returning `invalid_current_password`, so transaction rollback cannot erase guesses. Before the threshold the session remains valid; reaching it causes the established locked-account session rejection on subsequent protected requests. Correct password changes clear the shared state while revoking all old sessions. Database errors never become successful reauthentication. This closes cross-instance guessing through account controls while retaining the same operational lockout tradeoff.
+
+
+### Bounded delivery retries
+
+After one successful proof issuance, delivery makes at most three attempts with one- and two-second backoffs. Each attempt is bounded by fifteen seconds and proof expiry; expiry or service shutdown stops retries. Retries reuse the same proof, without reissuing or consuming resend quota. Successful SMTP DATA acceptance ends delivery even if QUIT fails. Errors remain generic. Ambiguous network failures can duplicate a message; the proof remains single use. The single worker and its 32-item queue remain volatile, so restart-safe delivery, queue monitoring and provider failure handling are still launch work.

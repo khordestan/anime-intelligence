@@ -2,6 +2,8 @@
 
 A Go and Next.js foundation for a detailed anime catalog, personal tracking, and explainable recommendations.
 
+For current implementation state, security constraints and continuation steps, start with [project context](docs/PROJECT_CONTEXT.md).
+
 ## Implemented
 
 - Catalog search/detail, tracker create/list/update, episode progress, and 1–5 ratings.

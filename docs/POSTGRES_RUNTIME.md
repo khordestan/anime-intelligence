@@ -99,3 +99,8 @@ Apply migration `000007_login_attempt_budget` before updating the API; startup c
 Successful login, password change and password reset clear the counter, observation start and lock. Recovery requests and password-reset proofs remain usable while locked, allowing address owners to recover. Unknown, disabled, locked and incorrect-password login responses remain the same generic 401. Incorrect sensitive-action confirmations return `invalid_current_password` to an already authenticated caller; active account locks return the normal session rejection. Reauthentication failures commit the shared budget before returning and leave valid sessions intact until the threshold is reached. No IP address or user-agent data is collected. The process-wide request/hash gate still applies.
 
 This baseline account lock can itself be abused to deny access to a known account. Public launch still needs reviewed ingress controls, distributed source throttling, monitoring and an operational recovery path. It is not a replacement for those controls.
+
+
+### Bounded delivery retries
+
+After one successful proof issuance, delivery makes at most three attempts with one- and two-second backoffs. Each attempt is bounded by fifteen seconds and proof expiry; expiry or service shutdown stops retries. Retries reuse the same proof, without reissuing or consuming resend quota. Successful SMTP DATA acceptance ends delivery even if QUIT fails. Errors remain generic. Ambiguous network failures can duplicate a message; the proof remains single use. The single worker and its 32-item queue remain volatile, so restart-safe delivery, queue monitoring and provider failure handling are still launch work.

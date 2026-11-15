@@ -71,7 +71,6 @@ func (s *Service) run() {
 		case j := <-s.jobs:
 			func() {
 				ctx, cancel := context.WithTimeout(s.ctx, 15*time.Second)
-				defer cancel()
 				var message *Message
 				var err error
 				if j.purpose == PasswordReset {
@@ -79,8 +78,9 @@ func (s *Service) run() {
 				} else {
 					message, err = s.issuer.IssueEmailVerification(ctx, j.value)
 				}
+				cancel()
 				if err == nil && message != nil {
-					err = s.sender.Send(ctx, *message)
+					err = sendWithRetry(s.ctx, s.sender, *message, time.Second)
 				}
 				if err != nil && s.ctx.Err() == nil {
 					s.logger.Warn("identity delivery attempt failed")

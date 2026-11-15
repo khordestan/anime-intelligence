@@ -227,3 +227,11 @@ Remaining boundaries:
 - Shared the persisted password-failure budget with password changes and account deletion, preventing these confirmation endpoints from bypassing the cross-instance login limit.
 - Committed failed reauthentication attempts before returning the allowlisted wrong-password error. Below threshold the existing session remains valid; active locks block sensitive actions and are never extended. Successful password changes clear the budget and still revoke all old sessions.
 - Added separate-pool coverage for a window consumed across both actions, lock enforcement by login/deletion/password change, expiry, successful reset and old-session rejection.
+
+## 2026-11-15 — Bounded identity delivery retries and session continuity
+
+- Added three-attempt SMTP delivery with one-/two-second backoffs, per-attempt timeouts capped by proof expiry, and cancellation-aware shutdown. Retry the same issued proof rather than invalidating it or consuming resend quotas; successful delivery stops immediately. Provider failures remain redacted.
+- Added tests for eventual success, retry exhaustion, unchanged proof, expiry, cancellation, deadlines, and the service issuing only one challenge across multiple deliveries.
+- Added `docs/PROJECT_CONTEXT.md` as the GitHub continuation entry point, linked from README. It records architecture, completed versus schema-only features, security constraints, known issues, next priorities and exact verification/resume steps. Corrected stale architecture/security wording alongside it. No ChatGPT Project file/instruction editing capability was available.
+- Local full race suite passed against a fresh disposable PostgreSQL 17 instance (restricted-role integration suite included); vet/build and whitespace checks passed. The initial reused database instance had stale process state; isolated reprovisioning resolved the environment failure. This commit's GitHub CI and CodeQL are checked after publication.
+- Durable restart-safe delivery remains pending: queue/retry state is volatile, network ambiguity can duplicate mail, and a single slow worker can fill the bounded queue. Nothing deployed; no real mail or personal data used.
