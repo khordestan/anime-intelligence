@@ -485,3 +485,9 @@ Added a dedicated catalog writer role that cannot enable sources, remap external
 Worker 0a1c0c5 passed all seven CI jobs 43760194080 and both CodeQL analyses 43760194072. Added verified-account preference editing/reset, compatibility evidence and honest no-evidence results in an account-keyed client component. Unmount/request revisions and the existing in-memory session client fence stale responses.
 
 Added two automatically discovered mocked browser tests for save/reset, cold start, storage exclusion and delayed prior-account results. Extended the real PostgreSQL/browser feature test to verify preference persistence/foreign-account isolation and unsupported-match handling. No personal history or fabricated production observations seeded; no external AI calls/deployment. Exact-commit CI pending. Existing client-component guide applies; packaged framework guides/toolchains remain unavailable in this workspace.
+
+## 2026-11-16 — Reviewed public feature ingestion
+
+Added strict offline feature-import with a separate explicit curation connection, no HTTP/LLM calls and no personal/profile fields. Validates bounded snapshots, existing catalog IDs, active non-spoiler taxonomy, finite four-decimal values/confidence and credential/query-free HTTPS references. Reference syntax is not a rights/factuality check; editor review remains mandatory.
+
+Imports share catalog locking, append observation history, replay identical snapshots without duplicates and roll back same-time conflicts or any invalid record. Added decoder boundary and disposable PostgreSQL idempotency/conflict/rollback/API-write-denial tests, plus curation-to-recommendation integration. No curated production data or personal history imported. Exact-commit CI pending; no local toolchain pass claimed.
