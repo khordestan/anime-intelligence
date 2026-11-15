@@ -238,3 +238,67 @@ test("real PostgreSQL auth, tracking, remote session control and account isolati
     fullPage: true,
   });
 });
+
+
+test("real PostgreSQL exact episode editor and franchise preferences stay owner scoped", async ({ page, request }) => {
+  const suffix = randomUUID();
+  const sessions: Session[] = [];
+  const emails = [`episode-owner-${suffix}@example.test`, `episode-other-${suffix}@example.test`];
+  const headers = (token: string) => ({ Authorization: `Bearer ${token}` });
+  for (const email of emails) {
+    const registration = await request.post(API + "/auth/register", { data: { email, password } });
+    expect(registration.status()).toBe(201);
+    const session: Session = await registration.json();
+    sessions.push(session);
+    expect((await request.post(API + "/auth/email-verification/request", { headers: headers(session.token) })).status()).toBe(202);
+    const proof = await verificationToken(request, email);
+    expect((await request.post(API + "/auth/email-verification/confirm", { data: { token: proof } })).status()).toBe(204);
+  }
+  await page.goto("/");
+  await page.getByLabel("Email", { exact: true }).fill(emails[0]);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByText(emails[0], { exact: true })).toBeVisible();
+  await page.getByPlaceholder("Search starter catalog…").fill("Solo Leveling");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  const article = page.getByRole("article").filter({ hasText: "Solo Leveling" });
+  await article.getByRole("button", { name: "Edit watched episodes Solo Leveling", exact: true }).click();
+  await article.getByLabel("Watched episode numbers Solo Leveling", { exact: true }).fill("3, 1");
+  await article.getByRole("button", { name: "Replace episode selection", exact: true }).click();
+  await expect(article).toContainText("2/12 episodes watched");
+  await expect(article.getByRole("button", { name: "+1 episode", exact: true })).toBeDisabled();
+  const library = await request.get(API + "/tracker", { headers: headers(sessions[0].token) });
+  const saved = await library.json();
+  expect(saved.items).toHaveLength(1);
+  expect(saved.items[0].exactProgress).toBe(true);
+  const path = API + "/tracker/" + saved.items[0].id + "/episodes";
+  const progress = await request.get(path, { headers: headers(sessions[0].token) });
+  expect((await progress.json()).numbers).toEqual([1, 3]);
+  expect((await request.get(path, { headers: headers(sessions[1].token) })).status()).toBe(404);
+  expect((await request.put(path, { headers: headers(sessions[1].token), data: { numbers: [2] } })).status()).toBe(404);
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  await panel.getByLabel("Release scope Solo Leveling", { exact: true }).selectOption("FRANCHISE");
+  await panel.getByLabel("Release track Solo Leveling", { exact: true }).selectOption("DUB");
+  await panel.getByRole("button", { name: "Follow releases Solo Leveling", exact: true }).click();
+  await expect(panel.getByRole("button", { name: "Stop alerts Solo Leveling", exact: true })).toBeVisible();
+  const follows = await request.get(API + "/follows", { headers: headers(sessions[0].token) });
+  const owned = await follows.json();
+  expect(owned.items).toHaveLength(1);
+  expect(owned.items[0].scope).toBe("FRANCHISE");
+  expect(owned.items[0].track).toBe("DUB");
+  const foreign = await request.get(API + "/follows", { headers: headers(sessions[1].token) });
+  expect((await foreign.json()).items).toEqual([]);
+  await panel.getByRole("button", { name: "Stop alerts Solo Leveling", exact: true }).click();
+  await expect(panel.getByRole("button", { name: "Follow releases Solo Leveling", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(panel).toHaveCount(0);
+  await page.getByLabel("Email", { exact: true }).fill(emails[1]);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByText(emails[1], { exact: true })).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Episode selection Solo Leveling", exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
+});

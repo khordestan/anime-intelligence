@@ -65,7 +65,8 @@ func apply(ctx context.Context, conn *pgx.Conn, s feed.Snapshot) (Result,error) 
 			if _,err=tx.Exec(ctx,`INSERT INTO anime_external_ids(anime_id,provider,external_id) VALUES($1,$2,$3)`,id,s.Provider,title.ExternalID);err!=nil {return out,err}
 		} else if err!=nil {return out,err}
 		var authority, priorStatus string
-		err=tx.QueryRow(ctx,`SELECT source_id::text,COALESCE(payload->>'status','UNKNOWN') FROM catalog_metadata WHERE anime_id=$1 FOR UPDATE`,id).Scan(&authority,&priorStatus)
+		var titleObserved time.Time
+		err=tx.QueryRow(ctx,`SELECT source_id::text,COALESCE(payload->>'status','UNKNOWN'),observed_at FROM catalog_metadata WHERE anime_id=$1 FOR UPDATE`,id).Scan(&authority,&priorStatus,&titleObserved)
 		known := err==nil
 		if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,err}
 		if known && authority!=source {return out,ErrConflict}
@@ -82,7 +83,7 @@ VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) D
 			out.SeasonAnnouncements+=int(tag.RowsAffected())
 		}
 		for _,episode:=range title.Episodes {
-			revision,event,err:=syncEpisode(ctx,tx,source,id,episode,s.ObservedAt,previous,known)
+			revision,event,err:=syncEpisode(ctx,tx,source,id,episode,s.ObservedAt,titleObserved,known && !previous.IsZero())
 			if err!=nil {return out,err}
 			out.ScheduleRevisions+=revision
 			out.ReleaseEvents+=event
@@ -121,7 +122,7 @@ WHERE anime_id=$1 AND episode_number=$2 AND release_track=$3 ORDER BY revision D
 	if _,err=tx.Exec(ctx,`INSERT INTO airing_schedule(anime_id,episode_number,release_track,scheduled_at,actual_released_at,schedule_status,source_id,last_verified_at,revision)
 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,id,e.Number,e.Track,e.ScheduledAt,actual,status,source,observed,revision+1);err!=nil {return 0,0,err}
 	// New titles and first imports baseline historical releases. Late backfills
-	// older than the previous provider observation also establish history only.
+	// older than the previous title observation also establish history only.
 	if !known || previous.IsZero() || released!=nil || actual==nil || !actual.Truncate(time.Microsecond).After(previous) {return 1,0,nil}
 	identity,_:=json.Marshal([]any{"EPISODE_RELEASED",id,e.Number,e.Track})
 	sum:=sha256.Sum256(identity)

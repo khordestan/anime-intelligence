@@ -413,3 +413,11 @@ Recorded primary-source capability/approval review in PROVIDERS.md. AniList's cu
 Added explicit ANIME/FRANCHISE follow scopes and transitive prequel/sequel membership. Scope changes replace the former mode for the title and preserve follow time. New post-baseline ANNOUNCED titles/UNKNOWN transitions create unique canonical announcement events; polls distinguish announcements from confirmed episode availability. SQL deduplicates multiple graph paths/follows, uses a fixed two-second statement timeout and serializes subscription changes/materialization with an account advisory lock after existing account/session locks. New subscriptions are capped at 1000 titles, with existing preference changes preserved.
 
 Dashboard and OpenAPI expose scope selection. Added end-to-end database coverage for delayed/transitive linked seasons, announcement/episode distinctions, single-season isolation, repeat polls, scope replacement and quotas; browser scope preference coverage updated. No network source or deployment enabled. Exact-commit CI pending.
+
+## 2026-11-15 — Cross-title freshness fix and real-browser integration
+
+Review found that comparing a release against the provider-wide high-water mark could suppress a title's eligible release after a newer partial update for a different title. Comparison now uses the prior observation for that title; the provider high-water mark still rejects stale batches and first-source imports still baseline history. Added a specific multi-title partial-feed regression.
+
+Added real PostgreSQL/browser coverage for exact episode replacement, foreign read/write rejection, franchise DUB preferences, stopping follows, account-switch UI reset and browser-storage exclusion. Synchronized README, architecture and runtime upgrade documentation.
+
+Verified predecessor checkpoints: 4ee3076 CI 43752308412/Security 43752308409; 9b7ef74 CI 43752564635/Security 43752564633; 02221f7 CI 43752871302/Security 43752871261; b45ab83 CI 43753082945/Security 43753082990; 75b44ca CI 43753443802/Security 43753443843; af6dd27 CI 43753824957/Security 43753825012. All seven CI jobs and both CodeQL analyses passed for each inspected SHA. Follow-up CI pending publication. No local test pass, approved live source or deployment claimed.

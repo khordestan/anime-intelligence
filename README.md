@@ -6,7 +6,10 @@ For current implementation state, security constraints and continuation steps, s
 
 ## Implemented
 
-- Catalog search/detail, tracker create/list/update, episode progress, and 1–5 ratings.
+- Sourced catalog details, genres/tags/studios, canonical season relations and per-track episode schedules.
+- Reviewed offline provider ingestion with external ID mapping, latest structured provenance, schedule revision history and unique release/announcement events; offline Jikan v4 conversion. Network sources remain disabled pending source-use approval.
+- Tracker create/list/update/remove, aggregate or exact episode selections (including gaps), 1–5 ratings and a dashboard episode editor.
+- Individual-season or linked-franchise follows, release-track preferences and owner-scoped in-app episode/season-announcement notifications, polled from the dashboard.
 - Optional PostgreSQL runtime with registration, login, current account, logout, and atomic session rotation.
 - Active-session listing, individual remote revocation, and sign-out of every other session; refresh keeps a stable logical session ID.
 - Optional SMTP-backed password recovery and email verification use short-lived, single-use hashed challenges, explicit confirmation, and fragment-only mail links. Delivery is disabled without explicit SMTP and outbox-key configuration; accepted requests and issued messages use encrypted, leased PostgreSQL inbox/outbox queues with a bounded decryption keyring for planned rotation.
@@ -27,7 +30,7 @@ API probes: `/healthz` checks process liveness; `/readyz` checks live runtime de
 
 ## Run locally
 
-Go 1.26+ is required. Without `DATABASE_URL`, `go run ./cmd/api` uses the local JSON store (`DATA_FILE`, default `./data/local.json`) and listens on `127.0.0.1:8080`. Run `npm install && npm run dev` in `web` for the local dashboard.
+Go 1.26+ is required. Without `DATABASE_URL`, `go run ./cmd/api` uses the local JSON store (`DATA_FILE`, default `./data/local.json`) and listens on `127.0.0.1:8080`. Run `npm ci && npm run dev` in `web` for the local dashboard.
 
 For PostgreSQL setup, role provisioning, API usage, and verification, see [PostgreSQL runtime](docs/POSTGRES_RUNTIME.md). Migration and runtime connections must use separate database roles. Database initialization errors stop startup; the API never falls back to JSON when a non-empty `DATABASE_URL` fails.
 
@@ -35,6 +38,6 @@ The [backup recovery guide](docs/BACKUP_RECOVERY.md) includes a synthetic logica
 
 ## Development boundary
 
-**Do not deploy publicly or use sensitive data yet.** JSON mode is single-user and unauthenticated. PostgreSQL authentication and isolation have automated coverage but still need independent security review, production abuse controls, operational mail/key configuration, queue monitoring, and operational hardening. Browser cookie authentication is not implemented; the API accepts explicit bearer headers only. The worker, licensed provider synchronization, release alerts, and recommendation serving remain pending.
+**Do not deploy publicly or use sensitive data yet.** JSON mode is single-user and unauthenticated. PostgreSQL authentication and isolation have automated coverage but still need independent security review, production abuse controls, operational mail/key configuration, queue monitoring, and operational hardening. Browser cookie authentication is not implemented; the API accepts explicit bearer headers only. Scheduled workers, approved network provider synchronization, background delivery channels and recommendation serving remain pending. See [catalog ingestion](docs/CATALOG_FEEDS.md), [provider approval registry](docs/PROVIDERS.md), [episode progress](docs/EPISODE_PROGRESS.md) and [release alerts](docs/RELEASE_ALERTS.md).
 
 Only source code, synthetic fixtures, and permitted catalog assets belong in this public repository. Never commit secrets, real account data, personal watch histories, or database dumps.

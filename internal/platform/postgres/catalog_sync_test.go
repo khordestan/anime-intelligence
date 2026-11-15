@@ -96,3 +96,23 @@ func TestCatalogImportAuthorityAndHistoricalBaseline(t *testing.T) {
 	var title string
 	if err=owner.QueryRow(ctx,`SELECT canonical_title FROM anime WHERE id=$1`,id).Scan(&title);err!=nil || title!="Synthetic Authority" {t.Fatal("authority conflict changed canonical data",err)}
 }
+
+func TestPartialProviderUpdatesUseEachTitlesObservationTime(t *testing.T) {
+	_,owner,_,_:=testDB(t)
+	ctx:=context.Background()
+	now:=time.Now().UTC().Truncate(time.Microsecond)
+	if _,err:=owner.Exec(ctx,`INSERT INTO data_sources(provider_key,display_name,enabled,policy_url) VALUES('partial-clock','Synthetic partial clock',true,'https://example.test/policy')`);err!=nil {t.Fatal(err)}
+	s:=feed.Snapshot{Version:1,Provider:"partial-clock",ObservedAt:now.Add(-4*time.Hour),Titles:[]feed.Title{
+		{ExternalID:"one",Title:"Synthetic Clock One",MediaType:"TV",Status:"RELEASING",Episodes:[]feed.Episode{{Number:1,Track:"SUB"}}},
+		{ExternalID:"two",Title:"Synthetic Clock Two",MediaType:"TV",Status:"RELEASING"},
+	}}
+	if _,err:=catalogsync.Import(ctx,owner,s,now);err!=nil {t.Fatal(err)}
+	s.ObservedAt=now.Add(-time.Hour)
+	s.Titles=s.Titles[1:]
+	if _,err:=catalogsync.Import(ctx,owner,s,now);err!=nil {t.Fatal(err)}
+	at:=now.Add(-2*time.Hour)
+	s.ObservedAt=now
+	s.Titles=[]feed.Title{{ExternalID:"one",Title:"Synthetic Clock One",MediaType:"TV",Status:"RELEASING",Episodes:[]feed.Episode{{Number:1,Track:"SUB",ReleasedAt:&at}}}}
+	result,err:=catalogsync.Import(ctx,owner,s,now)
+	if err!=nil || result.ReleaseEvents!=1 {t.Fatal("another title's newer observation hid an eligible release",result,err)}
+}
