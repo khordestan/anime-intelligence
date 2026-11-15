@@ -100,13 +100,16 @@ jobs:
       - name: Configure loopback-only synthetic TLS mail
         run: |
           outbox_key=$(openssl rand -base64 32)
+          previous_outbox_key=$(openssl rand -base64 32)
           echo "::add-mask::$outbox_key"
+          echo "::add-mask::$previous_outbox_key"
           smtp_password=$(openssl rand -hex 32)
           mailbox_key=$(openssl rand -hex 32)
           echo "::add-mask::$smtp_password"
           echo "::add-mask::$mailbox_key"
           {
             echo "MAIL_OUTBOX_KEY=$outbox_key"
+            echo "MAIL_OUTBOX_PREVIOUS_KEYS=$previous_outbox_key"
             echo "IDENTITY_MAIL_TEST=1"
             echo "MAIL_SMTP_ADDR=127.0.0.1:8465"
             echo "MAIL_SMTP_USER=synthetic-mailer"

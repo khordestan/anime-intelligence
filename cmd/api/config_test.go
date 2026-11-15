@@ -32,3 +32,27 @@ func TestMailRequiresExplicitOutboxKey(t *testing.T) {
 		}
 	}
 }
+
+func TestMailKeyringValidationAndPartialConfiguration(t *testing.T) {
+	primary := strings.Repeat("A", 43) + "="
+	previous := "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+	settings := map[string]string{"MAIL_SMTP_ADDR": "smtp.example.test:465", "MAIL_SMTP_USER": "synthetic", "MAIL_SMTP_PASSWORD": "synthetic", "MAIL_FROM": "sender@example.test", "PUBLIC_APP_ORIGIN": "https://app.example.test", "MAIL_OUTBOX_KEY": primary, "MAIL_OUTBOX_PREVIOUS_KEYS": previous}
+	getenv := func(key string) string { return settings[key] }
+	if sender, err := identitySenderFromEnv(getenv, true); err != nil || sender == nil {
+		t.Fatal("valid keyring rejected", err)
+	}
+	for _, keys := range []string{primary, previous + "," + previous, previous + ",", strings.Join([]string{previous, previous, previous, previous}, ",")} {
+		settings["MAIL_OUTBOX_PREVIOUS_KEYS"] = keys
+		if sender, err := identitySenderFromEnv(getenv, true); err == nil || sender != nil || strings.Contains(err.Error(), previous) {
+			t.Fatal("invalid keyring accepted or disclosed")
+		}
+	}
+	if sender, err := identitySenderFromEnv(func(key string) string {
+		if key == "MAIL_OUTBOX_PREVIOUS_KEYS" {
+			return previous
+		}
+		return ""
+	}, true); err == nil || sender != nil {
+		t.Fatal("previous keys silently ignored without primary/mail configuration")
+	}
+}

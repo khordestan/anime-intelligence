@@ -9,7 +9,7 @@ For current implementation state, security constraints and continuation steps, s
 - Catalog search/detail, tracker create/list/update, episode progress, and 1–5 ratings.
 - Optional PostgreSQL runtime with registration, login, current account, logout, and atomic session rotation.
 - Active-session listing, individual remote revocation, and sign-out of every other session; refresh keeps a stable logical session ID.
-- Optional SMTP-backed password recovery and email verification use short-lived, single-use hashed challenges, explicit confirmation, and fragment-only mail links. Delivery is disabled without explicit SMTP and outbox-key configuration; accepted requests and issued messages use encrypted, leased PostgreSQL inbox/outbox queues.
+- Optional SMTP-backed password recovery and email verification use short-lived, single-use hashed challenges, explicit confirmation, and fragment-only mail links. Delivery is disabled without explicit SMTP and outbox-key configuration; accepted requests and issued messages use encrypted, leased PostgreSQL inbox/outbox queues with a bounded decryption keyring for planned rotation.
 - Password changes require the current password and atomically invalidate every existing session, including the caller.
 - Account-data export from a consistent snapshot and password-confirmed deletion with session/data cascades, available from the signed-in dashboard.
 - Persisted password-failure budgets shared by login, password changes and deletion, with a bounded observation window and temporary account locks; responses remain generic.

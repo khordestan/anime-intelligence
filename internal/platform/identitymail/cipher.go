@@ -14,24 +14,58 @@ var ErrEnvelope = errors.New("invalid identity delivery envelope")
 
 // EnvelopeCipher encrypts delivery credentials with a key held outside the DB.
 // Associated data binds ciphertext to the immutable challenge ID and version.
-type EnvelopeCipher struct{ aead cipher.AEAD }
+type EnvelopeCipher struct {
+	aead     cipher.AEAD
+	previous []cipher.AEAD
+}
 
 func NewEnvelopeCipher(encoded string) (*EnvelopeCipher, error) {
-	key, err := base64.StdEncoding.Strict().DecodeString(encoded)
-	if err != nil || len(key) != 32 {
-		return nil, ErrEnvelope
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, ErrEnvelope
-	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, ErrEnvelope
-	}
-	return &EnvelopeCipher{aead}, nil
+	return NewEnvelopeKeyring(encoded, nil)
 }
-func (*EnvelopeCipher) String() string { return "identity envelope cipher (redacted)" }
+
+// NewEnvelopeKeyring always encrypts with primary and accepts up to three
+// previous decryption keys. Existing ciphertext formats remain compatible.
+func NewEnvelopeKeyring(primary string, previous []string) (*EnvelopeCipher, error) {
+	if len(previous) > 3 {
+		return nil, ErrEnvelope
+	}
+	c := &EnvelopeCipher{}
+	seen := make(map[string]bool)
+	for i, encoded := range append([]string{primary}, previous...) {
+		key, err := base64.StdEncoding.Strict().DecodeString(encoded)
+		if err != nil || len(key) != 32 || base64.StdEncoding.EncodeToString(key) != encoded || seen[encoded] {
+			return nil, ErrEnvelope
+		}
+		seen[encoded] = true
+		block, err := aes.NewCipher(key)
+		if err != nil {
+			return nil, ErrEnvelope
+		}
+		aead, err := cipher.NewGCM(block)
+		if err != nil {
+			return nil, ErrEnvelope
+		}
+		if i == 0 {
+			c.aead = aead
+		} else {
+			c.previous = append(c.previous, aead)
+		}
+	}
+	return c, nil
+}
+func (c *EnvelopeCipher) open(data []byte, aad string) ([]byte, error) {
+	// Callers validate length before this trusted helper. All keys use AES-GCM's
+	// standard nonce/tag sizes; never guess formats or accept unauthenticated data.
+	for _, key := range append([]cipher.AEAD{c.aead}, c.previous...) {
+		plaintext, err := key.Open(nil, data[:key.NonceSize()], data[key.NonceSize():], []byte(aad))
+		if err == nil {
+			return plaintext, nil
+		}
+	}
+	return nil, ErrEnvelope
+}
+func (*EnvelopeCipher) String() string     { return "identity envelope cipher (redacted)" }
+func (c *EnvelopeCipher) GoString() string { return c.String() }
 
 type envelope struct {
 	Purpose, Recipient, Token string
@@ -60,7 +94,7 @@ func (c *EnvelopeCipher) Open(binding string, data []byte) (Message, error) {
 	if binding == "" || len(data) < c.aead.NonceSize()+c.aead.Overhead() || len(data) > 4096 {
 		return Message{}, ErrEnvelope
 	}
-	plaintext, err := c.aead.Open(nil, data[:c.aead.NonceSize()], data[c.aead.NonceSize():], []byte("anime-identity-outbox:v1:"+binding))
+	plaintext, err := c.open(data, "anime-identity-outbox:v1:"+binding)
 	if err != nil {
 		return Message{}, ErrEnvelope
 	}

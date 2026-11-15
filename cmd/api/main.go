@@ -35,7 +35,7 @@ func main() {
 		defer db.Close()
 		var delivery *identitymail.Service
 		if sender != nil {
-			cipher, err := identitymail.NewEnvelopeCipher(os.Getenv("MAIL_OUTBOX_KEY"))
+			cipher, err := identityCipherFromEnv(os.Getenv)
 			if err != nil {
 				logger.Error("identity outbox key configuration failed")
 				os.Exit(1)

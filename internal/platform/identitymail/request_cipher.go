@@ -42,7 +42,7 @@ func (c *EnvelopeCipher) OpenRequest(binding string, data []byte) (string, strin
 	if binding == "" || len(data) != c.aead.NonceSize()+512+c.aead.Overhead() {
 		return "", "", ErrEnvelope
 	}
-	plaintext, err := c.aead.Open(nil, data[:c.aead.NonceSize()], data[c.aead.NonceSize():], []byte("anime-identity-request:v1:"+binding))
+	plaintext, err := c.open(data, "anime-identity-request:v1:"+binding)
 	if err != nil {
 		return "", "", ErrEnvelope
 	}
