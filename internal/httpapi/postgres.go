@@ -102,6 +102,7 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 	}
 	registerIdentityRoutes(mux, db, delivery, gate, protect)
 	registerReleaseRoutes(mux,db,protect)
+	registerEpisodeRoutes(mux,db,protect)
 	mux.HandleFunc("GET /api/v1/auth/sessions", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		items, more, err := db.Sessions(r.Context(), token)
 		if err != nil {

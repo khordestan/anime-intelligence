@@ -185,6 +185,7 @@ jobs:
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000010_identity_queue_outcomes.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000011_catalog_sync.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000012_release_alerts.up.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000013_exact_episode_progress.up.sql
       - name: Assert seeded data
         env:
           PGPASSWORD: anime_test_password
@@ -258,6 +259,7 @@ jobs:
         env:
           PGPASSWORD: anime_test_password
         run: |
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000013_exact_episode_progress.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000012_release_alerts.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000011_catalog_sync.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000010_identity_queue_outcomes.down.sql

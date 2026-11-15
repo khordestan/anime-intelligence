@@ -391,3 +391,9 @@ Added importer-to-notification integration coverage, SUB/DUB/ALL filtering, repl
 Added a verified-account release panel with follow/unfollow, per-title track preferences, read state and bounded polling only while open. Account-keyed remounts, request revisions and unmount guards fence late responses. Credentials/notices stay in memory. The panel states polling/response limits and has manual refresh/retry.
 
 Added mocked browser coverage for preference requests, follow/removal, read state, account reset, storage exclusion and delayed prior-account notification results. Existing real PostgreSQL/browser suites remain required. Read web/AGENTS.md; packaged Next guides were unavailable in this empty workspace, so consulted the current official use-client guide before using the existing client-component pattern. No framework conventions or dependencies changed. Exact-commit CI pending; no local Node/Go toolchains available.
+
+## 2026-11-15 — Exact episode selections
+
+Added migration 000013 with nullable exact episode-number sets in the existing forced-RLS progress table and a database consistency constraint. Verified owner-scoped GET/PUT routes explicitly distinguish aggregate counts from ordered unique exact selections. Status-only changes preserve exact data; explicit count mutations switch modes. Library exposes exactProgress, export includes numbers and existing deletion cascades apply.
+
+Added tests for gaps/order, count-mode boundaries, known-total validation, duplicates/invalid sets, empty selections, foreign IDs, status preservation, export, deletion, database constraint enforcement and HTTP authentication/verification/strict JSON. Updated migration rollback/restore count and readiness. Exact-commit CI pending; no local toolchains or deployment.

@@ -12,7 +12,7 @@ Build a detailed, current anime catalog with personal tracking, explainable tast
 | --- | --- |
 | API | Go 1.26 modular monolith, versioned REST under `/api/v1`; `cmd/api`, `internal/httpapi`, domain handlers in `internal/modules` |
 | Persistence | Request-aware `store.Repository`; PostgreSQL via pgx for multi-user runtime, JSON file only for single-user local development |
-| Database | Embedded checksummed transactional migrations `000001`–`000012`; advisory migration lock; separate administrator and restricted runtime roles |
+| Database | Embedded checksummed transactional migrations `000001`–`000013`; advisory migration lock; separate administrator and restricted runtime roles |
 | Identity | Argon2id passwords; random opaque bearer sessions; database stores digests; transaction-local identity and forced RLS on thirteen private tables |
 | Dashboard | Next.js 16 / React; in-memory bearer/proof handling, cancellation and account-revision checks prevent stale responses crossing accounts |
 | Mail | Optional certificate-verified implicit-TLS SMTP; AES-256-GCM encrypted PostgreSQL request inbox and mail outbox; admission commits before HTTP 202; leased workers with bounded persisted retries |
@@ -23,7 +23,7 @@ PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures st
 
 ## Implementation status
 
-- Implemented: public `/api/v1/anime/{id}/details` enrichment with source/time, synonyms, genres/tags/studios, canonical relations and latest per-track episode revisions; consistent PostgreSQL read snapshots and empty enrichment in local mode. Public catalog search/detail, including stored synopsis, airing quarter, cover URL and explicit episodeCountKnown to distinguish unknown totals from known zero; authenticated tracker create/list/update/remove, basic episode progress and 1–5 ratings; verified email required for PostgreSQL tracker/rating access.
+- Implemented: public `/api/v1/anime/{id}/details` enrichment with source/time, synonyms, genres/tags/studios, canonical relations and latest per-track episode revisions; consistent PostgreSQL read snapshots and empty enrichment in local mode. Public catalog search/detail, including stored synopsis, airing quarter, cover URL and explicit episodeCountKnown to distinguish unknown totals from known zero; authenticated tracker create/list/update/remove, count and exact episode-set progress (including gaps) and 1–5 ratings; verified email required for PostgreSQL tracker/rating access.
 - Implemented: registration/login/logout, refresh with stable logical session IDs, session listing and remote revocation, password change, email verification, password recovery, consistent private export and password-confirmed deletion, with dashboard controls.
 - Implemented: persisted password-failure window shared across login, password changes/deletion and API instances; ten failures in fifteen minutes cause a fifteen-minute lock. Success/password change/reset clears it; active locks are not extended.
 - Implemented: canonical catalog/provenance schema, eight starter titles and forty-feature taxonomy. Schema coverage is broader than runtime feature coverage.
@@ -33,7 +33,7 @@ PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures st
 ## Key decisions and security constraints
 
 - Never trust request-supplied user IDs. Resolve a bearer digest, acquire account state before session/proof rows, recheck credentials under locks, then run owner-scoped queries with transaction-local RLS context. RLS supplements application authorization.
-- API database role must not own tables or have elevated privileges/BYPASSRLS. Migrations use separate credentials. Require release-alert migration 000012 and the expanded read-only catalog grants at startup; prior inbox/outbox deployments must already have current runtime-role grants.
+- API database role must not own tables or have elevated privileges/BYPASSRLS. Migrations use separate credentials. Require exact-progress migration 000013 and the expanded read-only catalog grants at startup; prior inbox/outbox deployments must already have current runtime-role grants.
 - Sessions expire after 24 hours. Refresh changes the digest in the same row, preventing remote-revocation races. Password change/reset revokes all sessions; account deletion cascades private records.
 - Only explicit bearer headers are supported; cookies/CSRF handling are not implemented. Browser reload drops the credential. Never persist credentials in browser storage.
 - Unverified users retain account/recovery/export/deletion access; reset and refresh do not establish email ownership. Mail-disabled installations cannot unlock new accounts' product access.
