@@ -12,6 +12,7 @@ import (
 
 	"github.com/khordestan/anime-intelligence/internal/modules/catalog"
 	"github.com/khordestan/anime-intelligence/internal/modules/tracker"
+	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/password"
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
 )
@@ -20,12 +21,15 @@ import (
 // Browser cookie authentication is deliberately unsupported: only explicit
 // Authorization bearer headers are accepted, avoiding ambient-cookie CSRF.
 func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
+	return NewPostgresRouterWithIdentity(logger, db, nil)
+}
+func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "postgresql"})
 	})
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true})
+		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true, "identityDeliveryAvailable": delivery != nil})
 	})
 	c := catalog.NewHandler(db.Repository(""))
 	mux.HandleFunc("GET /api/v1/anime", c.List)
@@ -94,6 +98,7 @@ func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
 			fn(w, r, token, u)
 		}
 	}
+	registerIdentityRoutes(mux, db, delivery, gate, protect)
 	mux.HandleFunc("GET /api/v1/auth/sessions", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		items, more, err := db.Sessions(r.Context(), token)
 		if err != nil {

@@ -177,3 +177,11 @@ Remaining boundaries:
 - Password reset revokes existing sessions and clears temporary login locks without issuing a new session. Verification records mailbox proof; it does not reset passwords or automatically authenticate. Existing session/account responses expose the current `emailVerified` flag.
 - Added PostgreSQL tests for RLS, digest-only persistence, purpose confusion, expiry, replay, supersession, cooldown, address changes, password-change invalidation, deletion cascades, and concurrent single-use redemption. Raw delivery envelopes cannot be serialized to API JSON and redact structured log output.
 - Runtime role/startup checks and migration/rollback CI now cover eleven private tables. The full local Go race suite passes; HTTP delivery wiring is the next step. No mail was sent to real recipients and no public deployment was performed.
+
+## 2026-11-15 — Asynchronous recovery API and authenticated TLS mail
+
+- Added a bounded, cancelable identity delivery worker. Recovery acceptance occurs before account lookup and SMTP, keeping public responses independent of account state/provider latency. Delivery is disabled without complete explicit configuration.
+- Added strict reset/request/confirm and verification/request/confirm routes; verification recipients come only from a current verified session's stored email. Redemption remains usable during delivery outages and never authenticates automatically.
+- Added an authenticated, certificate/hostname-verified implicit-TLS SMTP adapter, trusted-origin fragment links, CRLF/configuration validation, fixed public errors, and structured-log redaction. No real recipients were contacted.
+- Added a separately compiled loopback-only synthetic SMTP/mailbox fixture, TLS/auth tests, queue backpressure/shutdown tests, HTTP non-enumeration/strict-body/redemption tests, recipient quotas, disabled-account cases, and reset/password-change race tests.
+- The local full Go/PostgreSQL race suite, SMTP tests, vet/build, and diff checks pass. Challenge foundation CI/CodeQL passed (runs 43690416569 and 43690416496). Durable delivery retries and production abuse controls remain pending; no public deployment was performed.

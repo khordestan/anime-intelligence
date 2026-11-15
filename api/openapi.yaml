@@ -289,6 +289,73 @@ paths:
         "400": { description: Invalid JSON, unknown fields, or invalid replacement password }
         "401": { description: Missing/invalid session, or invalid_current_password for incorrect reauthentication }
         "429": { description: Authentication rate or concurrency limit reached }
+  /api/v1/auth/password-reset/request:
+    post:
+      summary: Request an out-of-band password reset
+      description: Asynchronous, generic acceptance for known/unknown accounts; no token is returned. Delivery must be configured.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email: { type: string, maxLength: 254 }
+      responses:
+        "202": { description: Request accepted; account existence and delivery result are not disclosed }
+        "400": { description: Invalid JSON or oversized email }
+        "429": { description: Request rate/concurrency limit reached }
+        "503": { description: Identity delivery is disabled or queue unavailable }
+  /api/v1/auth/password-reset/confirm:
+    post:
+      summary: Consume a reset token and replace the password
+      description: Revokes all existing sessions and pending identity challenges. Does not issue a session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, newPassword]
+              properties:
+                token: { type: string, minLength: 43, maxLength: 43 }
+                newPassword: { type: string, format: password }
+      responses:
+        "204": { description: Password reset; sign in again }
+        "400": { description: Invalid/expired/replayed/wrong-purpose token, JSON, or replacement password }
+        "429": { description: Authentication rate/concurrency limit reached }
+  /api/v1/auth/email-verification/request:
+    post:
+      summary: Request verification of the current account's stored email
+      description: Optional body must be empty or an empty JSON object. Recipient overrides are rejected.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "202": { description: Request accepted; already-verified/cooldown cases send no new mail }
+        "400": { description: Unexpected fields or invalid JSON }
+        "401": { description: Missing or invalid session }
+        "429": { description: Request rate/concurrency limit reached }
+        "503": { description: Identity delivery is disabled or queue unavailable }
+  /api/v1/auth/email-verification/confirm:
+    post:
+      summary: Consume an email-verification token
+      description: Does not reset passwords or automatically authenticate.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { type: string, minLength: 43, maxLength: 43 }
+      responses:
+        "204": { description: Email verified }
+        "400": { description: Invalid/expired/replayed/wrong-purpose token or JSON }
+        "429": { description: Request rate/concurrency limit reached }
 components:
   securitySchemes:
     bearerAuth:

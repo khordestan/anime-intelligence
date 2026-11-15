@@ -247,3 +247,73 @@ func TestConcurrentChallengeRedemptionSucceedsOnlyOnce(t *testing.T) {
 		})
 	}
 }
+
+func TestDisabledAccountCannotConsumePreviouslyIssuedChallenges(t *testing.T) {
+	db, owner, _, _ := testDB(t)
+	ctx := context.Background()
+	s, err := db.Register(ctx, "disabled-challenge@example.test", "synthetic-original-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reset, err := db.IssuePasswordReset(ctx, s.User.Email)
+	if err != nil || reset == nil {
+		t.Fatal(err)
+	}
+	verify, err := db.IssueEmailVerification(ctx, s.Token)
+	if err != nil || verify == nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Exec(ctx, `UPDATE users SET disabled_at=now() WHERE id=$1`, s.User.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err = db.ResetPassword(ctx, reset.Token, "synthetic-replacement-password"); !errors.Is(err, postgres.ErrInvalidChallenge) {
+		t.Fatal("disabled reset accepted", err)
+	}
+	if err = db.VerifyEmail(ctx, verify.Token); !errors.Is(err, postgres.ErrInvalidChallenge) {
+		t.Fatal("disabled verification accepted", err)
+	}
+	if message, err := db.IssuePasswordReset(ctx, s.User.Email); err != nil || message != nil {
+		t.Fatal("disabled account received another message", err)
+	}
+}
+
+func TestPasswordResetAndAuthenticatedChangeSerialize(t *testing.T) {
+	db, _, _, _ := testDB(t)
+	ctx := context.Background()
+	s, err := db.Register(ctx, "reset-change-race@example.test", "synthetic-original-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reset, err := db.IssuePasswordReset(ctx, s.User.Email)
+	if err != nil || reset == nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	resetResult, changeResult := make(chan error, 1), make(chan error, 1)
+	go func() { <-start; resetResult <- db.ResetPassword(ctx, reset.Token, "synthetic-reset-password") }()
+	go func() {
+		<-start
+		changeResult <- db.ChangePassword(ctx, s.Token, "synthetic-original-password", "synthetic-change-password")
+	}()
+	close(start)
+	resetErr, changeErr := <-resetResult, <-changeResult
+	if (resetErr == nil) == (changeErr == nil) {
+		t.Fatal("expected exactly one credential change", resetErr, changeErr)
+	}
+	next := "synthetic-reset-password"
+	if resetErr != nil {
+		if !errors.Is(resetErr, postgres.ErrInvalidChallenge) {
+			t.Fatal(resetErr)
+		}
+		next = "synthetic-change-password"
+	}
+	if changeErr != nil && !errors.Is(changeErr, postgres.ErrUnauthorized) {
+		t.Fatal(changeErr)
+	}
+	if _, err = db.Authenticate(ctx, s.Token); !errors.Is(err, postgres.ErrUnauthorized) {
+		t.Fatal("old session survived", err)
+	}
+	if _, err = db.Login(ctx, s.User.Email, next); err != nil {
+		t.Fatal("winning credential not persisted", err)
+	}
+}

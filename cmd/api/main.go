@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/khordestan/anime-intelligence/internal/httpapi"
+	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
 	"github.com/khordestan/anime-intelligence/internal/platform/store"
 	"log/slog"
@@ -26,7 +27,18 @@ func main() {
 			os.Exit(1)
 		}
 		defer db.Close()
-		handler = httpapi.NewPostgresRouter(logger, db)
+		var delivery *identitymail.Service
+		config := identitymail.SMTPConfig{Address: os.Getenv("MAIL_SMTP_ADDR"), Username: os.Getenv("MAIL_SMTP_USER"), Password: os.Getenv("MAIL_SMTP_PASSWORD"), From: os.Getenv("MAIL_FROM"), AppOrigin: os.Getenv("PUBLIC_APP_ORIGIN"), CAFile: os.Getenv("MAIL_SMTP_CA_FILE")}
+		if config.Address != "" || config.Username != "" || config.Password != "" || config.From != "" || config.AppOrigin != "" || config.CAFile != "" {
+			sender, err := identitymail.NewSMTP(config)
+			if err != nil {
+				logger.Error("identity mail configuration is incomplete or invalid")
+				os.Exit(1)
+			}
+			delivery = identitymail.NewService(db, sender, logger)
+			defer delivery.Close()
+		}
+		handler = httpapi.NewPostgresRouterWithIdentity(logger, db, delivery)
 		storage = "postgresql"
 	} else {
 		dataPath := os.Getenv("DATA_FILE")
