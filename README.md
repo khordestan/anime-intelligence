@@ -1,22 +1,34 @@
 # Anime Intelligence
 
-A data-first anime tracker and taste-intelligence platform. Modular monolith: Go REST API + Next.js web app.
+A data-first anime tracker and taste-intelligence platform. The initial architecture is a Go modular monolith with a Next.js web client.
 
 ## Current implementation
-- Go HTTP API: health, catalog search/detail, tracker CRUD, progress updates, and 1–5 ratings.
-- Next.js dashboard: catalog search, add-to-library, status filters, episode progress, and ratings.
-- Local JSON persistence (`data/local.json`, created automatically), seeded starter catalog.
-- Input validation, request-size limits, local-origin CORS, structured request logs, graceful shutdown.
-- PostgreSQL target schema in `migrations/`; not yet wired into the running API.
+
+- Go HTTP API: health, catalog search/detail, tracker create/list/update, progress, and 1–5 ratings.
+- Next.js dashboard: starter-catalog search, add-to-library, status filters, episode progress, and ratings.
+- Local JSON persistence for the runnable single-user development slice.
+- PostgreSQL canonical schema with users, catalog, source provenance, feature observations, tracker, ratings, preferences, recommendations, schedules, events, and notifications.
+- Provider-neutral catalog fixtures and a curated 40-feature taxonomy across protagonist, power system, combat, narrative, theme, setting, pacing, tone, stakes, content, and ending.
+- GitHub Actions: Go tests (including race detector), vet/build, frontend typecheck and production build.
 
 ## Important limitations
-This is a local development foundation, not production-ready multi-user software. Authentication, tenant isolation, PostgreSQL runtime integration, external provider sync, recommendations, AI analyst, and release notifications are not implemented. Do not expose the API publicly.
+
+This is still a development foundation, not a production-ready multi-user service. The running API currently uses a local JSON store; PostgreSQL migrations are authored but not wired into the API runtime. Authentication, tenant isolation, external provider synchronization, recommendation serving, AI analysis, and release notifications are not implemented. Do not expose the API publicly.
 
 ## Stack
-Go 1.23+, standard-library HTTP server; Next.js 15, React 19, TypeScript, Tailwind CSS 4; target PostgreSQL 17. Current persistence is an atomic local JSON file.
+
+- Go 1.23+, standard-library HTTP server
+- Next.js 15, React 19, TypeScript, Tailwind CSS 4
+- Target database: PostgreSQL 17
+- Current development persistence: atomic local JSON file
 
 ## Run locally
-API: `go run ./cmd/api` (defaults to `http://localhost:8080`).
+
+API:
+```bash
+go run ./cmd/api
+```
+The API listens on `http://localhost:8080` by default.
 
 Web:
 ```bash
@@ -24,9 +36,19 @@ cd web
 npm install
 npm run dev
 ```
-Open `http://localhost:3000`. Configure `NEXT_PUBLIC_API_BASE_URL` when the API is elsewhere.
+Open `http://localhost:3000`. Set `NEXT_PUBLIC_API_BASE_URL` if the API is elsewhere.
+
+## Database schema
+
+Migrations are ordered:
+1. `000001_initial_schema` — canonical entities and user-scoped product tables.
+2. `000002_catalog_seed` — provider-neutral starter catalog.
+3. `000003_feature_taxonomy` — curated product taxonomy.
+
+They are SQL migration files only; no migration runner or live PostgreSQL integration is wired yet.
 
 ## API
+
 - `GET /healthz`
 - `GET /api/v1`
 - `GET /api/v1/anime?q=&limit=&offset=`
@@ -39,15 +61,17 @@ Open `http://localhost:3000`. Configure `NEXT_PUBLIC_API_BASE_URL` when the API 
 Statuses: `PLANNING`, `WATCHING`, `COMPLETED`, `ON_HOLD`, `DROPPED`.
 
 ## Layout
+
 - `cmd/api`: API entry point
 - `cmd/worker`: background worker placeholder
 - `internal/httpapi`: routing and middleware
 - `internal/modules/catalog`: catalog endpoints
 - `internal/modules/tracker`: watchlist, progress, rating endpoints
 - `internal/platform/store`: local development persistence
-- `migrations`: target PostgreSQL schema
+- `migrations`: PostgreSQL schema and seed migrations
 - `web`: Next.js application
-- `docs`: product, architecture, data policy, roadmap, implementation log
+- `docs`: product, architecture, data policy, taxonomy, roadmap, implementation log
 
 ## Data licensing
-External provider integrations remain disabled until API terms and intended display, caching, persistence, commercial, and AI/ML uses have been evaluated. See `docs/DATA_SOURCE_POLICY.md`.
+
+External provider integrations remain disabled until API terms and intended display, caching, persistence, commercial, and AI/ML uses have been evaluated. API access is not treated as a license to persist or redistribute data. See `docs/DATA_SOURCE_POLICY.md`.
