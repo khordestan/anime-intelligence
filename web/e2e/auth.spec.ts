@@ -491,14 +491,14 @@ test("library removal confirms, cancels, preserves failures and permits re-add",
   expect(deletes).toBe(0);
   await article.getByRole("button", { name: "Remove Synthetic Catalog Title", exact: true }).click();
   await article.getByRole("button", { name: "Confirm removal", exact: true }).click();
-  await expect(page.getByRole("alert")).toHaveText("Request failed. Please try again.");
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("Request failed. Please try again.");
   await expect(article).toHaveCount(1);
   await expect(article.getByRole("button", { name: "Confirm removal", exact: true })).toBeEnabled();
   fail = false;
   await article.getByRole("button", { name: "Confirm removal", exact: true }).click();
   await expect(article).toHaveCount(0);
   expect(deletes).toBe(2);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   await page.getByPlaceholder("Search starter catalog…").fill("Synthetic");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(article).toHaveCount(1);
