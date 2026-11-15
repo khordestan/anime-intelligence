@@ -8,7 +8,7 @@ The default branch is the only actively maintained development line. There are n
 
 Please do not disclose vulnerabilities in public issues or discussions.
 
-Use GitHub's **Report a vulnerability** flow in the repository's Security tab to send a private report to the maintainers. Include:
+Use GitHub's **Report a vulnerability** flow in the repository's Security tab to send a private report to the maintainers. If that option is unavailable, contact the maintainer through their GitHub profile and ask for a private reporting channel; do not post exploit details publicly. Include:
 - A clear description and potential impact.
 - Reproduction steps or a proof of concept that does not access other users' data.
 - Affected commit, component, and environment.
