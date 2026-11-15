@@ -1,11 +1,1 @@
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS airing_schedule;
-DROP TABLE IF EXISTS anime_relations;
-DROP TABLE IF EXISTS user_preferences;
-DROP TABLE IF EXISTS user_ratings;
-DROP TABLE IF EXISTS user_anime;
-DROP TABLE IF EXISTS anime_feature_observations;
-DROP TABLE IF EXISTS anime_features;
-DROP TABLE IF EXISTS anime_external_ids;
-DROP TABLE IF EXISTS anime;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS notifications, user_follows, domain_events, airing_schedule, recommendation_feedback, recommendations, user_preferences, watch_progress, user_ratings, user_anime, anime_relations, anime_feature_observations, anime_features, source_records, data_sources, anime_external_ids, anime, users CASCADE;
