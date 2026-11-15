@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function mockAPI(page: Page, authenticated = true) {
+async function mockAPI(page: Page, authenticated = true, identity = false) {
   const entries = new Map<string, object[]>();
   let issued = 0;
   const requests: { path: string; token: string }[] = [];
@@ -26,7 +26,11 @@ async function mockAPI(page: Page, authenticated = true) {
       });
     if (request.method() === "OPTIONS")
       return route.fulfill({ status: 204, headers });
-    if (path === "") return respond({ authenticationRequired: authenticated });
+    if (path === "")
+      return respond({
+        authenticationRequired: authenticated,
+        identityDeliveryAvailable: identity,
+      });
     if (path === "/anime")
       return respond({
         items: [
@@ -371,4 +375,43 @@ test("password change handles reauthentication failure then clears all private U
     "Password changed. Sign in with your new password.",
   );
   expect(attempts).toBe(2);
+});
+
+test("identity fragments are scrubbed and wait for an explicit confirmation", async ({
+  page,
+}) => {
+  await mockAPI(page, true, true);
+  const token = "A".repeat(43);
+  let confirmations = 0;
+  await page.route(
+    "**/api/v1/auth/email-verification/confirm",
+    async (route) => {
+      confirmations++;
+      expect(route.request().postDataJSON()).toEqual({ token });
+      return route.fulfill({
+        status: 204,
+        headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:3000" },
+      });
+    },
+  );
+  await page.goto(`/#action=verify-email&token=${token}`);
+  await expect(
+    page.getByRole("heading", { name: "Confirm your email" }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => location.hash)).toBe("");
+  expect(confirmations).toBe(0);
+  await page.getByRole("button", { name: "Verify email", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Account recovery" }).getByRole("status"),
+  ).toContainText("Email verified");
+  expect(confirmations).toBe(1);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Confirm your email" }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      JSON.stringify({ local: localStorage, session: sessionStorage }),
+    ),
+  ).not.toContain(token);
 });

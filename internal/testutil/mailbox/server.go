@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,9 @@ func listen(addr string) (net.Listener, error) {
 	return net.Listen("tcp", addr)
 }
 func New(smtpAddr, httpAddr, user, password, key string) (*Server, error) {
+	return NewWithCAFile(smtpAddr, httpAddr, user, password, key, "")
+}
+func NewWithCAFile(smtpAddr, httpAddr, user, password, key, caFile string) (*Server, error) {
 	if user == "" || password == "" || len(key) < 32 {
 		return nil, errors.New("mail fixture requires explicit credentials")
 	}
@@ -67,6 +71,12 @@ func New(smtpAddr, httpAddr, user, password, key string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	publicCA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	if caFile != "" {
+		if err = os.WriteFile(caFile, publicCA, 0600); err != nil {
+			return nil, err
+		}
+	}
 	pair := tls.Certificate{Certificate: [][]byte{der}, PrivateKey: private}
 	smtpListener, err := listen(smtpAddr)
 	if err != nil {
@@ -77,7 +87,7 @@ func New(smtpAddr, httpAddr, user, password, key string) (*Server, error) {
 		smtpListener.Close()
 		return nil, err
 	}
-	s := &Server{smtp: tls.NewListener(smtpListener, &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{pair}}), web: web, user: user, password: password, key: key, conns: map[net.Conn]bool{}, CAPEM: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
+	s := &Server{smtp: tls.NewListener(smtpListener, &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{pair}}), web: web, user: user, password: password, key: key, conns: map[net.Conn]bool{}, CAPEM: publicCA}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 	mux.HandleFunc("GET /messages", func(w http.ResponseWriter, r *http.Request) {

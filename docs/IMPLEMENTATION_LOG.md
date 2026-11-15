@@ -185,3 +185,10 @@ Remaining boundaries:
 - Added an authenticated, certificate/hostname-verified implicit-TLS SMTP adapter, trusted-origin fragment links, CRLF/configuration validation, fixed public errors, and structured-log redaction. No real recipients were contacted.
 - Added a separately compiled loopback-only synthetic SMTP/mailbox fixture, TLS/auth tests, queue backpressure/shutdown tests, HTTP non-enumeration/strict-body/redemption tests, recipient quotas, disabled-account cases, and reset/password-change race tests.
 - The local full Go/PostgreSQL race suite, SMTP tests, vet/build, and diff checks pass. Challenge foundation CI/CodeQL passed (runs 43690416569 and 43690416496). Durable delivery retries and production abuse controls remain pending; no public deployment was performed.
+
+## 2026-11-15 — Browser recovery and real TLS-mail CI
+
+- Added on-demand recovery requests, current-account verification requests/status, fragment proof parsing/scrubbing, and explicit reset/verification confirmation forms. Proof never enters application request URLs or browser persistent storage; reload discards it.
+- Added purpose/duplicate-field/canonical-token parsing tests and a browser assertion that loading a link does not redeem it. Account-scoped keys and API revisions keep stale proof responses from crossing account changes.
+- Added a full-stack CI matrix with separate PostgreSQL baseline and identity variants, avoiding shared rate-limit state. The identity variant provisions generated/masked mail credentials, starts a loopback-only TLS mail fixture before the API, and exercises real delivery, verification, recovery, replay rejection, session revocation, and preserved private tracking data.
+- Local transport/parser tests, frontend typecheck/build, suite discovery, SMTP race tests, and workflow YAML checks pass. The preceding delivery/API commit passed CI and CodeQL (runs 43691791914 and 43691791969). New browser execution is verified in GitHub CI; no public deployment or real-recipient delivery was performed.

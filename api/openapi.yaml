@@ -22,6 +22,7 @@ paths:
                   version: { type: string }
                   status: { type: string }
                   authenticationRequired: { type: boolean }
+                  identityDeliveryAvailable: { type: boolean, description: True only when the PostgreSQL runtime has explicit identity delivery configuration. }
   /healthz:
     get:
       summary: Health check

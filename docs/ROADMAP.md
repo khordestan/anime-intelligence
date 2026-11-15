@@ -28,7 +28,8 @@
 - [x] Session-management dashboard controls
 - [x] Authenticated password changes with current-password verification and revocation of all existing sessions
 - [x] Hashed, purpose-bound password-recovery/email-verification challenge model and redemption
-- [ ] Recovery/verification delivery, API and dashboard flows
+- [x] Recovery/verification delivery, API and dashboard flows with verified-TLS SMTP and mail-enabled browser CI
+- [ ] Durable identity-delivery retries and public-launch verified-email policy
 - [ ] Production abuse controls
 - [x] User data export and password-confirmed deletion (PostgreSQL API)
 - [ ] Account export/deletion dashboard controls

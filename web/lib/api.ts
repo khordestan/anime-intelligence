@@ -1,4 +1,9 @@
-export type User = { id: string; email: string; displayName: string };
+export type User = {
+  id: string;
+  email: string;
+  displayName: string;
+  emailVerified: boolean;
+};
 export type Session = { token: string; expiresAt: string; user: User };
 export class StaleSessionError extends Error {}
 export class ApiError extends Error {
@@ -51,7 +56,9 @@ export class ApiClient {
         if (
           (response.status === 401 &&
             body?.error === "invalid_current_password") ||
-          (response.status === 400 && body?.error === "invalid_password")
+          (response.status === 400 &&
+            (body?.error === "invalid_password" ||
+              body?.error === "invalid_or_expired_token"))
         )
           code = body.error;
       } catch {
@@ -72,6 +79,8 @@ export class ApiClient {
         message = "The current password is incorrect.";
       if (code === "invalid_password")
         message = "The new password must contain 12–1024 UTF-8 bytes.";
+      if (code === "invalid_or_expired_token")
+        message = "This link is invalid or expired. Request a new email.";
       throw new ApiError(response.status, message, code);
     }
     const body = response.status === 204 ? undefined : await response.json();

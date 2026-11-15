@@ -2,12 +2,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SessionManager from "./session-manager";
 import PasswordManager from "./password-manager";
+import { RecoveryFlow, VerificationRequest } from "./identity-actions";
 
 import {
   ApiClient,
   ApiError,
   StaleSessionError,
   type Session,
+  type User,
 } from "../lib/api";
 
 const API =
@@ -53,6 +55,7 @@ export default function Home() {
     [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [client] = useState(() => new ApiClient(API));
+  const [identityAvailable, setIdentityAvailable] = useState(false);
   const [mode, setMode] = useState<"local" | "postgres" | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState(""),
@@ -91,9 +94,15 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     client
-      .request<{ authenticationRequired?: boolean }>("")
+      .request<{
+        authenticationRequired?: boolean;
+        identityDeliveryAvailable?: boolean;
+      }>("")
       .then((meta) => {
-        if (active) setMode(meta.authenticationRequired ? "postgres" : "local");
+        if (active) {
+          setMode(meta.authenticationRequired ? "postgres" : "local");
+          setIdentityAvailable(!!meta.identityDeliveryAvailable);
+        }
       })
       .catch((e) => {
         if (active) {
@@ -105,6 +114,17 @@ export default function Home() {
       active = false;
     };
   }, [client, handleError]);
+  async function refreshVerifiedUser() {
+    if (!session) return;
+    try {
+      const user = await client.request<User>("/auth/me");
+      setSession((current) =>
+        current && current.user.id === user.id ? { ...current, user } : current,
+      );
+    } catch (error) {
+      handleError(error);
+    }
+  }
   const refresh = useCallback(async () => {
     if (mode === null) return;
     setLoading(true);
@@ -339,6 +359,27 @@ export default function Home() {
             changeSession(null);
             setNotice("Password changed. Sign in with your new password.");
           }}
+          onError={handleError}
+        />
+      )}
+      {mode === "postgres" && (
+        <RecoveryFlow
+          key={`recovery:${session?.user.id ?? "anonymous"}`}
+          client={client}
+          available={identityAvailable}
+          signedIn={!!session}
+          onReset={() => {
+            changeSession(null);
+            setNotice("Password reset. Sign in with your new password.");
+          }}
+          onVerified={() => void refreshVerifiedUser()}
+        />
+      )}
+      {session && identityAvailable && (
+        <VerificationRequest
+          key={`verification:${session.user.id}`}
+          client={client}
+          verified={!!session.user.emailVerified}
           onError={handleError}
         />
       )}

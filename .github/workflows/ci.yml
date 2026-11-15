@@ -47,10 +47,15 @@ jobs:
           path: web/test-results
           retention-days: 3
   full-stack-browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [postgres, identity]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       E2E_REAL_API: "1"
+      E2E_SUITE: ${{ matrix.suite }}
       NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8080/api/v1
     services:
       postgres:
@@ -92,6 +97,23 @@ jobs:
           ALTER ROLE anime_runtime PASSWORD '$runtime_password';
           SQL
           echo "DATABASE_URL=postgres://anime_runtime:$runtime_password@127.0.0.1:5432/anime_intelligence?sslmode=disable" >> "$GITHUB_ENV"
+      - name: Configure loopback-only synthetic TLS mail
+        if: matrix.suite == 'identity'
+        run: |
+          smtp_password=$(openssl rand -hex 32)
+          mailbox_key=$(openssl rand -hex 32)
+          echo "::add-mask::$smtp_password"
+          echo "::add-mask::$mailbox_key"
+          {
+            echo "IDENTITY_MAIL_TEST=1"
+            echo "MAIL_SMTP_ADDR=127.0.0.1:8465"
+            echo "MAIL_SMTP_USER=synthetic-mailer"
+            echo "MAIL_SMTP_PASSWORD=$smtp_password"
+            echo "MAIL_FROM=sender@example.test"
+            echo "PUBLIC_APP_ORIGIN=http://127.0.0.1:3000"
+            echo "MAIL_SMTP_CA_FILE=$RUNNER_TEMP/identity-mail-ca.pem"
+            echo "MAIL_TEST_ACCESS_KEY=$mailbox_key"
+          } >> "$GITHUB_ENV"
       - run: npm ci
         working-directory: web
       - run: npm run build
@@ -104,7 +126,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: full-stack-browser-results
+          name: full-stack-browser-results-${{ matrix.suite }}
           path: web/test-results
           retention-days: 3
   database:

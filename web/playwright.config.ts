@@ -1,8 +1,13 @@
 import { defineConfig } from "@playwright/test";
 const realAPI = process.env.E2E_REAL_API === "1";
+const identity = realAPI && process.env.E2E_SUITE === "identity";
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: realAPI ? "**/postgres.spec.ts" : "**/auth.spec.ts",
+  testMatch: realAPI
+    ? identity
+      ? "**/identity.spec.ts"
+      : "**/postgres.spec.ts"
+    : "**/auth.spec.ts",
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,
@@ -15,6 +20,16 @@ export default defineConfig({
       : {},
   },
   webServer: [
+    ...(identity
+      ? [
+          {
+            command: "go run ../cmd/testmail",
+            url: "http://127.0.0.1:8026/healthz",
+            reuseExistingServer: false,
+            timeout: 60_000,
+          },
+        ]
+      : []),
     ...(realAPI
       ? [
           {
