@@ -77,3 +77,11 @@ test("server details are hidden and unauthorized errors retain status", async ()
       !err.message.includes("database"),
   );
 });
+
+test("native-style fetch receives the global receiver", async () => {
+  const client = new ApiClient("http://api.test", function () {
+    assert.equal(this, globalThis);
+    return Promise.resolve(Response.json({ ok: true }));
+  });
+  assert.deepEqual(await client.request("/metadata"), { ok: true });
+});

@@ -356,3 +356,52 @@ func TestMissingForcedRLSRejectsStartup(t *testing.T) {
 		t.Fatal("runtime accepted missing forced RLS")
 	}
 }
+
+func TestMigrationFailureRollsBackSchemaAndLedger(t *testing.T) {
+	_, owner, _, _ := testDB(t)
+	ctx := context.Background()
+	// Intentionally conflict with a migration in this disposable test database.
+	if _, err := owner.Exec(ctx, `DROP SCHEMA public CASCADE; CREATE SCHEMA public; CREATE TABLE public.anime (synthetic integer)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrations.Apply(ctx, owner); err == nil {
+		t.Fatal("expected conflicting schema to reject migration")
+	}
+	var users, ledger, existing *string
+	if err := owner.QueryRow(ctx, `SELECT to_regclass('public.users')::text,to_regclass('public.schema_migrations')::text,to_regclass('public.anime')::text`).Scan(&users, &ledger, &existing); err != nil {
+		t.Fatal(err)
+	}
+	if users != nil || ledger != nil || existing == nil {
+		t.Fatal("failed migration was not atomic")
+	}
+}
+
+func TestLockedAndUnprovisionedAccountsRejectAuthentication(t *testing.T) {
+	db, owner, _, _ := testDB(t)
+	ctx := context.Background()
+	s, err := db.Register(ctx, "locked@example.test", "synthetic-locked-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Exec(ctx, `UPDATE users SET locked_until=now()+interval '1 hour' WHERE id=$1`, s.User.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.Login(ctx, s.User.Email, "synthetic-locked-password"); !errors.Is(err, postgres.ErrUnauthorized) {
+		t.Fatal("locked login accepted", err)
+	}
+	if _, err = db.Authenticate(ctx, s.Token); !errors.Is(err, postgres.ErrUnauthorized) {
+		t.Fatal("locked session accepted", err)
+	}
+	if _, err = owner.Exec(ctx, `UPDATE users SET locked_until=NULL WHERE id=$1`, s.User.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.Authenticate(ctx, s.Token); err != nil {
+		t.Fatal("unlocked session failed", err)
+	}
+	if _, err = owner.Exec(ctx, `INSERT INTO users(email) VALUES('unprovisioned@example.test')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.Login(ctx, "unprovisioned@example.test", "synthetic-locked-password"); !errors.Is(err, postgres.ErrUnauthorized) {
+		t.Fatal("account without credentials accepted", err)
+	}
+}

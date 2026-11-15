@@ -121,9 +121,7 @@ test("account switching and reload never retain another account's library or bea
   await page
     .getByLabel("Password", { exact: true })
     .fill("synthetic-browser-password");
-  await page
-    .getByRole("button", { name: "Sign in", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
     page.getByText("browser-two@example.test", { exact: true }),
   ).toBeVisible();
@@ -156,16 +154,31 @@ test("local development still works without an account", async ({ page }) => {
   await expect(page.getByRole("article")).toHaveCount(1);
 });
 
-
-test("a rejected session clears private data and returns to sign in",async({page})=>{
- await mockAPI(page);await page.goto("/");
- await page.getByLabel("Email",{exact:true}).fill("expired@example.test");
- await page.getByLabel("Password",{exact:true}).fill("synthetic-expired-password");
- await page.getByRole("button",{name:"Sign in",exact:true}).click();
- await expect(page.getByText("expired@example.test",{exact:true})).toBeVisible();
- await page.route("**/api/v1/tracker",route=>route.fulfill({status:401,contentType:"application/json",headers:{"Access-Control-Allow-Origin":"http://127.0.0.1:3000"},body:'{"error":"unauthorized"}'}));
- await page.getByRole("button",{name:"Refresh",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Sign in to your library"})).toBeVisible();
- await expect(page.getByRole("article")).toHaveCount(0);
- await expect(page.getByLabel("Email",{exact:true})).toHaveValue("");
+test("a rejected session clears private data and returns to sign in", async ({
+  page,
+}) => {
+  await mockAPI(page);
+  await page.goto("/");
+  await page.getByLabel("Email", { exact: true }).fill("expired@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("synthetic-expired-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(
+    page.getByText("expired@example.test", { exact: true }),
+  ).toBeVisible();
+  await page.route("**/api/v1/tracker", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:3000" },
+      body: '{"error":"unauthorized"}',
+    }),
+  );
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your library" }),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
 });

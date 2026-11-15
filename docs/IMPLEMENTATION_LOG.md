@@ -111,3 +111,10 @@ Remaining boundaries:
 - Added transport race tests and Playwright browser coverage for registration/login, private library mutation, account switching, reload credential loss, rejected-session cleanup, and local-mode compatibility.
 - Local transport tests, frontend typecheck, and production build pass. The workspace prohibits browser Unix sockets, so Chromium cannot launch locally; browser tests are added to GitHub CI with retained test results for verification there.
 - The dependency/security commit passed GitHub CI and CodeQL (CI run 43662636760, Security run 43662636718). No public deployment was performed.
+
+
+## 2026-11-15 — Browser fetch regression and failure-path coverage
+
+- The first browser CI run exposed native `fetch` being invoked with the API client as its receiver, causing an illegal-invocation error in the browser. Fixed by explicitly preserving the global receiver and added a native-style transport regression test.
+- Browser CI now tests the built production server. Docker frontend builds also use the committed lockfile via `npm ci`.
+- Added locally passing PostgreSQL race tests for atomic migration failure rollback and denial of locked/unprovisioned accounts. Backend and database jobs passed in the previous CI run; browser verification is rerun after this fix.

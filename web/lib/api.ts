@@ -34,7 +34,7 @@ export class ApiClient {
     headers.delete("Authorization");
     if (this.session)
       headers.set("Authorization", "Bearer " + this.session.token);
-    const response = await this.transport(this.base + path, {
+    const response = await this.transport.call(globalThis, this.base + path, {
       ...init,
       headers,
       cache: "no-store",
