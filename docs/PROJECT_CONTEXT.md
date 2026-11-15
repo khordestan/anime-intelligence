@@ -12,12 +12,12 @@ Build a detailed, current anime catalog with personal tracking, explainable tast
 | --- | --- |
 | API | Go 1.26 modular monolith, versioned REST under `/api/v1`; `cmd/api`, `internal/httpapi`, domain handlers in `internal/modules` |
 | Persistence | Request-aware `store.Repository`; PostgreSQL via pgx for multi-user runtime, JSON file only for single-user local development |
-| Database | Embedded checksummed transactional migrations `000001`–`000013`; advisory migration lock; separate administrator and restricted runtime roles |
+| Database | Embedded checksummed transactional migrations `000001`–`000014`; advisory migration lock; separate administrator and restricted runtime roles |
 | Identity | Argon2id passwords; random opaque bearer sessions; database stores digests; transaction-local identity and forced RLS on thirteen private tables |
 | Dashboard | Next.js 16 / React; in-memory bearer/proof handling, cancellation and account-revision checks prevent stale responses crossing accounts |
 | Mail | Optional certificate-verified implicit-TLS SMTP; AES-256-GCM encrypted PostgreSQL request inbox and mail outbox; admission commits before HTTP 202; leased workers with bounded persisted retries |
 | Catalog operations | Read-only catalog-status reports source age/never-synced/future-clock flags and aggregate latest schedules without private data; optional diagnostics-only role |
-| Worker | Opt-in bounded Wikidata fact synchronization with a dedicated public-catalog writer, approval checks, single-collector lock and persisted source due time; idle by default. Identity delivery stays API-owned. No durable fetch queue or availability source |
+| Worker | Opt-in bounded Wikidata fact synchronization with a dedicated public-catalog writer, approval checks, single-collector lock, persisted source due time and admitted-attempt/provider cooldown state; idle by default. Identity delivery stays API-owned. No durable fetch queue or comprehensive availability source |
 | Intelligence | Deterministic, explainable pure-Go Personal Match core with tests; verified-owner PostgreSQL recommendation serving uses referenced curated non-spoiler observations and declared preferences/own ratings; no-evidence results stay empty |
 
 PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures stop startup without falling back to JSON. Provision with `cmd/migrate` and `deployments/runtime-role.sql`. See [runtime guide](POSTGRES_RUNTIME.md), [architecture](ARCHITECTURE.md), [security contract](IDENTITY_SECURITY.md), and [roadmap](ROADMAP.md).
@@ -48,6 +48,8 @@ PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures st
 Outbox claims use account → challenge → outbox lock ordering and release all database locks before SMTP. One-minute leases carry random hashed credentials; stale acknowledgements cannot complete a newer claim. Retry delays are 30/60/120/240 seconds, capped at five claims including crashes. Success, exhaustion, expiry or invalidation erases ciphertext; completed metadata is removed after one day when workers run. HTTP/export never exposes outbox rows.
 
 Request intake uses a separate forced-RLS inbox and trusted `app.identity_request_worker` context, reset on every transaction. Payloads are padded to a fixed 540-byte ciphertext; reset intents contain submitted email, verification intents contain only a session digest, never raw bearer tokens. Workers revalidate that credential before issuance; logout/refresh/password change/deletion can invalidate queued verification. Request leases last one minute, with five claims and 5/10/20/40-second backoff. Payloads are erased on completion/expiry/exhaustion; completed metadata is purged after one day. Configured runtime has no volatile fallback.
+
+Worker/diagnostic upgrades require migration 000014 and reapplication of separate catalog-role grants. Attempt admission and allowlisted outcomes/cooldowns contain no selected item lists or raw provider bodies. API identity/RLS table counts remain unchanged.
 
 ## Known issues and next priorities
 

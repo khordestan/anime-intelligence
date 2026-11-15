@@ -162,3 +162,7 @@ Existing installations must reapply `deployments/runtime-role.sql` to grant DELE
 Apply all embedded migrations and reapply deployments/runtime-role.sql before updating the API. New catalog read grants do not permit ingestion writes. The catalog-import command uses a separate explicit CATALOG_DATABASE_URL and approved source registration; never elevate the API connection. Source approval/network limitations are documented in [providers](PROVIDERS.md).
 
 Public enrichment is available at GET /api/v1/anime/{id}/details. Verified accounts can edit exact watched episodes, follow individual seasons or linked franchises by release track and poll owner-scoped in-app notifications. See [episode progress](EPISODE_PROGRESS.md) and [release alerts](RELEASE_ALERTS.md) for payloads, mode-switching semantics and response limits. The dashboard provides these controls. Network collection, scheduled sync and background email/push remain disabled.
+
+## Catalog worker attempt state (migration 000014)
+
+The opt-in catalog worker and catalog-status diagnostics require migration 000014 plus reapplication of the separate catalog writer/reader role scripts. API account security still requires its existing schema/grants and thirteen private RLS tables; the new source-attempt table contains public operational metadata only. No worker is activated by migrations. See CATALOG_WORKER.md for admission, cooldown and restart behavior.

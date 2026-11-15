@@ -13,6 +13,7 @@ Default freshness threshold is 24 hours, configurable from one minute to thirty 
 
 - As-of time and threshold.
 - Each source's provider key, enabled/policy-recorded flags, latest source observation, age, imported title count, never-synced/future-clock/stale flags.
+- Last/next attempt times, bounded attempt count and allowlisted worker outcome when an attempt has been admitted.
 - Total catalog titles and latest episode schedules/confirmed episodes by release track, excluding old schedule revisions.
 
 Enabled sources with missing policy records, no observation, future observations or excessive age are stale. Disabled sources do not count as stale even if they have never synced. Future ages clamp to zero and carry a separate invalid-clock flag. An observation timestamp certifies a successful import/fetch boundary, not the truth/completeness/freshness of every upstream field. The provider-wide timestamp can also reflect a partial feed; inspect per-title observedAt when assessing a specific title.
@@ -22,3 +23,5 @@ Enabled sources with missing policy records, no observation, future observations
 Register/enable only reviewed sources. Wikidata CC0 explicit-item fetch is available for sparse TV-anime facts; Jikan source-use permissions remain unverified and AniList is excluded under current tracker/collection restrictions. No scheduler, host service or alert receiver is activated. Retention policies, provider-wide/per-title SLOs, metrics export, catalog writer-role hardening, availability verification and load tests remain work before public operation.
 
 See [feed ingestion](CATALOG_FEEDS.md), [provider registry](PROVIDERS.md), [exact episodes](EPISODE_PROGRESS.md) and [in-app alerts](RELEASE_ALERTS.md). Do not expose the API publicly.
+
+Migration 000014 and refreshed reader grants are required for attempt diagnostics. A stale source in a provider cooldown is not permission to retry early; inspect nextAttemptAt and respect it. No raw response/error strings or item-selection lists are persisted.

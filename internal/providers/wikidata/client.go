@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -21,17 +22,28 @@ import (
 var ErrProvider = errors.New("wikidata request or response failed")
 var ErrUnsupported = errors.New("wikidata item is not a supported anime television series")
 var ErrRateLimited = errors.New("wikidata rate limit reached")
-type RateLimitError struct{ Wait time.Duration }
+type RateLimitError struct{ Wait time.Duration; Until time.Time }
 func (e *RateLimitError) Error() string { return ErrRateLimited.Error() }
 func (e *RateLimitError) Unwrap() error { return ErrRateLimited }
 func retryAfter(value string,now time.Time) time.Duration {
-	delay:=time.Minute
-	if seconds,err:=strconv.Atoi(value);err==nil {if seconds<1 {seconds=1};if seconds>3600 {seconds=3600};delay=time.Duration(seconds)*time.Second
-	} else if until,err:=http.ParseTime(value);err==nil {delay=until.Sub(now)}
-	if delay<time.Second {delay=time.Second}
-	if delay>time.Hour {delay=time.Hour}
-	return delay
+	value=strings.TrimSpace(value)
+	digits:=value!=""
+	for _,r:=range value {if r<'0'||r>'9'{digits=false}}
+	if digits{
+		seconds,err:=strconv.ParseUint(value,10,64)
+		if err!=nil||seconds>uint64(math.MaxInt64/int64(time.Second)){return time.Duration(math.MaxInt64)}
+		delay:=time.Duration(seconds)*time.Second
+		if delay<time.Second{return time.Second}
+		return delay
+	}
+	if until,err:=http.ParseTime(value);err==nil{
+		delay:=until.Sub(now)
+		if delay<time.Second{return time.Second}
+		return delay
+	}
+	return time.Minute
 }
+
 var qid = regexp.MustCompile(`^Q[1-9][0-9]{0,11}$`)
 var yearPrefix = regexp.MustCompile(`^\+([0-9]{4})-`)
 var gate sync.Mutex
@@ -83,7 +95,7 @@ func (c *Client) entities(ctx context.Context,ids []string,props string)(map[str
 	if res.StatusCode==429 || (res.StatusCode==503 && res.Header.Get("Retry-After")!="") {
 		delay:=retryAfter(res.Header.Get("Retry-After"),c.now())
 		nextRequest=c.now().Add(delay)
-		return nil,&RateLimitError{Wait:delay}
+		return nil,&RateLimitError{Wait:delay,Until:nextRequest}
 	}
 	if res.StatusCode!=http.StatusOK {return nil,ErrProvider}
 	b,err:=io.ReadAll(io.LimitReader(res.Body,feed.MaxBytes+1))

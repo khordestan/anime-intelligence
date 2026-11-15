@@ -85,3 +85,11 @@ func TestRankAmbiguityAndUnknownFacts(t *testing.T) {
 	e.Claims["P577"]=[]claim{property("normal",map[string]any{"time":"+1900-00-00T00:00:00Z","precision":8})}
 	if releaseYear(e)!=0 {t.Fatal("century precision became an exact year")}
 }
+
+func TestRetryAfterPreservesLongAndOverflowingCooldowns(t *testing.T){
+	now:=time.Date(2026,1,1,0,0,0,0,time.UTC)
+	if got:=retryAfter("86400",now);got!=24*time.Hour{t.Fatal("one-day cooldown shortened",got)}
+	if got:=retryAfter(now.Add(48*time.Hour).Format(http.TimeFormat),now);got!=48*time.Hour{t.Fatal("HTTP-date cooldown shortened",got)}
+	if got:=retryAfter("99999999999999999999999999999",now);got<365*24*time.Hour{t.Fatal("overflow became short retry",got)}
+	if got:=retryAfter("invalid",now);got!=time.Minute{t.Fatal("invalid-header fallback",got)}
+}

@@ -19,3 +19,5 @@ GRANT UPDATE(observed_at,payload) ON catalog_metadata TO anime_catalog_writer;
 GRANT UPDATE(observed_at) ON catalog_sync_state TO anime_catalog_writer;
 GRANT UPDATE(last_verified_at) ON airing_schedule TO anime_catalog_writer;
 GRANT UPDATE(confidence) ON anime_relations TO anime_catalog_writer;
+
+GRANT SELECT,INSERT,UPDATE ON catalog_fetch_state TO anime_catalog_writer;

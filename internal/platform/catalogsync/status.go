@@ -10,6 +10,10 @@ import (
 var ErrStatus = errors.New("catalog status unavailable")
 type SourceStatus struct {
 	Provider string `json:"provider"`
+	LastAttemptAt *time.Time `json:"lastAttemptAt"`
+	NextAttemptAt *time.Time `json:"nextAttemptAt"`
+	Outcome *string `json:"outcome"`
+	Attempts *int `json:"attempts"`
 	Enabled bool `json:"enabled"`
 	PolicyRecorded bool `json:"policyRecorded"`
 	ObservedAt *time.Time `json:"observedAt"`
@@ -42,12 +46,12 @@ func inspect(ctx context.Context,conn *pgx.Conn,now time.Time,staleAfter time.Du
 	if err!=nil {return out,err}
 	defer tx.Rollback(context.Background())
 	rows,err:=tx.Query(ctx,`SELECT s.provider_key,s.enabled,COALESCE(s.policy_url,'')<>'',st.observed_at,
-(SELECT count(*) FROM catalog_metadata m WHERE m.source_id=s.id)
-FROM data_sources s LEFT JOIN catalog_sync_state st ON st.source_id=s.id ORDER BY s.provider_key`)
+(SELECT count(*) FROM catalog_metadata m WHERE m.source_id=s.id),f.last_attempt_at,f.next_attempt_at,f.outcome,f.attempts
+FROM data_sources s LEFT JOIN catalog_sync_state st ON st.source_id=s.id LEFT JOIN catalog_fetch_state f ON f.source_id=s.id ORDER BY s.provider_key`)
 	if err!=nil {return out,err}
 	for rows.Next() {
 		var source SourceStatus
-		if err=rows.Scan(&source.Provider,&source.Enabled,&source.PolicyRecorded,&source.ObservedAt,&source.Titles);err!=nil {rows.Close();return out,err}
+		if err=rows.Scan(&source.Provider,&source.Enabled,&source.PolicyRecorded,&source.ObservedAt,&source.Titles,&source.LastAttemptAt,&source.NextAttemptAt,&source.Outcome,&source.Attempts);err!=nil {rows.Close();return out,err}
 		source.NeverSynced=source.ObservedAt==nil
 		if source.ObservedAt!=nil {
 			age:=now.Sub(*source.ObservedAt)

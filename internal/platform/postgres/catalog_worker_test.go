@@ -11,10 +11,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
 	"github.com/khordestan/anime-intelligence/internal/platform/catalogsync"
+	"github.com/khordestan/anime-intelligence/internal/providers/wikidata"
 )
-type fakeWikidataFetcher struct{calls int;at time.Time}
+type fakeWikidataFetcher struct{calls int;at time.Time;err error}
 func(f *fakeWikidataFetcher)Fetch(context.Context,[]string)(feed.Snapshot,error){
 	f.calls++
+	if f.err!=nil{return feed.Snapshot{},f.err}
 	return feed.Snapshot{Version:1,Provider:"wikidata",ObservedAt:f.at,Titles:[]feed.Title{{ExternalID:"Q1",Title:"Synthetic Worker Title",MediaType:"TV",Status:"UNKNOWN"}}},nil
 }
 func TestCatalogWorkerDedicatedRoleApprovalAndDurableDueTime(t *testing.T){
@@ -57,6 +59,28 @@ func TestCatalogWorkerDedicatedRoleApprovalAndDurableDueTime(t *testing.T){
 	if err!=nil||did||f.calls!=1{t.Fatal("persisted freshness did not suppress fetch",did,err,f.calls)}
 	var title string
 	if err=writer.QueryRow(ctx,`SELECT canonical_title FROM anime_external_ids x JOIN anime a ON a.id=x.anime_id WHERE x.provider='wikidata' AND x.external_id='Q1'`).Scan(&title);err!=nil||title!="Synthetic Worker Title"{t.Fatal("worker import",title,err)}
+	// Simulate a fresh process after a failed first fetch: no source observation
+	// exists, so only the durable attempt state can enforce the provider cooldown.
+	if _,err=owner.Exec(ctx,`DELETE FROM catalog_sync_state; DELETE FROM catalog_fetch_state`);err!=nil{t.Fatal(err)}
+	until:=now.Add(24*time.Hour)
+	f.err=&wikidata.RateLimitError{Wait:24*time.Hour,Until:until}
+	did,err=catalogsync.SyncWikidata(ctx,writer,f,[]string{"Q1"},time.Hour,now)
+	if err==nil||did||f.calls!=2{t.Fatal("rate-limited attempt",did,err,f.calls)}
+	var outcome string
+	var retry time.Time
+	var attempts int
+	if err=writer.QueryRow(ctx,`SELECT outcome,next_attempt_at,attempts FROM catalog_fetch_state`).Scan(&outcome,&retry,&attempts);err!=nil||outcome!="RATE_LIMITED"||!retry.Equal(until)||attempts!=1{t.Fatal("persisted provider cooldown",outcome,retry,attempts,err)}
+	// New fetcher/connection models a worker restart with no process-local timer.
+	restarted,err:=pgx.Connect(ctx,u.String())
+	if err!=nil{t.Fatal(err)}
+	defer restarted.Close(ctx)
+	freshFetcher:=&fakeWikidataFetcher{at:now}
+	did,err=catalogsync.SyncWikidata(ctx,restarted,freshFetcher,[]string{"Q1"},time.Hour,now.Add(2*time.Hour))
+	if err!=nil||did||freshFetcher.calls!=0{t.Fatal("restart bypassed cooldown",did,err,freshFetcher.calls)}
+	// A process death after admission also retains the minimum interval.
+	if _,err=owner.Exec(ctx,`UPDATE catalog_fetch_state SET outcome='STARTED',next_attempt_at=$1`,now.Add(time.Hour));err!=nil{t.Fatal(err)}
+	did,err=catalogsync.SyncWikidata(ctx,restarted,freshFetcher,[]string{"Q1"},time.Hour,now.Add(30*time.Minute))
+	if err!=nil||did||freshFetcher.calls!=0{t.Fatal("crash admission did not delay fetch",did,err,freshFetcher.calls)}
 	if _,err=owner.Exec(ctx,`GRANT SELECT(email) ON users TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
 	if err=catalogsync.CheckWriter(ctx,writer);err==nil{t.Fatal("private column grant accepted")}
 }

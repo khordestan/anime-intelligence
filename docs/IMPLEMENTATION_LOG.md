@@ -491,3 +491,9 @@ Added two automatically discovered mocked browser tests for save/reset, cold sta
 Added strict offline feature-import with a separate explicit curation connection, no HTTP/LLM calls and no personal/profile fields. Validates bounded snapshots, existing catalog IDs, active non-spoiler taxonomy, finite four-decimal values/confidence and credential/query-free HTTPS references. Reference syntax is not a rights/factuality check; editor review remains mandatory.
 
 Imports share catalog locking, append observation history, replay identical snapshots without duplicates and roll back same-time conflicts or any invalid record. Added decoder boundary and disposable PostgreSQL idempotency/conflict/rollback/API-write-denial tests, plus curation-to-recommendation integration. No curated production data or personal history imported. Exact-commit CI pending; no local toolchain pass claimed.
+
+## 2026-11-16 — Persisted worker admission and provider cooldowns
+
+Verified curation 9057779: CI 43773086129 and Security 43773085982 passed all seven CI jobs and both CodeQL analyses. Added migration 000014 with public source-attempt metadata only. Admission persists STARTED/minimum next-attempt time before HTTP, bounding restart/crash retries. Fixed outcomes and next-allowed times persist success, fetch/import failure and provider rate limits. Longer Retry-After values are no longer shortened to an hour; numeric overflow saturates instead of causing an early retry.
+
+Added worker restart/crash/provider-delay tests, long/HTTP-date/overflow header tests and attempt fields to read-only diagnostics. Updated catalog role grants, migration apply/rollback and restore ledger count. No private table/RLS changes, raw response/error storage, item-selection persistence, live activation or deployment. DB loss after HTTP may still prevent recording a longer cooldown; admission's minimum interval remains durable. Exact-commit validation pending.
