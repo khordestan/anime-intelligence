@@ -182,3 +182,105 @@ test("a rejected session clears private data and returns to sign in", async ({
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
 });
+
+test("session controls revoke one login, then every other login", async ({
+  page,
+}) => {
+  await mockAPI(page);
+  const current = "60000000-0000-4000-8000-000000000001";
+  const first = "60000000-0000-4000-8000-000000000002";
+  const second = "60000000-0000-4000-8000-000000000003";
+  let ids = [current, first, second];
+  const deleted: string[] = [];
+  let bulkCalls = 0;
+  await page.route("**/api/v1/auth/sessions**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    const headers = {
+      "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    };
+    if (request.method() === "OPTIONS")
+      return route.fulfill({ status: 204, headers });
+    expect(request.headers().authorization).toMatch(/^Bearer /);
+    if (request.method() === "DELETE") {
+      const id = path.split("/").pop()!;
+      deleted.push(id);
+      ids = ids.filter((x) => x !== id);
+      return route.fulfill({ status: 204, headers });
+    }
+    if (path.endsWith("revoke-others")) {
+      bulkCalls++;
+      const revoked = ids.length - 1;
+      ids = [current];
+      return route.fulfill({ json: { revoked }, headers });
+    }
+    const createdAt = new Date().toISOString(),
+      expiresAt = new Date(Date.now() + 86400000).toISOString();
+    return route.fulfill({
+      json: {
+        items: ids.map((id) => ({
+          id,
+          createdAt,
+          expiresAt,
+          lastUsedAt: createdAt,
+          current: id === current,
+        })),
+        count: ids.length,
+        hasMore: false,
+      },
+      headers,
+    });
+  });
+  await page.goto("/");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("browser-sessions@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("synthetic-session-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Manage sessions", exact: true })
+    .click();
+  const panel = page.getByRole("region", { name: "Active sessions" });
+  await expect(
+    panel.getByText("Current session", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: /^Revoke session/ }),
+  ).toHaveCount(2);
+  await panel
+    .getByRole("button", { name: `Revoke session ${first}`, exact: true })
+    .click();
+  await expect(panel.getByRole("status")).toHaveText("Session signed out.");
+  expect(deleted).toEqual([first]);
+  await expect(
+    panel.getByRole("button", { name: /^Revoke session/ }),
+  ).toHaveCount(1);
+  await panel
+    .getByRole("button", { name: "Sign out other sessions", exact: true })
+    .click();
+  await expect(panel.getByRole("status")).toHaveText(
+    "Signed out 1 other session.",
+  );
+  expect(bulkCalls).toBe(1);
+  await expect(
+    panel.getByRole("button", { name: /^Revoke session/ }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "Sign out other sessions", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("browser-sessions@example.test", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/session-management.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Active sessions" }),
+  ).toHaveCount(0);
+});

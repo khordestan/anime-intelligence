@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import SessionManager from "./session-manager";
 
 import {
   ApiClient,
@@ -311,6 +312,13 @@ export default function Home() {
               : "Create an account"}
           </button>
         </section>
+      )}
+      {session && (
+        <SessionManager
+          key={session.user.id}
+          client={client}
+          onError={handleError}
+        />
       )}
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat label="In your library" value={library.length} />

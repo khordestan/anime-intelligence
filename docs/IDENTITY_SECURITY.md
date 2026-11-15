@@ -2,7 +2,7 @@
 
 ## Status
 
-PostgreSQL mode implements registration, login, session resolution, logout, atomic token rotation, and user-scoped tracker persistence. CI executes these flows through a restricted PostgreSQL role, with direct RLS and HTTP isolation assertions. The JSON API remains unauthenticated and single-user. Neither mode is approved for public deployment; production abuse controls, account recovery/verification, session-management dashboard controls, and independent review remain pending. See [runtime setup](POSTGRES_RUNTIME.md).
+PostgreSQL mode implements registration, login, session resolution, logout, atomic token rotation, and user-scoped tracker persistence. CI executes these flows through a restricted PostgreSQL role, with direct RLS and HTTP isolation assertions. The JSON API remains unauthenticated and single-user. Neither mode is approved for public deployment; production abuse controls, account recovery/verification and independent review remain pending. See [runtime setup](POSTGRES_RUNTIME.md).
 
 The current API uses explicit `Authorization: Bearer` headers, never cookies. The browser dashboard supports PostgreSQL login, registration, logout, and expiry, with tokens held only in component-scoped memory. Changing accounts aborts pending requests and rejects late results; reload clears the client credential and private library. The server session remains subject to its 24-hour expiry unless explicitly revoked. Raw tokens must remain in volatile client memory, never URLs, logs, or browser persistent storage.
 
@@ -53,7 +53,7 @@ Only schema, source code, synthetic fixtures, and documentation belong in this p
 - Sessions expire after 24 hours. Refresh atomically revokes the old token and issues a new one. Disabled/locked accounts are checked on every private transaction. Last-used writes are limited to a five-minute cadence.
 - API responses containing credentials/private data carry `Cache-Control: no-store`. CORS allows only the local development origins. Database URLs are not logged by startup failures.
 - Runtime requires forced RLS on implemented private resources and rejects roles that own public tables (including inherited ownership), superusers, and BYPASSRLS roles. Migration credentials are never used by the API.
-- Password changes, email verification, recovery, session-management dashboard controls, dashboard export/deletion controls, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
+- Password changes, email verification, recovery, dashboard export/deletion controls, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
 
 ## Account export and deletion
 
@@ -68,3 +68,5 @@ Only schema, source code, synthetic fixtures, and documentation belong in this p
 `DELETE /api/v1/auth/sessions/{id}` revokes a single owned active session, including the current session if explicitly targeted. Unknown, foreign, expired, or already-revoked IDs return the same 404. `POST /api/v1/auth/sessions/revoke-others` revokes every other active session, including any outside the listing limit, while keeping the caller authenticated. Its response reports the affected count; repeating it is a no-op.
 
 Refresh now replaces the credential digest in the same session record and extends expiry to 24 hours from rotation. The previous token stops resolving, and the session ID/initial creation time stay stable. This prevents a concurrent refresh from escaping remote revocation aimed at the session ID. Revocation takes an exclusive account lock before session rows, while refresh/protected requests take a shared account lock. Race tests cover both orderings, mutual revocation, and cross-user attempts. No raw IP or user-agent data is collected.
+
+The PostgreSQL dashboard provides an active-session panel with individual revocation and sign-out of all other sessions. It loads metadata on request, disables overlapping actions, refreshes after mutations, and removes the panel when the account signs out or becomes unauthorized. The current session uses the existing sign-out control. The same in-memory API client aborts and rejects stale requests when the account changes.

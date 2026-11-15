@@ -141,3 +141,10 @@ Remaining boundaries:
 - Changed refresh to rotate the credential in the same logical session record. Its ID and initial creation time remain stable, so concurrent refresh cannot escape remote revocation of a listed session ID.
 - Added PostgreSQL/HTTP tests covering cross-user listing/revocation boundaries, hidden credential fields, malformed/unknown/foreign IDs, inactive sessions, listing overflow, idempotent bulk revocation, self revocation, refresh/revocation races, and mutual revocation.
 - Local PostgreSQL 17 full Go race suite passes. No public deployment was performed. Dashboard controls are the next step.
+
+## 2026-11-15 — Session-management dashboard
+
+- Added an on-demand active-session panel with creation/last-used/expiry timestamps, a current-session indicator, individual remote revocation, and sign-out of all other sessions.
+- Preserved the in-memory credential boundary and account-switch cancellation; the panel unmounts on sign-out/unauthorized responses. No device/IP metadata or credential digests are exposed.
+- Added browser coverage for individual and bulk revocation, retained current-session access, disabled repeat actions, and panel cleanup on sign-out.
+- Local frontend transport tests, typecheck, and production build pass. The backend session-management commit passed CI and CodeQL (runs 43685858708 and 43685858600). Browser verification for the new controls runs in GitHub CI.
