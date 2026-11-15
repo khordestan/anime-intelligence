@@ -26,6 +26,7 @@
 - [x] Browser authentication UI with in-memory tokens and account-switch isolation
 - [x] Session listing and remote session revocation (PostgreSQL API)
 - [x] Session-management dashboard controls
+- [x] Authenticated password changes with current-password verification and revocation of all existing sessions
 - [ ] Password recovery, email verification and production abuse controls
 - [x] User data export and password-confirmed deletion (PostgreSQL API)
 - [ ] Account export/deletion dashboard controls

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SessionManager from "./session-manager";
+import PasswordManager from "./password-manager";
 
 import {
   ApiClient,
@@ -50,6 +51,7 @@ export default function Home() {
     [filter, setFilter] = useState("ALL"),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
   const [client] = useState(() => new ApiClient(API));
   const [mode, setMode] = useState<"local" | "postgres" | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -63,6 +65,7 @@ export default function Home() {
       client.setSession(next);
       setSession(next);
       setLibrary([]);
+      setNotice("");
       setPassword("");
       setEmail("");
       setRegister(false);
@@ -245,6 +248,14 @@ export default function Home() {
           )}
         </div>
       </header>
+      {notice && (
+        <p
+          role="status"
+          className="mt-5 rounded-xl border border-emerald-400/30 p-3 text-sm text-emerald-200"
+        >
+          {notice}
+        </p>
+      )}
       {mode === "postgres" && !session && (
         <section className="mt-8 rounded-2xl border border-white/10 bg-white/[.03] p-5">
           <h2 className="text-xl font-semibold">
@@ -317,6 +328,17 @@ export default function Home() {
         <SessionManager
           key={session.user.id}
           client={client}
+          onError={handleError}
+        />
+      )}
+      {session && (
+        <PasswordManager
+          key={session.user.id}
+          client={client}
+          onChanged={() => {
+            changeSession(null);
+            setNotice("Password changed. Sign in with your new password.");
+          }}
           onError={handleError}
         />
       )}

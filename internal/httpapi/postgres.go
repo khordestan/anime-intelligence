@@ -127,6 +127,33 @@ func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
 		}
 		writeJSON(w, 200, map[string]int64{"revoked": count})
 	}))
+	mux.HandleFunc("POST /api/v1/auth/password", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		if !gate.acquire() {
+			w.Header().Set("Retry-After", "6")
+			authError(w, 429, "too_many_requests")
+			return
+		}
+		defer gate.release()
+		var q struct {
+			CurrentPassword string `json:"currentPassword"`
+			NewPassword     string `json:"newPassword"`
+		}
+		if decodeAuth(w, r, &q) != nil {
+			authError(w, 400, "invalid_json")
+			return
+		}
+		if err := db.ChangePassword(r.Context(), token, q.CurrentPassword, q.NewPassword); err != nil {
+			if errors.Is(err, postgres.ErrReauthentication) {
+				authError(w, 401, "invalid_current_password")
+			} else if errors.Is(err, password.ErrInvalid) {
+				authError(w, 400, "invalid_password")
+			} else {
+				sessionError(w, err)
+			}
+			return
+		}
+		w.WriteHeader(204)
+	}))
 	mux.HandleFunc("GET /api/v1/auth/export", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		data, err := db.ExportAccount(r.Context(), token)
 		if err != nil {

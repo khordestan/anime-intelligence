@@ -95,3 +95,40 @@ func (d *DB) DeleteAccount(ctx context.Context, token, value string) error {
 	}
 	return tx.Commit(ctx)
 }
+
+var ErrReauthentication = errors.New("current password is incorrect")
+
+// ChangePassword requires reauthentication and atomically invalidates every
+// credential issued before the password change, including the caller's.
+func (d *DB) ChangePassword(ctx context.Context, token, current, next string) error {
+	if len(current) > password.MaxBytes {
+		return ErrReauthentication
+	}
+	tx, u, err := d.sessionTxWithUserLock(ctx, token, pgx.TxOptions{}, true)
+	if err != nil {
+		return err
+	}
+	defer rollback(tx)
+	var encoded *string
+	if err = tx.QueryRow(ctx, `SELECT password_hash FROM users WHERE id=$1`, u.ID).Scan(&encoded); err != nil {
+		return err
+	}
+	hash := d.dummyHash
+	if encoded != nil {
+		hash = *encoded
+	}
+	if !password.Verify(hash, current) || encoded == nil {
+		return ErrReauthentication
+	}
+	replacement, err := password.Hash(next)
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE users SET password_hash=$2,updated_at=now() WHERE id=$1`, u.ID, replacement); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL`, u.ID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}

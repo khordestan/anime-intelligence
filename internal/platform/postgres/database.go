@@ -125,8 +125,8 @@ func (d *DB) sessionTxWithUserLock(ctx context.Context, token string, options pg
 	if err = identity(ctx, tx, uid); err != nil {
 		return fail(err)
 	}
-	// Lock account state before session rows everywhere. Deletion takes an
-	// exclusive account lock, preventing lock upgrades/cross-session deadlocks.
+	// Lock account state before session rows everywhere. Credential mutations
+	// take an exclusive account lock, preventing cross-session deadlocks.
 	var u User
 	lock := " FOR SHARE"
 	if exclusive {

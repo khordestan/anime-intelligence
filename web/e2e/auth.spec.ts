@@ -284,3 +284,85 @@ test("session controls revoke one login, then every other login", async ({
     page.getByRole("region", { name: "Active sessions" }),
   ).toHaveCount(0);
 });
+
+test("password change handles reauthentication failure then clears all private UI", async ({
+  page,
+}) => {
+  await mockAPI(page);
+  let attempts = 0;
+  await page.route("**/api/v1/auth/password", async (route) => {
+    const request = route.request();
+    const headers = {
+      "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    };
+    if (request.method() === "OPTIONS")
+      return route.fulfill({ status: 204, headers });
+    expect(request.headers().authorization).toMatch(/^Bearer /);
+    attempts++;
+    const body = request.postDataJSON();
+    if (body.currentPassword !== "synthetic-current-password")
+      return route.fulfill({
+        status: 401,
+        headers,
+        json: { error: "invalid_current_password" },
+      });
+    expect(body.newPassword).toBe("synthetic-replacement-password");
+    return route.fulfill({ status: 204, headers });
+  });
+  await page.goto("/");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("browser-password@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("synthetic-current-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Change password", exact: true })
+    .click();
+  const panel = page.getByRole("region", { name: "Password settings" });
+  await panel
+    .getByLabel("Current password", { exact: true })
+    .fill("incorrect-password");
+  await panel
+    .getByLabel("New password", { exact: true })
+    .fill("synthetic-replacement-password");
+  await panel
+    .getByRole("button", { name: "Update password", exact: true })
+    .click();
+  await expect(panel.getByRole("alert")).toHaveText(
+    "The current password is incorrect.",
+  );
+  await expect(
+    page.getByText("browser-password@example.test", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByLabel("Current password", { exact: true }),
+  ).toHaveValue("");
+  await expect(panel.getByLabel("New password", { exact: true })).toHaveValue(
+    "",
+  );
+  await panel
+    .getByLabel("Current password", { exact: true })
+    .fill("synthetic-current-password");
+  await panel
+    .getByLabel("New password", { exact: true })
+    .fill("synthetic-replacement-password");
+  await panel
+    .getByRole("button", { name: "Update password", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your library" }),
+  ).toBeVisible();
+  await expect(panel).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Active sessions" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(page.getByRole("status")).toHaveText(
+    "Password changed. Sign in with your new password.",
+  );
+  expect(attempts).toBe(2);
+});

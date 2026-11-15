@@ -24,6 +24,7 @@ All paths start with `/api/v1`. Registration and login accept exactly one JSON o
 | GET | `/auth/me` | Returns the verified account; 200 |
 | POST | `/auth/refresh` | Atomically revokes the presented token and issues its replacement; 200 |
 | POST | `/auth/logout` | Revokes the presented token; 204 |
+| POST | `/auth/password` | Verifies `currentPassword`, hashes `newPassword`, and invalidates every existing account session; 204 |
 | GET | `/auth/sessions` | Lists up to 100 owned active sessions, current first, with `hasMore`; no token/digest fields; 200 |
 | DELETE | `/auth/sessions/{id}` | Revokes an owned active session; foreign/unknown/inactive IDs all return 404; 204 on success |
 | POST | `/auth/sessions/revoke-others` | Revokes all other active sessions, including those beyond the listing limit; returns `revoked` count; 200 |
@@ -62,3 +63,5 @@ E2E_REAL_API=1 CI=1 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080/api/v1 npm ru
 Playwright starts both the Go API and production Next.js server on loopback. The suite uses random synthetic `.test` accounts and exercises real registration/login, tracker progress and ratings, individual/bulk remote revocation, browser cleanup after remote revocation, cross-account history/update isolation, export, and password-confirmed deletion. It does not mock network responses. The default suite (`npm run test:e2e` without `E2E_REAL_API`) keeps the focused mocked tests.
 
 The dedicated CI job provisions an ephemeral PostgreSQL 17 database, applies the embedded migrations and actual `deployments/runtime-role.sql`, generates a temporary masked runtime password, and runs the browser with that non-owner connection. No public deployment or external provider access is involved. Test reports/screenshots contain synthetic fixtures only and are retained for three days.
+
+The signed-in dashboard's **Change password** form requires the current password and a 12–1024-byte replacement. Success revokes every existing session and returns the dashboard to sign-in. Incorrect current passwords leave the session intact, show an inline error, and clear both password inputs. Forgotten-password recovery and email verification remain pending. Password changes share the bounded authentication hash/rate gate and reject request-provided owner fields.

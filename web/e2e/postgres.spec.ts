@@ -162,6 +162,33 @@ test("real PostgreSQL auth, tracking, remote session control and account isolati
   await expect(page.getByRole("article")).toContainText(
     "0/12 episodes watched",
   );
+  // Change the second account's password through the real UI; every old
+  // session, including the API-issued token, must become invalid atomically.
+  const replacement = "synthetic-replacement-password";
+  await page
+    .getByRole("button", { name: "Change password", exact: true })
+    .click();
+  const settings = page.getByRole("region", { name: "Password settings" });
+  await settings.getByLabel("Current password", { exact: true }).fill(password);
+  await settings.getByLabel("New password", { exact: true }).fill(replacement);
+  await settings
+    .getByRole("button", { name: "Update password", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your library" }),
+  ).toBeVisible();
+  expect(
+    (
+      await request.get(API + "/auth/me", { headers: headers(two.token) })
+    ).status(),
+  ).toBe(401);
+  await page.getByLabel("Email", { exact: true }).fill(emailTwo);
+  await page.getByLabel("Password", { exact: true }).fill(replacement);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByText(emailTwo, { exact: true })).toBeVisible();
+  await expect(page.getByRole("article")).toContainText(
+    "0/12 episodes watched",
+  );
   await page.screenshot({
     path: "test-results/postgres-browser-isolation.png",
     fullPage: true,

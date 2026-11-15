@@ -3,9 +3,11 @@ export type Session = { token: string; expiresAt: string; user: User };
 export class StaleSessionError extends Error {}
 export class ApiError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  readonly code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -43,6 +45,19 @@ export class ApiClient {
     });
     if (revision !== this.revision) throw new StaleSessionError();
     if (!response.ok) {
+      let code: string | undefined;
+      try {
+        const body = await response.json();
+        if (
+          (response.status === 401 &&
+            body?.error === "invalid_current_password") ||
+          (response.status === 400 && body?.error === "invalid_password")
+        )
+          code = body.error;
+      } catch {
+        /* Non-JSON errors must not expose response internals. */
+      }
+      if (revision !== this.revision) throw new StaleSessionError();
       let message = "Request failed. Please try again.";
       if (response.status === 401)
         message = "Your session ended. Sign in again.";
@@ -53,7 +68,11 @@ export class ApiClient {
       if (response.status === 400)
         message =
           "Check your input. Passwords must contain 12–1024 bytes when registering.";
-      throw new ApiError(response.status, message);
+      if (code === "invalid_current_password")
+        message = "The current password is incorrect.";
+      if (code === "invalid_password")
+        message = "The new password must contain 12–1024 UTF-8 bytes.";
+      throw new ApiError(response.status, message, code);
     }
     const body = response.status === 204 ? undefined : await response.json();
     if (revision !== this.revision) throw new StaleSessionError();

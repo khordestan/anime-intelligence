@@ -85,3 +85,37 @@ test("native-style fetch receives the global receiver", async () => {
   });
   assert.deepEqual(await client.request("/metadata"), { ok: true });
 });
+
+test("password reauthentication errors expose only allowlisted codes", async () => {
+  const client = new ApiClient("http://api.test", async () =>
+    Response.json(
+      { error: "invalid_current_password", message: "private server detail" },
+      { status: 401 },
+    ),
+  );
+  await assert.rejects(
+    client.request("/auth/password"),
+    (error) =>
+      error instanceof ApiError &&
+      error.code === "invalid_current_password" &&
+      !error.message.includes("private"),
+  );
+});
+
+test("late unauthorized JSON cannot sign out a different account", async () => {
+  let decoded;
+  const client = new ApiClient("http://api.test", async () => ({
+    ok: false,
+    status: 401,
+    json: () =>
+      new Promise((resolve) => {
+        decoded = resolve;
+      }),
+  }));
+  client.setSession(session("synthetic-one"));
+  const pending = client.request("/auth/password");
+  await new Promise((resolve) => setImmediate(resolve));
+  client.setSession(session("synthetic-two"));
+  decoded({ error: "unauthorized" });
+  await assert.rejects(pending, StaleSessionError);
+});

@@ -156,3 +156,10 @@ Remaining boundaries:
 - Covered persisted tracking/progress/ratings, UI-driven individual/bulk remote revocation, browser data cleanup after remote revocation, two-account isolation, foreign entry update rejection, export, and password-confirmed deletion while another account remains usable.
 - Added explicit response synchronization for rating persistence and separated real/mocked browser suites. Local typecheck, test discovery, workflow YAML validation, and production build are verified; actual Chromium execution is checked in GitHub CI because the workspace disallows browser Unix sockets.
 - The session-management dashboard commit passed all CI and CodeQL checks (runs 43686169885 and 43686169895). No public deployment was performed.
+
+## 2026-11-15 — Password changes and global session invalidation
+
+- Added authenticated password changes with current-password verification, bounded replacement hashing, strict JSON, shared authentication abuse controls, and exclusive account locking. The hash change atomically revokes every existing credential, including the caller's.
+- Added dashboard controls that clear password inputs after every attempt, preserve a valid session on incorrect reauthentication, and return to sign-in after success. Only allowlisted error codes/messages reach the UI; stale error decoding cannot sign out a different account.
+- Added database/HTTP tests for password validation, failed-change rollback, all-session revocation, foreign-account preservation, concurrent changes, owner-field rejection, and hashed storage. Added focused browser coverage and extended the real PostgreSQL browser flow with password change and sign-in using the replacement.
+- Local transport tests, frontend typecheck/build, and the Go race suite pass. The previous full-stack browser job passed against the production-role provisioning script and PostgreSQL (CI run 43686660913). No public deployment was performed.

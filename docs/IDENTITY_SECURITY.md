@@ -49,11 +49,11 @@ Only schema, source code, synthetic fixtures, and documentation belong in this p
 
 - Argon2id v19, 64 MiB, three iterations, parallelism two, 16-byte random salt, 32-byte output. Verification accepts only this bounded profile. Password input is 12–1024 bytes when registering.
 - Authentication request bodies are limited to 4 KiB and reject unknown fields and trailing JSON. Login failures use generic responses, and missing accounts perform dummy hash verification.
-- Registration/login share a process-wide burst of ten attempts, replenished at one attempt per six seconds, with at most two password operations in flight. This bounds memory use but does not replace distributed/per-account production controls; a global limiter can be exhausted by an attacker.
+- Registration/login, account deletion, and password changes share a process-wide burst of ten attempts, replenished at one attempt per six seconds, with at most two password operations in flight. This bounds memory use but does not replace distributed/per-account production controls; a global limiter can be exhausted by an attacker.
 - Sessions expire after 24 hours. Refresh atomically revokes the old token and issues a new one. Disabled/locked accounts are checked on every private transaction. Last-used writes are limited to a five-minute cadence.
 - API responses containing credentials/private data carry `Cache-Control: no-store`. CORS allows only the local development origins. Database URLs are not logged by startup failures.
 - Runtime requires forced RLS on implemented private resources and rejects roles that own public tables (including inherited ownership), superusers, and BYPASSRLS roles. Migration credentials are never used by the API.
-- Password changes, email verification, recovery, dashboard export/deletion controls, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
+- Email verification, recovery, dashboard export/deletion controls, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
 
 ## Account export and deletion
 
@@ -70,3 +70,9 @@ Only schema, source code, synthetic fixtures, and documentation belong in this p
 Refresh now replaces the credential digest in the same session record and extends expiry to 24 hours from rotation. The previous token stops resolving, and the session ID/initial creation time stay stable. This prevents a concurrent refresh from escaping remote revocation aimed at the session ID. Revocation takes an exclusive account lock before session rows, while refresh/protected requests take a shared account lock. Race tests cover both orderings, mutual revocation, and cross-user attempts. No raw IP or user-agent data is collected.
 
 The PostgreSQL dashboard provides an active-session panel with individual revocation and sign-out of all other sessions. It loads metadata on request, disables overlapping actions, refreshes after mutations, and removes the panel when the account signs out or becomes unauthorized. The current session uses the existing sign-out control. The same in-memory API client aborts and rejects stale requests when the account changes.
+
+## Authenticated password changes
+
+`POST /api/v1/auth/password` accepts exactly `currentPassword` and `newPassword`. It requires a verified bearer session, checks the current password, and applies the same bounded Argon2id policy to the replacement. The account is exclusively locked before session rows. The password hash update and revocation of every existing session, including the caller, commit atomically. The user must sign in again; the response does not issue a replacement credential.
+
+Wrong current passwords return 401 with the allowlisted `invalid_current_password` code without modifying the account or revoking sessions. Invalid replacements return 400. The dashboard handles these reauthentication errors locally, clears password inputs, and preserves the valid session. Other 401 responses still clear private UI and request a new login. Late error-body decoding is subject to the same account-revision checks as successful responses. Concurrent password changes serialize; only one can succeed using the old credentials. This does not implement forgotten-password recovery or email verification.
