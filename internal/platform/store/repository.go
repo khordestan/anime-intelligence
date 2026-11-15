@@ -6,6 +6,7 @@ import (
 )
 
 var ErrUnauthorized = errors.New("unauthorized")
+var ErrEmailUnverified = errors.New("email verification required")
 
 // Repository is the request-aware persistence boundary shared by both runtimes.
 // PostgreSQL implementations must resolve ownership from a verified session.

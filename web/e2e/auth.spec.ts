@@ -1,6 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function mockAPI(page: Page, authenticated = true, identity = false) {
+async function mockAPI(
+  page: Page,
+  authenticated = true,
+  identity = false,
+  verified = true,
+) {
   const entries = new Map<string, object[]>();
   let issued = 0;
   const requests: { path: string; token: string }[] = [];
@@ -48,7 +53,12 @@ async function mockAPI(page: Page, authenticated = true, identity = false) {
       return respond(
         {
           token,
-          user: { id: String(issued), email, displayName: "" },
+          user: {
+            id: String(issued),
+            email,
+            displayName: "",
+            emailVerified: verified,
+          },
           expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
         },
         path.endsWith("register") ? 201 : 200,
@@ -414,4 +424,39 @@ test("identity fragments are scrubbed and wait for an explicit confirmation", as
       JSON.stringify({ local: localStorage, session: sessionStorage }),
     ),
   ).not.toContain(token);
+});
+
+test("unverified accounts stay signed in with library locked when mail is unavailable", async ({
+  page,
+}) => {
+  const requests = await mockAPI(page, true, false, false);
+  await page.goto("/");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("unverified-browser@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("synthetic-browser-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Email verification required" }),
+  ).toContainText("Email delivery is currently unavailable");
+  await page.getByPlaceholder("Search starter catalog…").fill("Synthetic");
+  await expect(
+    page.getByRole("button", { name: "Add", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Account data" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Password settings" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("unverified-browser@example.test", { exact: true }),
+  ).toBeVisible();
+  expect(
+    requests.filter((request) => request.path === "/tracker"),
+  ).toHaveLength(0);
 });

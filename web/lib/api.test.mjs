@@ -119,3 +119,24 @@ test("late unauthorized JSON cannot sign out a different account", async () => {
   decoded({ error: "unauthorized" });
   await assert.rejects(pending, StaleSessionError);
 });
+
+test("verification denial preserves a typed policy error and hides server details", async () => {
+  const client = new ApiClient("http://api.test", async () =>
+    Response.json(
+      {
+        error: "email_verification_required",
+        message: "private server internals",
+      },
+      { status: 403 },
+    ),
+  );
+  client.setSession(session("synthetic-unverified"));
+  await assert.rejects(
+    client.request("/tracker"),
+    (error) =>
+      error instanceof ApiError &&
+      error.status === 403 &&
+      error.code === "email_verification_required" &&
+      error.message === "Verify your email before using your library.",
+  );
+});

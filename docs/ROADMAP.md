@@ -29,7 +29,8 @@
 - [x] Authenticated password changes with current-password verification and revocation of all existing sessions
 - [x] Hashed, purpose-bound password-recovery/email-verification challenge model and redemption
 - [x] Recovery/verification delivery, API and dashboard flows with verified-TLS SMTP and mail-enabled browser CI
-- [ ] Durable identity-delivery retries and public-launch verified-email policy
+- [x] Mandatory verified-email policy for PostgreSQL tracker and ratings, with account/recovery access preserved
+- [ ] Durable identity-delivery retries
 - [ ] Production abuse controls
 - [x] User data export and password-confirmed deletion (PostgreSQL API)
 - [x] Account export/deletion dashboard controls

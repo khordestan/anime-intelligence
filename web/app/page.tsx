@@ -88,6 +88,14 @@ export default function Home() {
       )
         return;
       if (e instanceof ApiError && e.status === 401) changeSession(null);
+      if (e instanceof ApiError && e.code === "email_verification_required") {
+        setLibrary([]);
+        setSession((current) =>
+          current
+            ? { ...current, user: { ...current.user, emailVerified: false } }
+            : current,
+        );
+      }
       setError(e instanceof Error ? e.message : "Could not connect to API");
     },
     [changeSession],
@@ -132,7 +140,7 @@ export default function Home() {
     try {
       const [c, l] = await Promise.all([
         client.request<{ items: Anime[] }>("/anime"),
-        mode === "local" || session
+        mode === "local" || session?.user.emailVerified
           ? client.request<{ items: Entry[] }>("/tracker")
           : Promise.resolve({ items: [] as Entry[] }),
       ]);
@@ -240,7 +248,7 @@ export default function Home() {
   async function rate(e: Entry, score: number) {
     await mutate("/ratings/" + e.animeId, "PUT", { score });
   }
-  const canEdit = mode === "local" || !!session;
+  const canEdit = mode === "local" || !!session?.user.emailVerified;
   const episodes = library.reduce((n, e) => n + e.episodesWatched, 0);
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-5 py-10">
@@ -395,6 +403,25 @@ export default function Home() {
           onError={handleError}
         />
       )}
+      {session && !session.user.emailVerified && (
+        <section
+          aria-label="Email verification required"
+          className="mt-4 rounded-2xl border border-amber-300/30 p-5 text-sm text-amber-100"
+        >
+          <h2 className="font-semibold">
+            Verify your email to unlock your library
+          </h2>
+          <p className="mt-2">
+            {identityAvailable
+              ? "Request a verification email above and confirm the link. Your session stays signed in while you verify."
+              : "Email delivery is currently unavailable on this server. Library access stays locked until you can verify your email."}
+          </p>
+          <p className="mt-2">
+            You can still manage sessions, change your password, download your
+            data or delete your account.
+          </p>
+        </section>
+      )}
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat label="In your library" value={library.length} />
         <Stat
@@ -465,7 +492,9 @@ export default function Home() {
         )}
         {!canEdit && mode === "postgres" && (
           <p className="mt-5 text-sm text-slate-400">
-            Sign in to add anime and view your private library.
+            {session
+              ? "Verify your email to add anime and view your private library."
+              : "Sign in to add anime and view your private library."}
           </p>
         )}
         {loading ? (

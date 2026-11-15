@@ -2,7 +2,7 @@
 
 ## Status
 
-PostgreSQL mode implements registration, login, session resolution, logout, atomic token rotation, and user-scoped tracker persistence. CI executes these flows through a restricted PostgreSQL role, with direct RLS and HTTP isolation assertions. The JSON API remains unauthenticated and single-user. Neither mode is approved for public deployment; production abuse controls, operational mail configuration, durable delivery, verified-email access policy, and independent review remain pending. See [runtime setup](POSTGRES_RUNTIME.md).
+PostgreSQL mode implements registration, login, session resolution, logout, atomic token rotation, and user-scoped tracker persistence. CI executes these flows through a restricted PostgreSQL role, with direct RLS and HTTP isolation assertions. The JSON API remains unauthenticated and single-user. Neither mode is approved for public deployment; production abuse controls, operational mail configuration, durable delivery and independent review remain pending. See [runtime setup](POSTGRES_RUNTIME.md).
 
 The current API uses explicit `Authorization: Bearer` headers, never cookies. The browser dashboard supports PostgreSQL login, registration, logout, and expiry, with tokens held only in component-scoped memory. Changing accounts aborts pending requests and rejects late results; reload clears the client credential and private library. The server session remains subject to its 24-hour expiry unless explicitly revoked. Raw tokens must remain in volatile client memory, never URLs, logs, or browser persistent storage.
 
@@ -53,7 +53,7 @@ Only schema, source code, synthetic fixtures, and documentation belong in this p
 - Sessions expire after 24 hours. Refresh atomically revokes the old token and issues a new one. Disabled/locked accounts are checked on every private transaction. Last-used writes are limited to a five-minute cadence.
 - API responses containing credentials/private data carry `Cache-Control: no-store`. CORS allows only the local development origins. Database URLs are not logged by startup failures.
 - Runtime requires forced RLS on implemented private resources and rejects roles that own public tables (including inherited ownership), superusers, and BYPASSRLS roles. Migration credentials are never used by the API.
-- Operational mail configuration, durable retries, verified-email access policy, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
+- Operational mail configuration, durable retries, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
 
 ## Account export and deletion
 
@@ -83,6 +83,15 @@ Migration 000006 adds a separate forced-RLS credential table. Digests are domain
 
 Recovery request acceptance is asynchronous and generic. A 32-item in-memory queue separates HTTP responses from account lookup/SMTP latency. Shutdown or process failure can drop queued work; durable retries and provider monitoring remain launch work. Delivery requires explicit SMTP credentials, verified implicit TLS, and a trusted configured app origin. Errors never include provider responses, email addresses, raw proofs, or credentials in logs. Default runtime has delivery disabled and advertises that capability to the dashboard.
 
-Mail links use fragments, not query parameters. The dashboard immediately replaces the history entry without the fragment, keeps proof only in memory, and waits for an explicit confirmation POST. Unknown/repeated fields or malformed/ambiguous purposes fail parsing. Browser reload discards proof; links must be reopened if still valid. UI requests use the same account-revision checks as other operations, so account switches abort stale proof responses. Existing development tracker routes still permit unverified accounts; a public-launch verification policy has not yet been enforced.
+Mail links use fragments, not query parameters. The dashboard immediately replaces the history entry without the fragment, keeps proof only in memory, and waits for an explicit confirmation POST. Unknown/repeated fields or malformed/ambiguous purposes fail parsing. Browser reload discards proof; links must be reopened if still valid. UI requests use the same account-revision checks as other operations, so account switches abort stale proof responses. PostgreSQL tracker and rating routes require email verification, including direct repository calls. Account and recovery controls remain accessible before verification.
 
 The browser mail suite uses an explicitly enabled, loopback-only synthetic SMTP/HTTP fixture, a per-run certificate trusted by the client, and random masked test credentials. The fixture is not linked into the API image and rejects unauthenticated mailbox reads. It sends no external mail and must never handle real user accounts. Reference: [OWASP recovery guidance](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
+
+
+## Verified-email product authorization
+
+PostgreSQL registration creates an authenticated account with `emailVerified=false`. Every tracker read/create/update and rating operation requires `email_verified_at` to be set. The HTTP boundary rejects unverified sessions with 403 `email_verification_required` before processing product bodies. Repository operations independently check current account state under the same transaction/account lock used for data access. A captured user object or a freshly rotated session cannot bypass this check. Ownership predicates and forced RLS still apply after verification.
+
+Verification is required even when SMTP is disabled. Missing delivery configuration must never weaken authorization: new/unverified accounts stay locked out of the library. Existing accounts are not automatically grandfathered into verification. Configure the trusted SMTP flow and prove address ownership; do not mark real accounts verified by modifying the database.
+
+Unverified accounts retain `/auth/me`, login/logout/refresh, session controls, password change/recovery, verification requests/redemption, data export and password-confirmed deletion. Public catalog reads remain available. Password reset alone does not set email verification. After redeeming a verification proof, the existing session gains product access on its next request. The dashboard refreshes the current profile without persisting credentials, explains verification or delivery unavailability, and disables library editing while unverified. JSON mode remains single-user, unauthenticated development only.

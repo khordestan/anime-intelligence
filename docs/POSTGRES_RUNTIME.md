@@ -13,6 +13,10 @@ The API does not run migrations automatically. Upgrading the schema is an explic
 
 Without a non-empty `DATABASE_URL`, the API uses the original single-user JSON mode. Local Docker Compose ports bind only to the host loopback interface. The dashboard detects the runtime mode from `GET /api/v1`, and shows a login/registration form in PostgreSQL mode. Credentials live only in memory; reloading requires signing in again. A reload does not revoke the server-side session, which expires after 24 hours.
 
+## Verified-email access
+
+All PostgreSQL tracker reads, creates, updates and ratings require email verification. New and existing unverified accounts receive 403 `email_verification_required`; no automatic backfill or opt-out is provided. Registration/login still issue a session so the user can request verification and use account controls. Disabling SMTP leaves unverified library access locked. Configure delivery below to complete verification. Session controls, password recovery/change, export and deletion remain accessible before verification; catalog reads remain public. The JSON development runtime is unchanged.
+
 ## Authentication API
 
 All paths start with `/api/v1`. Registration and login accept exactly one JSON object with `email` and `password`. Emails are normalized to lowercase; registration passwords must be 12–1024 bytes. No password/token/body is logged.
@@ -21,7 +25,7 @@ All paths start with `/api/v1`. Registration and login accept exactly one JSON o
 | --- | --- | --- |
 | POST | `/auth/register` | Creates an account and returns a new session; 201 |
 | POST | `/auth/login` | Verifies credentials and returns a new session; 200 |
-| GET | `/auth/me` | Returns the verified account; 200 |
+| GET | `/auth/me` | Returns the authenticated account, including emailVerified; 200 |
 | POST | `/auth/refresh` | Atomically revokes the presented token and issues its replacement; 200 |
 | POST | `/auth/logout` | Revokes the presented token; 204 |
 | POST | `/auth/password` | Verifies `currentPassword`, hashes `newPassword`, and invalidates every existing account session; 204 |
@@ -31,13 +35,13 @@ All paths start with `/api/v1`. Registration and login accept exactly one JSON o
 | GET | `/auth/export` | Downloads a consistent JSON snapshot of the current account's product data, excluding credential/session hashes; 200 |
 | DELETE | `/auth/account` | Requires a JSON password confirmation; permanently deletes the current account, sessions, and owned records; 204 |
 
-A session response contains `token`, `expiresAt`, and `user` (`id`, `email`, `displayName`). Tokens carry 256 random bits and expire in 24 hours. They are returned only at issuance; only SHA-256 digests are stored. Send the token using `Authorization: Bearer <token>`. Keep it in volatile client memory; never persist it in localStorage, URLs, source files, or logs. Cookies and URL/query credentials are not accepted.
+A session response contains `token`, `expiresAt`, and `user` (`id`, `email`, `displayName`, `emailVerified`). Tokens carry 256 random bits and expire in 24 hours. They are returned only at issuance; only SHA-256 digests are stored. Send the token using `Authorization: Bearer <token>`. Keep it in volatile client memory; never persist it in localStorage, URLs, source files, or logs. Cookies and URL/query credentials are not accepted.
 
-`/auth/me`, `/auth/refresh`, `/auth/logout`, `/auth/export`, `/auth/account`, `/tracker`, `/tracker/{id}`, and `/ratings/{id}` require a verified bearer session. Catalog endpoints remain shared and readable without authentication. Expired, revoked, malformed, disabled-account, or locked-account sessions are rejected. Refresh is single use, including under concurrent requests; other independently issued sessions remain valid. Rotation preserves the session ID and original creation time, replacing the old digest and extending expiry to 24 hours from rotation. Revoking a listed ID therefore also invalidates any replacement credential issued by a racing refresh. Session listing and revocation use the verified caller as owner; request-supplied user IDs are never used. Logout revokes only the current session.
+`/auth/me`, `/auth/refresh`, `/auth/logout`, `/auth/export`, `/auth/account`, `/tracker`, `/tracker/{id}`, and `/ratings/{id}` require an authenticated bearer session. Catalog endpoints remain shared and readable without authentication. Expired, revoked, malformed, disabled-account, or locked-account sessions are rejected. Refresh is single use, including under concurrent requests; other independently issued sessions remain valid. Rotation preserves the session ID and original creation time, replacing the old digest and extending expiry to 24 hours from rotation. Revoking a listed ID therefore also invalidates any replacement credential issued by a racing refresh. Session listing and revocation use the verified caller as owner; request-supplied user IDs are never used. Logout revokes only the current session.
 
 Private queries have explicit owner predicates and forced RLS. Session resolution first reads a server-computed digest using the narrow bootstrap policy, then sets transaction-local identity and locks/rechecks the session before private access. Commit or rollback clears the identity. No request-provided user ID is trusted. Cross-user entry updates return 404.
 
-Registration/login are bounded by a process-wide token bucket and a two-operation hashing concurrency limit. Generic login errors and dummy verification reduce account enumeration. These controls are a development baseline; distributed/per-account abuse protection, recovery/verification, and independent review are required before public launch.
+Registration/login are bounded by a process-wide token bucket and a two-operation hashing concurrency limit. Generic login errors and dummy verification reduce account enumeration. These controls are a development baseline; distributed/per-account abuse protection, durable identity delivery, and independent review are required before public launch.
 
 ## Verification
 
@@ -53,7 +57,9 @@ In PostgreSQL mode, select **Manage sessions** while signed in to see the curren
 
 ## Full-stack browser verification
 
-Use a disposable PostgreSQL database with the schema and restricted runtime role provisioned as above. Export its restricted `DATABASE_URL`; keep administrator credentials separate. Make ports 3000 and 8080 available, install the Chromium test browser, and run in `web`:
+Use a disposable PostgreSQL database with the schema and restricted runtime role provisioned as above. Export its restricted `DATABASE_URL`; keep administrator credentials separate. Both full-stack suites now use the synthetic TLS mailbox to prove ownership of their fixture addresses. Configure `IDENTITY_MAIL_TEST=1`, `MAIL_SMTP_ADDR=127.0.0.1:8465`, `MAIL_SMTP_USER=synthetic-mailer`, `MAIL_FROM=sender@example.test`, `PUBLIC_APP_ORIGIN=http://127.0.0.1:3000`, fresh random `MAIL_SMTP_PASSWORD`/`MAIL_TEST_ACCESS_KEY`, and `MAIL_SMTP_CA_FILE` inside a private disposable temporary directory. Playwright starts `cmd/testmail`, which creates the public test CA before the API starts. See the CI setup step for the complete automatic provisioning example. Never use real accounts or real provider credentials with this fixture.
+
+Make ports 3000, 8080, 8026 and 8465 available, install the Chromium test browser, and run in `web`:
 
 ```sh
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080/api/v1 npm run build
@@ -72,13 +78,13 @@ Migration 000006 adds purpose-bound identity challenges with forced RLS. Re-run 
 
 Delivery is disabled by default. To enable it, set all of `MAIL_SMTP_ADDR` (`host:port`, implicit TLS), `MAIL_SMTP_USER`, `MAIL_SMTP_PASSWORD`, `MAIL_FROM` (bare sender address), and `PUBLIC_APP_ORIGIN` (trusted HTTPS origin; HTTP is accepted only for loopback development). Optional `MAIL_SMTP_CA_FILE` adds a trusted PEM CA without disabling certificate or hostname checks. Partial or invalid configuration stops startup without logging the values. The API never derives links from request Host headers.
 
-`POST /auth/password-reset/request` accepts `{email}` and returns the same 202 acceptance for known/unknown/disabled accounts. Lookup and SMTP run in a bounded 32-item background queue, separately from the response. If delivery is disabled/unavailable, all recipients get the same 503. `POST /auth/email-verification/request` requires a verified session and sends only to its account's stored email; client recipient/owner fields are rejected. Both flows have persisted per-account/purpose resend limits: one minute between issues and at most five per hour.
+`POST /auth/password-reset/request` accepts `{email}` and returns the same 202 acceptance for known/unknown/disabled accounts. Lookup and SMTP run in a bounded 32-item background queue, separately from the response. If delivery is disabled/unavailable, all recipients get the same 503. `POST /auth/email-verification/request` requires an authenticated session and sends only to its account's stored email; client recipient/owner fields are rejected. Both flows have persisted per-account/purpose resend limits: one minute between issues and at most five per hour.
 
-`POST /auth/password-reset/confirm` accepts `{token,newPassword}`; `POST /auth/email-verification/confirm` accepts `{token}`. Confirmation is an explicit POST, works without an active session, and never automatically logs in. Tokens expire after 30 minutes for reset or one hour for verification. They are random, purpose-bound, single-use, tied to the stored address, and invalidated by password changes/reset/deletion. Reset revokes all old sessions and clears temporary login locks. Verification updates `emailVerified`; private development endpoints do not yet require that flag.
+`POST /auth/password-reset/confirm` accepts `{token,newPassword}`; `POST /auth/email-verification/confirm` accepts `{token}`. Confirmation is an explicit POST, works without an active session, and never automatically logs in. Tokens expire after 30 minutes for reset or one hour for verification. They are random, purpose-bound, single-use, tied to the stored address, and invalidated by password changes/reset/deletion. Reset revokes all old sessions and clears temporary login locks. Verification updates `emailVerified`; all PostgreSQL tracker and rating endpoints require that flag.
 
 Mail links put credentials in fragments. The client must scrub fragments, keep proof only in memory, and require explicit confirmation. The delivery queue is volatile: restart/shutdown may drop pending work, SMTP failures are logged only as generic events, and automatic durable retries remain production work. Configured SMTP must be validated operationally before launch; no real email is sent by development tests.
 
-When mail is configured, **Forgot password?** requests a generic recovery email, and signed-in unverified accounts can request verification. Links load a confirmation form and are removed from browser history before proof submission. Nothing happens merely by loading a link. After reset, sign in again with the replacement password. Verification is recorded in `emailVerified`; private development routes are not yet gated on that flag.
+When mail is configured, **Forgot password?** requests a generic recovery email, and signed-in unverified accounts can request verification. Links load a confirmation form and are removed from browser history before proof submission. Nothing happens merely by loading a link. After reset, sign in again with the replacement password. Verification is recorded in `emailVerified`; the existing bearer can then access tracker and rating endpoints without signing in again.
 
 CI runs two isolated full-stack variants. `E2E_SUITE=postgres` covers the tracker/account baseline. `E2E_SUITE=identity` starts `cmd/testmail` before the API, writes its generated public CA before reporting readiness, and tests the actual SMTP/queue/database/browser proof flow. The fixture requires `IDENTITY_MAIL_TEST=1`, explicit SMTP credentials, `MAIL_TEST_ACCESS_KEY`, and `MAIL_SMTP_CA_FILE`; it listens only on numeric loopback addresses and never contacts external providers. Mailbox reads require the test access key. All certificates/passwords/mailboxes are disposable, and the API image includes none of the fixture server.
 

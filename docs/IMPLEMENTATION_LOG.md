@@ -205,3 +205,11 @@ Remaining boundaries:
 - Added authenticated dashboard export downloads through the session-bound client. Exports use a temporary browser object URL and a fixed filename; private data is not placed in browser storage or URLs sent to the API.
 - Added explicit password-confirmed permanent deletion with an acknowledgement checkbox. Successful deletion clears the browser session and library; a wrong password clears the form while retaining the valid session.
 - Distinguished deletion reauthentication failures from invalid sessions in the API, matching password changes. Extended real TLS-mail/PostgreSQL browser coverage to download and inspect the export, reject incorrect deletion passwords, delete the account and reject its old bearer.
+
+
+### Mandatory verified-email product access
+
+- Made email ownership mandatory for PostgreSQL tracker reads/writes and ratings. Both HTTP routing and each product repository transaction enforce the policy from live locked account state, with 403 `email_verification_required` distinct from authentication expiry.
+- Kept account management, recovery, export/deletion and shared catalog access available to unverified users. Missing SMTP leaves library access locked; reset/refresh do not silently verify an address, and no existing-account bypass was introduced.
+- Updated the dashboard to explain verification, disable editing, skip unverified library fetches, preserve account controls, and refresh the current profile after proof confirmation.
+- Extended restricted-role PostgreSQL tests for denial, unchanged rows, reset/refresh bypass attempts, existing-session unlocking, fresh state checks and cross-account isolation. Both real browser CI suites now prove fixture address ownership through loopback TLS mail; the focused UI suite also covers unavailable delivery.

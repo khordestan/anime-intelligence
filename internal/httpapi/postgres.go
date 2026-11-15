@@ -29,7 +29,7 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "postgresql"})
 	})
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true, "identityDeliveryAvailable": delivery != nil})
+		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true, "identityDeliveryAvailable": delivery != nil, "emailVerificationRequired": true})
 	})
 	c := catalog.NewHandler(db.Repository(""))
 	mux.HandleFunc("GET /api/v1/anime", c.List)
@@ -208,16 +208,25 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 		}
 		writeJSON(w, 200, s)
 	}))
-	mux.HandleFunc("GET /api/v1/tracker", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+	product := func(fn func(http.ResponseWriter, *http.Request, string, postgres.User)) http.HandlerFunc {
+		return protect(func(w http.ResponseWriter, r *http.Request, token string, user postgres.User) {
+			if !user.EmailVerified {
+				authError(w, 403, "email_verification_required")
+				return
+			}
+			fn(w, r, token, user)
+		})
+	}
+	mux.HandleFunc("GET /api/v1/tracker", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).List(w, r)
 	}))
-	mux.HandleFunc("POST /api/v1/tracker", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+	mux.HandleFunc("POST /api/v1/tracker", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).Create(w, r)
 	}))
-	mux.HandleFunc("PATCH /api/v1/tracker/{id}", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+	mux.HandleFunc("PATCH /api/v1/tracker/{id}", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).Update(w, r)
 	}))
-	mux.HandleFunc("PUT /api/v1/ratings/{id}", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+	mux.HandleFunc("PUT /api/v1/ratings/{id}", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).Rate(w, r)
 	}))
 	return requestMiddleware(logger, corsMiddleware(mux))

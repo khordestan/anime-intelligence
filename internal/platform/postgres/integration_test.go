@@ -91,6 +91,18 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	return db, owner, ownerDSN, u.String()
 }
 
+// Product tests obtain address ownership through the actual challenge flow.
+func verifyAccount(t *testing.T, db *postgres.DB, token string) {
+	t.Helper()
+	proof, err := db.IssueEmailVerification(context.Background(), token)
+	if err != nil || proof == nil {
+		t.Fatal("issue fixture verification", err)
+	}
+	if err := db.VerifyEmail(context.Background(), proof.Token); err != nil {
+		t.Fatal("verify fixture account", err)
+	}
+}
+
 func TestPostgresRuntime(t *testing.T) {
 	db, owner, ownerDSN, runtimeDSN := testDB(t)
 	ctx := context.Background()
@@ -124,6 +136,8 @@ func TestPostgresRuntime(t *testing.T) {
 	if login.Token == one.Token {
 		t.Fatal("login reused session")
 	}
+	verifyAccount(t, db, one.Token)
+	verifyAccount(t, db, two.Token)
 	a := db.Repository(one.Token)
 	b := db.Repository(two.Token)
 	const anime = "10000000-0000-4000-8000-000000000001"
@@ -304,6 +318,7 @@ func TestHTTPPostgresIsolation(t *testing.T) {
 	if w = call("GET", "/api/v1/auth/me", s.Token, ""); w.Code != 200 {
 		t.Fatal("me:", w.Code)
 	}
+	verifyAccount(t, db, s.Token)
 	w = call("POST", "/api/v1/tracker", s.Token, `{"animeId":"10000000-0000-4000-8000-000000000001","watchStatus":"WATCHING","episodesWatched":3}`)
 	if w.Code != 201 {
 		t.Fatal("tracker create:", w.Code, w.Body.String())
@@ -314,6 +329,7 @@ func TestHTTPPostgresIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	verifyAccount(t, db, other.Token)
 	if w = call("PATCH", "/api/v1/tracker/"+entry.ID, other.Token, `{"episodesWatched":99}`); w.Code != 404 {
 		t.Fatal("cross-user HTTP update:", w.Code, w.Body.String())
 	}
@@ -424,6 +440,8 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	verifyAccount(t, db, one.Token)
+	verifyAccount(t, db, two.Token)
 	const anime = "10000000-0000-4000-8000-000000000001"
 	if _, err = db.Repository(one.Token).Add(ctx, anime, "WATCHING", 3); err != nil {
 		t.Fatal(err)
@@ -565,6 +583,7 @@ func TestConcurrentAccountExportUsesConsistentSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	verifyAccount(t, db, s.Token)
 	const anime = "10000000-0000-4000-8000-000000000001"
 	if _, err = db.Repository(writer.Token).Add(ctx, anime, "WATCHING", 1); err != nil {
 		t.Fatal(err)

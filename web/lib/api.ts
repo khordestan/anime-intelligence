@@ -54,6 +54,8 @@ export class ApiClient {
       try {
         const body = await response.json();
         if (
+          (response.status === 403 &&
+            body?.error === "email_verification_required") ||
           (response.status === 401 &&
             body?.error === "invalid_current_password") ||
           (response.status === 400 &&
@@ -75,6 +77,8 @@ export class ApiClient {
       if (response.status === 400)
         message =
           "Check your input. Passwords must contain 12–1024 bytes when registering.";
+      if (code === "email_verification_required")
+        message = "Verify your email before using your library.";
       if (code === "invalid_current_password")
         message = "The current password is incorrect.";
       if (code === "invalid_password")

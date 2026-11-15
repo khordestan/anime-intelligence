@@ -11,6 +11,7 @@ A Go and Next.js foundation for a detailed anime catalog, personal tracking, and
 - Password changes require the current password and atomically invalidate every existing session, including the caller.
 - Account-data export from a consistent snapshot and password-confirmed deletion with session/data cascades, available from the signed-in dashboard.
 - Argon2id password hashes; random 256-bit bearer credentials stored only as SHA-256 digests, expiring after 24 hours.
+- PostgreSQL tracker/rating access requires verified email; unverified users retain account, recovery and data controls.
 - User-scoped queries and transaction-local forced PostgreSQL RLS; runtime rejects superuser, BYPASSRLS, and table-owner connections.
 - Embedded, checksummed, transactional migration runner with advisory locking.
 - Single-user JSON development mode and a Next.js dashboard with PostgreSQL login/registration, logout, session expiry, and account-switch isolation. Browser tokens stay only in memory. Signed-in users can inspect active sessions, revoke a selected login, or sign out all other sessions.

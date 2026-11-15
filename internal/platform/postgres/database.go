@@ -96,6 +96,21 @@ func identity(ctx context.Context, tx pgx.Tx, userID string) error {
 func (d *DB) sessionTx(ctx context.Context, token string) (pgx.Tx, User, error) {
 	return d.sessionTxOptions(ctx, token, pgx.TxOptions{})
 }
+
+// Product operations require address ownership as well as a valid session.
+// Check under the account lock in the operation's own transaction, so callers
+// cannot bypass the policy by using Repository directly or a stale user object.
+func (d *DB) productTx(ctx context.Context, token string) (pgx.Tx, User, error) {
+	tx, user, err := d.sessionTx(ctx, token)
+	if err != nil {
+		return nil, User{}, err
+	}
+	if !user.EmailVerified {
+		rollback(tx)
+		return nil, User{}, store.ErrEmailUnverified
+	}
+	return tx, user, nil
+}
 func (d *DB) sessionTxOptions(ctx context.Context, token string, options pgx.TxOptions) (pgx.Tx, User, error) {
 	return d.sessionTxWithUserLock(ctx, token, options, false)
 }

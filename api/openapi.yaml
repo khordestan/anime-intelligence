@@ -22,6 +22,7 @@ paths:
                   version: { type: string }
                   status: { type: string }
                   authenticationRequired: { type: boolean }
+                  emailVerificationRequired: { type: boolean, description: True in PostgreSQL mode. Tracker and rating operations require emailVerified in addition to a valid session. }
                   identityDeliveryAvailable: { type: boolean, description: True only when the PostgreSQL runtime has explicit identity delivery configuration. }
   /healthz:
     get:
@@ -62,6 +63,8 @@ paths:
       summary: List library entries
       responses:
         "200": { description: User library }
+        "401": { description: Missing or invalid session in PostgreSQL mode }
+        "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
     post:
       security: [{ bearerAuth: [] }]
       summary: Add anime to library
@@ -78,6 +81,8 @@ paths:
                 episodesWatched: { type: integer, minimum: 0 }
       responses:
         "201": { description: Library entry created }
+        "401": { description: Missing or invalid session in PostgreSQL mode }
+        "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
   /api/v1/tracker/{id}:
     patch:
       security: [{ bearerAuth: [] }]
@@ -98,6 +103,8 @@ paths:
                 episodesWatched: { type: integer, minimum: 0 }
       responses:
         "200": { description: Updated entry }
+        "401": { description: Missing or invalid session in PostgreSQL mode }
+        "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
   /api/v1/ratings/{id}:
     put:
       security: [{ bearerAuth: [] }]
@@ -118,6 +125,8 @@ paths:
                 score: { type: integer, minimum: 1, maximum: 5 }
       responses:
         "200": { description: Rating saved }
+        "401": { description: Missing or invalid session in PostgreSQL mode }
+        "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
   /api/v1/auth/register:
     post:
       summary: Register an account (PostgreSQL mode only)

@@ -98,7 +98,6 @@ jobs:
           SQL
           echo "DATABASE_URL=postgres://anime_runtime:$runtime_password@127.0.0.1:5432/anime_intelligence?sslmode=disable" >> "$GITHUB_ENV"
       - name: Configure loopback-only synthetic TLS mail
-        if: matrix.suite == 'identity'
         run: |
           smtp_password=$(openssl rand -hex 32)
           mailbox_key=$(openssl rand -hex 32)

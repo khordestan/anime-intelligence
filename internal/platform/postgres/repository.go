@@ -53,7 +53,7 @@ func scanEntry(row pgx.Row) (store.Entry, error) {
 	return e, err
 }
 func (r *Repository) Library(ctx context.Context) ([]store.Entry, error) {
-	tx, u, err := r.db.sessionTx(ctx, r.token)
+	tx, u, err := r.db.productTx(ctx, r.token)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (r *Repository) Library(ctx context.Context) ([]store.Entry, error) {
 	return out, tx.Commit(ctx)
 }
 func (r *Repository) Add(ctx context.Context, animeID, status string, episodes int) (store.Entry, error) {
-	tx, u, err := r.db.sessionTx(ctx, r.token)
+	tx, u, err := r.db.productTx(ctx, r.token)
 	if err != nil {
 		return store.Entry{}, err
 	}
@@ -105,7 +105,7 @@ func (r *Repository) Add(ctx context.Context, animeID, status string, episodes i
 	return e, tx.Commit(ctx)
 }
 func (r *Repository) Update(ctx context.Context, id string, status *string, episodes *int) (store.Entry, bool, error) {
-	tx, u, err := r.db.sessionTx(ctx, r.token)
+	tx, u, err := r.db.productTx(ctx, r.token)
 	if err != nil {
 		return store.Entry{}, false, err
 	}
@@ -131,7 +131,7 @@ func (r *Repository) Update(ctx context.Context, id string, status *string, epis
 	return e, true, tx.Commit(ctx)
 }
 func (r *Repository) Rate(ctx context.Context, animeID string, score int) (store.Entry, bool, error) {
-	tx, u, err := r.db.sessionTx(ctx, r.token)
+	tx, u, err := r.db.productTx(ctx, r.token)
 	if err != nil {
 		return store.Entry{}, false, err
 	}

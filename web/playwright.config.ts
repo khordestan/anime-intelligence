@@ -20,7 +20,7 @@ export default defineConfig({
       : {},
   },
   webServer: [
-    ...(identity
+    ...(realAPI
       ? [
           {
             command: "go run ../cmd/testmail",

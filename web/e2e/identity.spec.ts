@@ -52,9 +52,16 @@ test("real TLS email proof verifies and recovers an account without leaking URL 
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText(email, { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Email verification required" }),
+  ).toBeVisible();
   await page.getByPlaceholder("Search starter catalog…").fill("Solo Leveling");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByRole("article")).toContainText("Solo Leveling");
+  await expect(
+    page.getByRole("button", { name: "Add", exact: true }),
+  ).toBeDisabled();
+  expect(
+    (await request.get(API + "/tracker", { headers: auth })).status(),
+  ).toBe(403);
   await page
     .getByRole("button", { name: "Send verification email", exact: true })
     .click();
@@ -86,6 +93,13 @@ test("real TLS email proof verifies and recovers an account without leaking URL 
   expect(confirmations).toBe(1);
   const verified = await request.get(API + "/auth/me", { headers: auth });
   expect((await verified.json()).emailVerified).toBe(true);
+  await expect(
+    page.getByRole("region", { name: "Email verification required" }),
+  ).toHaveCount(0);
+  await page.getByPlaceholder("Search starter catalog…").fill("Solo Leveling");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("article")).toContainText("Solo Leveling");
+
   const verifyToken = new URLSearchParams(verifyLink.hash.slice(1)).get(
     "token",
   );

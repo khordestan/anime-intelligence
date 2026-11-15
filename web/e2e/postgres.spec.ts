@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import type { Session } from "../lib/api";
+import { verificationToken } from "./mailbox";
 
 const API =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080/api/v1";
@@ -19,7 +20,23 @@ test("real PostgreSQL auth, tracking, remote session control and account isolati
       data: { email, password },
     });
     expect(response.status()).toBe(201);
-    return response.json();
+    const session: Session = await response.json();
+    expect(
+      (
+        await request.post(API + "/auth/email-verification/request", {
+          headers: headers(session.token),
+        })
+      ).status(),
+    ).toBe(202);
+    const token = await verificationToken(request, email);
+    expect(
+      (
+        await request.post(API + "/auth/email-verification/confirm", {
+          data: { token },
+        })
+      ).status(),
+    ).toBe(204);
+    return session;
   }
   async function login(email: string): Promise<Session> {
     const response = await request.post(API + "/auth/login", {

@@ -30,8 +30,7 @@ type ratingRequest struct {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	items, err := h.data.Library(r.Context())
 	if err != nil {
-		if errors.Is(err, store.ErrUnauthorized) {
-			writeError(w, 401, "unauthorized", "A valid session is required")
+		if authorizationError(w, err) {
 			return
 		}
 		writeError(w, 500, "tracker_read_failed", "Could not read library")
@@ -60,8 +59,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	e, err := h.data.Add(r.Context(), q.AnimeID, q.WatchStatus, q.EpisodesWatched)
 	if err != nil {
-		if errors.Is(err, store.ErrUnauthorized) {
-			writeError(w, 401, "unauthorized", "A valid session is required")
+		if authorizationError(w, err) {
 			return
 		}
 		if err.Error() == "anime_not_found" {
@@ -102,8 +100,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	e, ok, err := h.data.Update(r.Context(), id, q.WatchStatus, q.EpisodesWatched)
 	if err != nil {
-		if errors.Is(err, store.ErrUnauthorized) {
-			writeError(w, 401, "unauthorized", "A valid session is required")
+		if authorizationError(w, err) {
 			return
 		}
 		writeError(w, 500, "tracker_update_failed", "Could not update library entry")
@@ -132,8 +129,7 @@ func (h *Handler) Rate(w http.ResponseWriter, r *http.Request) {
 	}
 	e, ok, err := h.data.Rate(r.Context(), id, q.Score)
 	if err != nil {
-		if errors.Is(err, store.ErrUnauthorized) {
-			writeError(w, 401, "unauthorized", "A valid session is required")
+		if authorizationError(w, err) {
 			return
 		}
 		writeError(w, 500, "rating_write_failed", "Could not save rating")
@@ -191,4 +187,16 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]string{"error": code, "message": message})
+}
+
+func authorizationError(w http.ResponseWriter, err error) bool {
+	switch {
+	case errors.Is(err, store.ErrUnauthorized):
+		writeError(w, 401, "unauthorized", "A valid session is required")
+	case errors.Is(err, store.ErrEmailUnverified):
+		writeError(w, 403, "email_verification_required", "Verify your email before using your library")
+	default:
+		return false
+	}
+	return true
 }
