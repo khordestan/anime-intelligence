@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import type { Session } from "../lib/api";
 import { verificationToken } from "./mailbox";
@@ -6,6 +6,29 @@ import { verificationToken } from "./mailbox";
 const API =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080/api/v1";
 const password = "synthetic-full-stack-password";
+
+// Multiple real tests share the process-wide authentication budget. Retry only
+// an explicit 429, honor Retry-After and keep every other status a hard failure.
+async function signInRespectingThrottle(page: Page, email: string) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(password);
+    const pending = page.waitForResponse(response =>
+      response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/auth/login");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    const response = await pending;
+    if (response.status() === 200) {
+      await expect(page.getByText(email, { exact: true })).toBeVisible();
+      return;
+    }
+    expect(response.status()).toBe(429);
+    const seconds = Number(response.headers()["retry-after"]);
+    expect(seconds).toBeGreaterThan(0);
+    expect(seconds).toBeLessThanOrEqual(10);
+    await page.waitForTimeout(seconds * 1000);
+  }
+  throw new Error("Authentication budget did not recover within bounded retries");
+}
 
 test("real PostgreSQL auth, tracking, remote session control and account isolation", async ({
   page,
@@ -255,10 +278,7 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
     expect((await request.post(API + "/auth/email-verification/confirm", { data: { token: proof } })).status()).toBe(204);
   }
   await page.goto("/");
-  await page.getByLabel("Email", { exact: true }).fill(emails[0]);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByText(emails[0], { exact: true })).toBeVisible();
+  await signInRespectingThrottle(page, emails[0]);
   await page.getByPlaceholder("Search starter catalog…").fill("Solo Leveling");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   const article = page.getByRole("article").filter({ hasText: "Solo Leveling" });
@@ -294,10 +314,7 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(panel).toHaveCount(0);
-  await page.getByLabel("Email", { exact: true }).fill(emails[1]);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByText(emails[1], { exact: true })).toBeVisible();
+  await signInRespectingThrottle(page, emails[1]);
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(page.getByRole("group", { name: "Episode selection Solo Leveling", exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });

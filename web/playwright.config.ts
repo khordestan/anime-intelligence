@@ -7,7 +7,7 @@ export default defineConfig({
     ? identity
       ? "**/identity.spec.ts"
       : "**/postgres.spec.ts"
-    : "**/auth.spec.ts",
+    : ["**/auth.spec.ts", "**/releases.spec.ts", "**/episodes.spec.ts"],
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,

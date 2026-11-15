@@ -421,3 +421,9 @@ Review found that comparing a release against the provider-wide high-water mark 
 Added real PostgreSQL/browser coverage for exact episode replacement, foreign read/write rejection, franchise DUB preferences, stopping follows, account-switch UI reset and browser-storage exclusion. Synchronized README, architecture and runtime upgrade documentation.
 
 Verified predecessor checkpoints: 4ee3076 CI 43752308412/Security 43752308409; 9b7ef74 CI 43752564635/Security 43752564633; 02221f7 CI 43752871302/Security 43752871261; b45ab83 CI 43753082945/Security 43753082990; 75b44ca CI 43753443802/Security 43753443843; af6dd27 CI 43753824957/Security 43753825012. All seven CI jobs and both CodeQL analyses passed for each inspected SHA. Follow-up CI pending publication. No local test pass, approved live source or deployment claimed.
+
+## 2026-11-15 — Real-browser throttle handling and test discovery correction
+
+Inspected 2a54c1b CI 43754113848: PostgreSQL-browser failed at the new test's sign-in; all other CI jobs and CodeQL passed. Downloaded the synthetic browser error context and confirmed the dashboard's explicit "Too many attempts" response. The real API's shared ten-token/one-per-six-second authentication budget was depleted by the preceding test and fixture setup. Added bounded login retries only for actual HTTP 429, honoring asserted Retry-After headers; all non-200/non-429 statuses still fail immediately. Production throttling is unchanged.
+
+Audit also found the mocked-browser configuration selected only auth.spec.ts. New release/episode files were typechecked but not executed by earlier green CI. Updated testMatch to include both files explicitly. Previous broad statements about new mocked-browser coverage must be read with this correction. Exact-commit corrected discovery and real-browser run pending; no local test pass claimed.
