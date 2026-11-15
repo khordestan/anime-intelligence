@@ -25,6 +25,7 @@ func NewRouter(logger *slog.Logger, data *store.Store) http.Handler {
 	mux.HandleFunc("GET /api/v1/tracker", t.List)
 	mux.HandleFunc("POST /api/v1/tracker", t.Create)
 	mux.HandleFunc("PATCH /api/v1/tracker/{id}", t.Update)
+	mux.HandleFunc("DELETE /api/v1/tracker/{id}", t.Remove)
 	mux.HandleFunc("PUT /api/v1/ratings/{id}", t.Rate)
 	return requestMiddleware(logger, corsMiddleware(mux))
 }

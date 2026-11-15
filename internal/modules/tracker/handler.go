@@ -200,3 +200,24 @@ func authorizationError(w http.ResponseWriter, err error) bool {
 	}
 	return true
 }
+
+func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !validUUID(id) {
+		writeError(w, 400, "invalid_id", "Tracker ID must be a UUID")
+		return
+	}
+	ok, err := h.data.Remove(r.Context(), id)
+	if err != nil {
+		if authorizationError(w, err) {
+			return
+		}
+		writeError(w, 500, "tracker_delete_failed", "Could not remove library entry")
+		return
+	}
+	if !ok {
+		writeError(w, 404, "tracker_entry_not_found", "Library entry was not found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

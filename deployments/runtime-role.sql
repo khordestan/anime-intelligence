@@ -22,3 +22,6 @@ GRANT SELECT, INSERT, UPDATE ON auth_challenges TO anime_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON identity_outbox TO anime_runtime;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON identity_requests TO anime_runtime;
+
+-- Removing an owned library entry also clears its progress and ratings.
+GRANT DELETE ON user_anime, watch_progress, user_ratings TO anime_runtime;

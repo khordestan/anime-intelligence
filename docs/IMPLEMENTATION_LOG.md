@@ -325,3 +325,10 @@ Commit `cb428e0` passed all five CI jobs (run 43699049145), including real Postg
 - Authentication, protected account/product and identity handlers already set no-store. Extended that policy to the shared outer middleware for both routers, including local mode, unmatched/method errors, redirects, HEAD and CORS preflights. Added nosniff and no-referrer response policies. Public catalog caching is intentionally disabled; dashboard document policies and clearing historical caches remain separate concerns.
 - Added regression coverage for both routers and malformed login/registration requests, without touching database state. The redirect fixture was corrected to Go 1.26's actual 307 response. Updated runtime and continuation guidance.
 - Local Go tests/race tests, vet and build passed; PostgreSQL/recovery tests skip locally without the disposable database and run in CI. Final exact-commit CI/CodeQL are verified after publication. No deployment or configuration activation.
+
+## 2026-11-15 — Transactional library removal API
+
+- Verified `0393fbc`: all seven CI jobs (43742215931) and both CodeQL analyses (43742215978) passed.
+- Added DELETE tracker endpoint and request-aware repository removal for both runtimes. PostgreSQL authenticates/verifies ownership, locks/removes the owned tracker row and deletes its title ratings/progress in one transaction; foreign/missing/repeated IDs share 404. JSON restores its in-memory entry on persistence failure. Re-adding starts fresh; catalog, follows and recommendation history are preserved.
+- Updated reviewed runtime DELETE grants (reapply for existing installations), OpenAPI, roadmap and continuation context. Dashboard controls remain pending. No schema migration or deployment.
+- Added PostgreSQL ownership/auth/verification, injected privilege-failure rollback, HTTP status/empty-body, cleanup and re-add tests. Added JSON persistence-failure/restart tests. Local unit/race tests, vet/build passed; PostgreSQL tests skip locally without TEST_DATABASE_URL and run in CI. Exact-commit CI/CodeQL are verified after publication. Synthetic fixtures only.

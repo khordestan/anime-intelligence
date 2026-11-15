@@ -16,6 +16,7 @@ type Repository interface {
 	Library(context.Context) ([]Entry, error)
 	Add(context.Context, string, string, int) (Entry, error)
 	Update(context.Context, string, *string, *int) (Entry, bool, error)
+	Remove(context.Context, string) (bool, error)
 	Rate(context.Context, string, int) (Entry, bool, error)
 }
 
@@ -38,3 +39,5 @@ func (s Local) Update(_ context.Context, id string, status *string, n *int) (Ent
 func (s Local) Rate(_ context.Context, id string, n int) (Entry, bool, error) {
 	return s.Store.Rate(id, n)
 }
+
+func (s Local) Remove(_ context.Context, id string) (bool, error) { return s.Store.Remove(id) }

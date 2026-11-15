@@ -55,6 +55,8 @@
 - [ ] Franchise, season and episode relation graph
 
 ## Milestone 3 — Tracker completeness
+- [x] Transactional owner-scoped tracker removal API with ratings/progress cleanup
+- [ ] Dashboard removal controls
 - [ ] Season and episode-level progress
 - [ ] Notes, rewatches and season ratings
 - [ ] Import/export and bulk editing

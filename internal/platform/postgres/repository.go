@@ -154,3 +154,27 @@ func (r *Repository) Rate(ctx context.Context, animeID string, score int) (store
 	}
 	return e, true, tx.Commit(ctx)
 }
+
+// Remove locks the owned tracker row before associated progress/ratings, matching
+// Update/Rate ordering. The transaction rolls back every deletion on failure.
+func (r *Repository) Remove(ctx context.Context, id string) (bool, error) {
+	tx, u, err := r.db.productTx(ctx, r.token)
+	if err != nil {
+		return false, err
+	}
+	defer rollback(tx)
+	var animeID string
+	err = tx.QueryRow(ctx, `DELETE FROM user_anime WHERE id=$1 AND user_id=$2 RETURNING anime_id::text`, id, u.ID).Scan(&animeID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	for _, table := range []string{"watch_progress", "user_ratings"} {
+		if _, err = tx.Exec(ctx, `DELETE FROM `+pgx.Identifier{table}.Sanitize()+` WHERE user_id=$1 AND anime_id=$2`, u.ID, animeID); err != nil {
+			return false, err
+		}
+	}
+	return true, tx.Commit(ctx)
+}

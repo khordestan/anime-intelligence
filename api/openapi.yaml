@@ -100,6 +100,22 @@ paths:
         "401": { description: Missing or invalid session in PostgreSQL mode }
         "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
   /api/v1/tracker/{id}:
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove an owned library entry
+      description: Atomically deletes this title's tracker entry, all ratings and progress for the caller. Other accounts, shared catalog, follows and recommendation history remain unchanged. Re-adding starts without the deleted rating/progress. JSON mode is local and unauthenticated.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Entry and associated ratings/progress removed; empty response }
+        "400": { description: Malformed tracker ID }
+        "401": { description: Missing or invalid session in PostgreSQL mode }
+        "403": { description: Email verification required in PostgreSQL mode }
+        "404": { description: Unknown, foreign or already removed entry }
+        "500": { description: Removal failed; transaction rolled back }
     patch:
       security: [{ bearerAuth: [] }]
       summary: Update tracking progress or status

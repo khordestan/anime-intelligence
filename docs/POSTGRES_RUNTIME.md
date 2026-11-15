@@ -150,3 +150,9 @@ Request log field `path` is replaced by `route`, the matched ServeMux template (
 ## Response privacy headers
 
 Both API routers apply `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` before route/CORS dispatch. This includes local mode, errors, redirects, HEAD and preflight responses as well as successful private responses. Existing per-handler no-store protections remain. Public catalog responses also opt out of caching; explicit public caching can be designed separately. These headers do not clear previously cached responses or control the dashboard's own document policy. No deployment or ingress policy is activated.
+
+## Removing a library title
+
+`DELETE /api/v1/tracker/{id}` returns an empty 204 for an owned entry; malformed IDs return 400, foreign/missing/already removed entries return the same 404. PostgreSQL requires a live session and verified email. The transaction removes the entry and all of that account's ratings/progress for its title; other accounts, catalog records, follows and recommendation history are preserved. Re-adding starts with fresh progress and no rating. Failure rolls back every deletion. JSON mode supports the same operation for its local single-user library, restoring memory if file persistence fails.
+
+Existing installations must reapply `deployments/runtime-role.sql` to grant DELETE on `user_anime`, `watch_progress` and `user_ratings` to the restricted role. No new schema migration is required. Without those grants removal fails closed; do not elevate the runtime role. Dashboard removal controls are pending.
