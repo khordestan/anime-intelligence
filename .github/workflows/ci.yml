@@ -80,16 +80,33 @@ jobs:
         run: |
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications') AND relrowsecurity AND relforcerowsecurity")" = "10"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname LIKE '%_self_access'")" = "10"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname IN ('users_login_lookup','auth_sessions_token_lookup')")" = "2"
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 <<'SQL'
           DO $body$ BEGIN
             CREATE ROLE anime_app NOLOGIN;
           EXCEPTION WHEN duplicate_object THEN NULL;
           END $body$;
-          GRANT SELECT ON users TO anime_app;
+          GRANT SELECT ON users, auth_sessions TO anime_app;
           INSERT INTO users (id, email) VALUES
             ('20000000-0000-4000-8000-000000000001', 'rls-one@example.test'),
             ('20000000-0000-4000-8000-000000000002', 'rls-two@example.test');
+          INSERT INTO auth_sessions (user_id, token_hash, expires_at) VALUES
+            ('20000000-0000-4000-8000-000000000001', decode(repeat('ab', 32), 'hex'), now() + interval '1 hour');
           SET ROLE anime_app;
+          SET app.login_email = 'rls-one@example.test';
+          DO $body$ DECLARE visible_users integer; BEGIN
+            SELECT count(*) INTO visible_users FROM users;
+            IF visible_users <> 1 THEN
+              RAISE EXCEPTION 'Login RLS expected one visible user, got %', visible_users;
+            END IF;
+          END $body$;
+          SET app.session_token_hash = repeat('ab', 32);
+          DO $body$ DECLARE visible_sessions integer; BEGIN
+            SELECT count(*) INTO visible_sessions FROM auth_sessions;
+            IF visible_sessions <> 1 THEN
+              RAISE EXCEPTION 'Session RLS expected one visible session, got %', visible_sessions;
+            END IF;
+          END $body$;
           SET app.user_id = '20000000-0000-4000-8000-000000000001';
           DO $body$ DECLARE visible_users integer; BEGIN
             SELECT count(*) INTO visible_users FROM users;
