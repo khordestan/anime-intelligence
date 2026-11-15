@@ -60,6 +60,10 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 		pool.Close()
 		return nil, errors.New("required forced row-level security is missing; apply schema migrations")
 	}
+	if _, err = pool.Exec(ctx, `SELECT login_failure_started_at FROM users LIMIT 0`); err != nil {
+		pool.Close()
+		return nil, errors.New("required login security schema is missing; apply schema migrations")
+	}
 	dummy, err := makeDummyHash()
 	if err != nil {
 		pool.Close()

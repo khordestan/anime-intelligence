@@ -145,21 +145,31 @@ func (d *DB) Login(ctx context.Context, email, value string) (Session, error) {
 		hash = *encoded
 	}
 	valid := password.Verify(hash, value)
-	if !valid || encoded == nil || disabled || locked {
+	if encoded == nil || disabled || locked {
 		return Session{}, ErrUnauthorized
 	}
 	if err = identity(ctx, tx, u.ID); err != nil {
 		return Session{}, err
 	}
 	// Recheck account state under a lock after password verification.
-	err = tx.QueryRow(ctx, `SELECT id::text FROM users WHERE id=$1 AND password_hash=$2 AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until<=now()) FOR UPDATE`, u.ID, hash).Scan(&u.ID)
+	err = tx.QueryRow(ctx, `SELECT id::text,email,display_name,email_verified_at IS NOT NULL FROM users WHERE id=$1 AND password_hash=$2 AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until<=clock_timestamp()) FOR UPDATE`, u.ID, hash).Scan(&u.ID, &u.Email, &u.DisplayName, &u.EmailVerified)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrUnauthorized
 	}
 	if err != nil {
 		return Session{}, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE users SET last_login_at=now(),failed_login_count=0 WHERE id=$1`, u.ID); err != nil {
+	if !valid {
+		if err = recordFailedLogin(ctx, tx, u.ID); err != nil {
+			return Session{}, err
+		}
+		// Persist the denial before returning the generic authentication error.
+		if err = tx.Commit(ctx); err != nil {
+			return Session{}, err
+		}
+		return Session{}, ErrUnauthorized
+	}
+	if _, err = tx.Exec(ctx, `UPDATE users SET last_login_at=now(),failed_login_count=0,login_failure_started_at=NULL,locked_until=NULL WHERE id=$1`, u.ID); err != nil {
 		return Session{}, err
 	}
 	s, err := issue(ctx, tx, u)

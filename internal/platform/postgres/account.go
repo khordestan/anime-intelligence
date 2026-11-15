@@ -124,7 +124,7 @@ func (d *DB) ChangePassword(ctx context.Context, token, current, next string) er
 	if err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE users SET password_hash=$2,updated_at=now() WHERE id=$1`, u.ID, replacement); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE users SET password_hash=$2,updated_at=now(),failed_login_count=0,login_failure_started_at=NULL,locked_until=NULL WHERE id=$1`, u.ID, replacement); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL`, u.ID); err != nil {

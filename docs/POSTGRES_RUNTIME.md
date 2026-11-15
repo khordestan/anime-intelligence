@@ -7,7 +7,7 @@ This is a local development setup, not permission to deploy publicly. Use synthe
 1. Use PostgreSQL 17 and Go 1.26+. Create an empty development database.
 2. Supply its administrator/owner connection through `MIGRATION_DATABASE_URL` in your shell or a secret manager, then run `go run ./cmd/migrate`. Do not put credentials in files tracked by Git. The runner embeds all up migrations, records SHA-256 checksums in `schema_migrations`, and applies the schema and ledger atomically under an advisory lock. Re-running it is a no-op. Unknown applied versions, gaps, or edited migration checksums fail closed. Existing databases created with ad hoc SQL need a separately reviewed adoption process; do not fabricate ledger rows.
 3. Run `deployments/runtime-role.sql` as the administrator, in that database. It creates `anime_runtime` with only the permissions needed by the implemented API. The script is safe to re-run to apply newly required grants to an existing runtime role. Set its password out of band, for example with interactive psql `\password anime_runtime`. Do not make this role a member of an owner or privileged role.
-4. Supply the restricted role's connection as `DATABASE_URL` and run `go run ./cmd/api`. The default listener is `127.0.0.1:8080`; `HTTP_ADDR` overrides it. Never pass migration-owner credentials to the API. Startup rejects superuser, BYPASSRLS, role/database creation or replication privileges, inherited/public-table ownership, and missing forced RLS. Connection failure stops the process without printing the connection URL.
+4. Supply the restricted role's connection as `DATABASE_URL` and run `go run ./cmd/api`. The default listener is `127.0.0.1:8080`; `HTTP_ADDR` overrides it. Never pass migration-owner credentials to the API. Startup rejects superuser, BYPASSRLS, role/database creation or replication privileges, inherited/public-table ownership, missing forced RLS, and the missing login-budget migration. Connection failure stops the process without printing the connection URL.
 
 The API does not run migrations automatically. Upgrading the schema is an explicit administrator operation. The migration runner currently supports forward application; rollback scripts are exercised separately in CI. Production rollback and backup policy remain pending.
 
@@ -90,3 +90,12 @@ CI runs two isolated full-stack variants. `E2E_SUITE=postgres` covers the tracke
 
 
 Signed-in dashboard users can download a JSON account export from **Account data**. The downloaded file contains private product data and should be kept private. The dashboard does not persist the export in browser storage. **Delete account** requires the current password and an explicit permanent-deletion acknowledgement. Failed password confirmation keeps the valid session; successful deletion clears the dashboard and invalidates every session and identity challenge through database cascades.
+
+
+## Persisted login-attempt budget
+
+Apply migration `000007_login_attempt_budget` before updating the API; startup checks that the security column exists. A credentialed account's failed login increments its database counter under an exclusive account lock. Ten failures within a fifteen-minute observation window lock authentication for fifteen minutes. Multiple API instances share this state, and process restarts do not reset it. Expired observation windows start fresh. Requests during an active lock do not extend it; the existing private-session checks also reject a locked account.
+
+Successful login, password change and password reset clear the counter, observation start and lock. Recovery requests and password-reset proofs remain usable while locked, allowing address owners to recover. Unknown, disabled, locked and incorrect-password login responses remain the same generic 401. No IP address or user-agent data is collected. The process-wide request/hash gate still applies.
+
+This baseline account lock can itself be abused to deny access to a known account. Public launch still needs reviewed ingress controls, distributed source throttling, monitoring and an operational recovery path. It is not a replacement for those controls.

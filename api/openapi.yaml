@@ -152,7 +152,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Session' }
-        "401": { description: Invalid credentials }
+        "401": { description: Generic invalid credentials response, including disabled or temporarily locked accounts; no lock state is disclosed }
         "429": { description: Authentication rate or concurrency limit reached }
   /api/v1/auth/me:
     get:

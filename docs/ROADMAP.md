@@ -31,7 +31,8 @@
 - [x] Recovery/verification delivery, API and dashboard flows with verified-TLS SMTP and mail-enabled browser CI
 - [x] Mandatory verified-email policy for PostgreSQL tracker and ratings, with account/recovery access preserved
 - [ ] Durable identity-delivery retries
-- [ ] Production abuse controls
+- [x] Persisted per-account login-failure window and temporary lockout shared across instances
+- [ ] Production ingress/distributed abuse controls and monitoring
 - [x] User data export and password-confirmed deletion (PostgreSQL API)
 - [x] Account export/deletion dashboard controls
 

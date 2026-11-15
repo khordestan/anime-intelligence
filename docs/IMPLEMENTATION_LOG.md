@@ -213,3 +213,10 @@ Remaining boundaries:
 - Kept account management, recovery, export/deletion and shared catalog access available to unverified users. Missing SMTP leaves library access locked; reset/refresh do not silently verify an address, and no existing-account bypass was introduced.
 - Updated the dashboard to explain verification, disable editing, skip unverified library fetches, preserve account controls, and refresh the current profile after proof confirmation.
 - Extended restricted-role PostgreSQL tests for denial, unchanged rows, reset/refresh bypass attempts, existing-session unlocking, fresh state checks and cross-account isolation. Both real browser CI suites now prove fixture address ownership through loopback TLS mail; the focused UI suite also covers unavailable delivery.
+
+
+### Shared persisted login-failure budget
+
+- Fixed unused failed-login state: failed credentialed-account logins now commit a bounded observation window/count under an exclusive account lock before returning a generic denial. Ten failures in fifteen minutes trigger a fifteen-minute temporary lock shared across instances and restarts; active locks are not extended by repeated requests.
+- Added migration 000007 and fail-closed startup detection. Success/password change/recovery clears the budget; reset issuance/redemption remains possible while locked. Session issuance rechecks the credential and current profile under the same lock.
+- Added separate-pool concurrent failure, threshold, expiry, successful-login reset, recovery, cross-account and generic-error tests, plus missing-migration rejection. CI applies and rolls back the new migration in order. No IP/client identifiers are collected; distributed ingress controls and lockout denial-of-access mitigation remain launch work.
