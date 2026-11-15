@@ -100,14 +100,14 @@ jobs:
               RAISE EXCEPTION 'Login RLS expected one visible user, got %', visible_users;
             END IF;
           END $body$;
-          SET app.session_token_hash = repeat('ab', 32);
+          SET app.session_token_hash = 'abababababababababababababababababababababababababababababababab';
           DO $body$ DECLARE visible_sessions integer; BEGIN
             SELECT count(*) INTO visible_sessions FROM auth_sessions;
             IF visible_sessions <> 1 THEN
               RAISE EXCEPTION 'Session RLS expected one visible session, got %', visible_sessions;
             END IF;
           END $body$;
-          SET app.user_id = '20000000-0000-4000-8000-000000000001';
+          SET app.login_email = '';\n          SET app.session_token_hash = '';\n          SET app.user_id = '20000000-0000-4000-8000-000000000001';
           DO $body$ DECLARE visible_users integer; BEGIN
             SELECT count(*) INTO visible_users FROM users;
             IF visible_users <> 1 THEN
