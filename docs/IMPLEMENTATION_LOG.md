@@ -385,3 +385,9 @@ Verified: ingestion 8ee67a3 passed all seven CI jobs (43751739458) and both Code
 Added migration 000012 with release-track preferences and unique owned event/channel notifications. Verified-account follow/list/unfollow, bounded polling materialization and idempotent read endpoints use account/session locks, explicit ownership and existing forced RLS. Notifications materialize only eligible confirmed episode events after subscription creation. No background mail/push, franchise follow or public deployment is enabled.
 
 Added importer-to-notification integration coverage, SUB/DUB/ALL filtering, replay suppression, read ownership, concurrent-session deduplication, unsubscribe isolation, export isolation and HTTP authentication/verified-email/owner-override checks. Expanded runtime grants, readiness, migration/rollback CI and recovery ledger count. Exact-commit validation pending; local Go unavailable.
+
+## 2026-11-15 — Dashboard release-alert controls
+
+Added a verified-account release panel with follow/unfollow, per-title track preferences, read state and bounded polling only while open. Account-keyed remounts, request revisions and unmount guards fence late responses. Credentials/notices stay in memory. The panel states polling/response limits and has manual refresh/retry.
+
+Added mocked browser coverage for preference requests, follow/removal, read state, account reset, storage exclusion and delayed prior-account notification results. Existing real PostgreSQL/browser suites remain required. Read web/AGENTS.md; packaged Next guides were unavailable in this empty workspace, so consulted the current official use-client guide before using the existing client-component pattern. No framework conventions or dependencies changed. Exact-commit CI pending; no local Node/Go toolchains available.

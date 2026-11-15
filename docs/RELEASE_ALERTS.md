@@ -14,6 +14,10 @@ Only administrator-imported EPISODE_RELEASED events can become automatic notices
 
 Materialization occurs on authenticated polling; it is not background mail, push or guaranteed immediate delivery. It has no cross-account worker identity or RLS bypass. Unique notification keys make retries and concurrent sessions safe. Account export includes subscriptions/preferences and notices through existing resources; account deletion removes them through existing cascades.
 
+## Dashboard
+
+Verified accounts can open Manage release alerts, subscribe library titles, select a release track, stop alerts and mark notices read. The panel polls every minute while open and has a manual refresh button. It resets on account changes and rejects stale results. Local mode and unverified accounts do not expose the panel. Credentials and notices are never stored in browser storage.
+
 ## Remaining work
 
-Dashboard controls/polling, pagination/history beyond the response limits, franchise follows/new-season events, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
+Pagination/history beyond the response limits, franchise follows/new-season events, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionManager from "./session-manager";
+import ReleaseAlerts from "./release-alerts";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
 import { RecoveryFlow, VerificationRequest } from "./identity-actions";
@@ -433,6 +434,9 @@ export default function Home() {
             data or delete your account.
           </p>
         </section>
+      )}
+      {mode === "postgres" && session?.user.emailVerified && (
+        <ReleaseAlerts key={`release-alerts:${session.user.id}`} client={client} library={library} onError={handleError} />
       )}
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat label="In your library" value={library.length} />
