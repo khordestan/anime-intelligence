@@ -39,7 +39,7 @@ The current API uses explicit `Authorization: Bearer` headers, never cookies. Th
 - Use generic login errors to avoid account enumeration.
 - Apply progressive throttling/temporary lockout carefully; do not allow trivial denial-of-service against a known account.
 - Emit security audit events without credentials or sensitive request bodies.
-- Session listing, individual remote revocation, and revocation of other sessions are implemented through the PostgreSQL API. Account data export/deletion are implemented through the PostgreSQL API; dashboard controls remain pending.
+- Session listing, individual remote revocation, and revocation of other sessions are implemented through the PostgreSQL API. Account data export/deletion are implemented through the PostgreSQL API and signed-in dashboard.
 
 ## Public repository rules
 
@@ -53,13 +53,13 @@ Only schema, source code, synthetic fixtures, and documentation belong in this p
 - Sessions expire after 24 hours. Refresh atomically revokes the old token and issues a new one. Disabled/locked accounts are checked on every private transaction. Last-used writes are limited to a five-minute cadence.
 - API responses containing credentials/private data carry `Cache-Control: no-store`. CORS allows only the local development origins. Database URLs are not logged by startup failures.
 - Runtime requires forced RLS on implemented private resources and rejects roles that own public tables (including inherited ownership), superusers, and BYPASSRLS roles. Migration credentials are never used by the API.
-- Operational mail configuration, durable retries, verified-email access policy, dashboard export/deletion controls, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
+- Operational mail configuration, durable retries, verified-email access policy, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.
 
 ## Account export and deletion
 
 `GET /api/v1/auth/export` returns a versioned JSON snapshot of the current account's product data and public profile fields. It excludes password/session digests and security/lockout metadata. Every exported resource has an explicit user predicate plus forced RLS. Repeatable-read isolation prevents mixing tracker/progress/rating revisions; transient serialization conflicts receive bounded retries. Responses are non-cacheable attachments.
 
-`DELETE /api/v1/auth/account` accepts exactly `{ "password": "..." }` and requires a current bearer session and password reauthentication. The authentication hashing gate also covers deletion. The account is exclusively locked before session records, preventing cross-session lock-upgrade deadlocks. Deletion atomically cascades all sessions and user-owned database records. User IDs in request bodies are rejected. This is permanent; there is no dashboard deletion control or recovery flow yet. Shared catalog data remains intact.
+`DELETE /api/v1/auth/account` accepts exactly `{ "password": "..." }` and requires a current bearer session and password reauthentication. The authentication hashing gate also covers deletion. The account is exclusively locked before session records, preventing cross-session lock-upgrade deadlocks. Deletion atomically cascades all sessions and user-owned database records. User IDs in request bodies are rejected. This is permanent. The dashboard requires the current password and an explicit acknowledgement, clears the password and acknowledgement after a failed attempt, and clears the session/library after success. Incorrect password confirmation returns `invalid_current_password` without invalidating a valid session. Shared catalog data remains intact.
 
 ## Remote session management
 
