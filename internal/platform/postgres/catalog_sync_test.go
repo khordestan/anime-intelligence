@@ -116,3 +116,21 @@ func TestPartialProviderUpdatesUseEachTitlesObservationTime(t *testing.T) {
 	result,err:=catalogsync.Import(ctx,owner,s,now)
 	if err!=nil || result.ReleaseEvents!=1 {t.Fatal("another title's newer observation hid an eligible release",result,err)}
 }
+
+func TestNewSeasonFirstReleaseUsesPreviousProviderObservation(t *testing.T) {
+	_,owner,_,_:=testDB(t)
+	ctx:=context.Background()
+	now:=time.Now().UTC().Truncate(time.Microsecond)
+	if _,err:=owner.Exec(ctx,`INSERT INTO data_sources(provider_key,display_name,enabled,policy_url) VALUES('new-season-clock','Synthetic new season',true,'https://example.test/policy')`);err!=nil {t.Fatal(err)}
+	s:=feed.Snapshot{Version:1,Provider:"new-season-clock",ObservedAt:now.Add(-2*time.Hour),Titles:[]feed.Title{{ExternalID:"root",Title:"Synthetic Existing Season",MediaType:"TV",Status:"RELEASING",Relations:[]feed.Relation{{ExternalID:"new",Type:"SEQUEL"}}}}}
+	if _,err:=catalogsync.Import(ctx,owner,s,now);err!=nil {t.Fatal(err)}
+	fresh:=now.Add(-time.Hour)
+	old:=now.Add(-3*time.Hour)
+	s.ObservedAt=now
+	s.Titles=[]feed.Title{
+		{ExternalID:"new",Title:"Synthetic Newly Releasing Season",MediaType:"TV",Status:"RELEASING",Episodes:[]feed.Episode{{Number:1,Track:"SUB",ReleasedAt:&fresh}}},
+		{ExternalID:"historical",Title:"Synthetic Historical Season",MediaType:"TV",Status:"FINISHED",Episodes:[]feed.Episode{{Number:1,Track:"SUB",ReleasedAt:&old}}},
+	}
+	result,err:=catalogsync.Import(ctx,owner,s,now)
+	if err!=nil || result.ReleaseEvents!=1 {t.Fatal("new first release lost or historical backfill notified",result,err)}
+}

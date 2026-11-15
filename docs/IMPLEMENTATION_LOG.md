@@ -445,3 +445,9 @@ One manual primary-API smoke check returned HTTP 200 and the expected direct ani
 ## 2026-11-15 — Fixture setup respects the shared auth budget
 
 29e30ac passed all Go/provider tests, database integration, frontend, monitoring, recovery, identity-browser and both CodeQL analyses (CI 43757449478 / Security 43757449486). PostgreSQL-browser failed because fixture registration received an explicit HTTP 429 after the preceding real test. The earlier bounded retry helper covered browser sign-in but not setup. Extended response-aware Retry-After handling to new fixture registration/verification calls, preserving hard failures for every non-429 status and all existing assertions. Application limits are unchanged. Exact-commit CI pending.
+
+## 2026-11-15 — First release for a newly discovered season
+
+Review found that treating every new title as a baseline could hide the first confirmed episode of a sequel that first appears already releasing. First provider imports still baseline all history. On later batches, new titles now compare the release time with the prior provider observation, while known titles retain per-title comparison. Historical newly imported titles still produce no release event. Added a two-title regression proving the new first release is retained and the historical backfill suppressed. Exact-commit CI pending.
+
+Verified predecessor 0f1dc2f: all seven CI jobs 43757851776 and both CodeQL analyses 43757851574 passed, including the response-aware fixture setup and real browser feature coverage.

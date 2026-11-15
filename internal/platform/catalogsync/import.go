@@ -82,8 +82,10 @@ VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) D
 			if err!=nil {return out,err}
 			out.SeasonAnnouncements+=int(tag.RowsAffected())
 		}
+		comparison:=titleObserved
+		if !known {comparison=previous}
 		for _,episode:=range title.Episodes {
-			revision,event,err:=syncEpisode(ctx,tx,source,id,episode,s.ObservedAt,titleObserved,known && !previous.IsZero())
+			revision,event,err:=syncEpisode(ctx,tx,source,id,episode,s.ObservedAt,comparison,!previous.IsZero())
 			if err!=nil {return out,err}
 			out.ScheduleRevisions+=revision
 			out.ReleaseEvents+=event
@@ -101,7 +103,7 @@ ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.
 func equalTime(a,b *time.Time) bool {
 	return (a==nil && b==nil) || (a!=nil && b!=nil && a.Truncate(time.Microsecond).Equal(b.Truncate(time.Microsecond)))
 }
-func syncEpisode(ctx context.Context,tx pgx.Tx,source,id string,e feed.Episode,observed,previous time.Time,known bool) (int,int,error) {
+func syncEpisode(ctx context.Context,tx pgx.Tx,source,id string,e feed.Episode,observed,previous time.Time,eligible bool) (int,int,error) {
 	var revision int
 	var scheduled,released *time.Time
 	var authority string
@@ -121,9 +123,10 @@ WHERE anime_id=$1 AND episode_number=$2 AND release_track=$3 ORDER BY revision D
 	if actual!=nil {status="RELEASED"}
 	if _,err=tx.Exec(ctx,`INSERT INTO airing_schedule(anime_id,episode_number,release_track,scheduled_at,actual_released_at,schedule_status,source_id,last_verified_at,revision)
 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,id,e.Number,e.Track,e.ScheduledAt,actual,status,source,observed,revision+1);err!=nil {return 0,0,err}
-	// New titles and first imports baseline historical releases. Late backfills
-	// older than the previous title observation also establish history only.
-	if !known || previous.IsZero() || released!=nil || actual==nil || !actual.Truncate(time.Microsecond).After(previous) {return 1,0,nil}
+	// First provider imports baseline history. A new title can still report a
+	// genuinely new first release since the prior provider observation; known
+	// titles compare their own prior observation rather than unrelated updates.
+	if !eligible || previous.IsZero() || released!=nil || actual==nil || !actual.Truncate(time.Microsecond).After(previous) {return 1,0,nil}
 	identity,_:=json.Marshal([]any{"EPISODE_RELEASED",id,e.Number,e.Track})
 	sum:=sha256.Sum256(identity)
 	key:="episode:"+hex.EncodeToString(sum[:])
