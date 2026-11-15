@@ -8,8 +8,8 @@ import (
  "os/signal"
  "syscall"
  "time"
- "github.com/example/anime-intelligence/internal/httpapi"
- "github.com/example/anime-intelligence/internal/platform/store"
+ "github.com/khordestan/anime-intelligence/internal/httpapi"
+ "github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 
 func main() {
