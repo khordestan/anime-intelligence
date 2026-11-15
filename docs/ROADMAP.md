@@ -47,7 +47,8 @@
 ## Milestone 2 — Catalog and data platform
 - [x] Initial feature taxonomy covering story, protagonist, powers, tone, pacing and spoiler-sensitive endings
 - [ ] Provider capability registry and license review
-- [ ] Provider adapters and external ID mapping
+- [x] Offline reviewed snapshot importer with exact external ID mapping
+- [ ] Licensed network provider adapters
 - [ ] Raw source snapshots where licensing permits
 - [ ] Canonical entity resolution and field-level provenance
 - [ ] Curated observations with evidence, confidence and spoiler scope
@@ -63,7 +64,8 @@
 - [ ] Franchise follows
 
 ## Milestone 4 — Release intelligence
-- [ ] Schedule synchronization and revision history
+- [x] Transactional offline schedule ingestion and revision history
+- [ ] Scheduled network synchronization
 - [ ] Announcement and release event detection
 - [ ] In-app notifications and notification preferences
 - [ ] Idempotency and duplicate suppression

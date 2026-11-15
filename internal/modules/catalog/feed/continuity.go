@@ -1,9 +1,9 @@
 package feed
 
-// validateContinuity treats PREQUEL as the reverse of SEQUEL. Reciprocal
+// ValidateContinuity treats PREQUEL as the reverse of SEQUEL. Reciprocal
 // assertions agree; a cycle would make chronology contradictory. Other
 // relation types deliberately carry no implied viewing order.
-func validateContinuity(titles []Title) error {
+func ValidateContinuity(titles []Title) error {
 	edges := map[string][]string{}
 	for _, t := range titles {
 		for _, r := range t.Relations {

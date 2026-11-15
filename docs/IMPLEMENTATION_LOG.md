@@ -363,3 +363,11 @@ Verified exact-commit Actions:
 - 2b6781e: CI 43746527946, all seven jobs passed, including restricted PostgreSQL integration/migration tests, restore drill, frontend/mocked-browser tests and both full-stack browser suites. Backend includes unit/race/vet/build/vulnerability checks.
 
 Follow-up adds cycle detection for normalized PREQUEL/SEQUEL edges, with reciprocal-relation, two/three-node cycle, side-story and partial-graph tests. Snapshot validation only sees submitted edges; persistence must additionally check the full canonical graph. Added OpenAPI catalog list/detail schemas, including metadata and episodeCountKnown. Follow-up exact-commit CI pending; local toolchain unavailable. No deployments.
+
+## 2026-11-15 — Durable catalog ingestion
+
+Added migration 000011, administrator-only catalog-import command and transactional catalogsync implementation. Enabled/policy-bearing source registration is required; no external source is activated. Exact provider IDs resolve canonically without name matching. A single authoritative source owns each imported title; conflicts fail closed. Structured latest provenance, per-source high-water marks, schedule revisions, retained relation resolution and canonical unique release events commit together. Full persisted continuity cycles roll back the batch. Partial feeds preserve confirmed releases; baseline and historical backfills do not flood alerts.
+
+Added PostgreSQL coverage for source disablement, stale/repeated feeds, runtime-write denial, canonical visibility, schedule/correction history, event deduplication across partial feeds, conflict rollback and delayed relation resolution. Updated migration application/rollback CI and restore-ledger count.
+
+Validation: baseline 42111df CI 43746726043 and Security 43746726090 inspected: passed. New ingestion code pending exact-commit Actions. Local Go unavailable in this session; no local test pass claimed. No deployment or provider activation.
