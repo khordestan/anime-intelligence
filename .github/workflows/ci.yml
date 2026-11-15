@@ -73,6 +73,19 @@ jobs:
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc 'SELECT count(*) FROM anime_features')" = "40"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc \"SELECT count(*) FROM information_schema.tables WHERE table_name = 'auth_sessions'\")" = "1"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc \"SELECT count(*) FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash'\")" = "1"
+      - name: Verify authentication constraints
+        env:
+          PGPASSWORD: anime_test_password
+        run: |
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -c "INSERT INTO users (email) VALUES ('Auth-Constraint-Test@example.com')"
+          if psql -h localhost -U anime -d anime_intelligence -c "INSERT INTO users (email) VALUES ('auth-constraint-test@example.com')" >/dev/null 2>&1; then
+            echo "Case-insensitive duplicate email was accepted"
+            exit 1
+          fi
+          if psql -h localhost -U anime -d anime_intelligence -c "INSERT INTO auth_sessions (user_id, token_hash, expires_at) SELECT id, decode('00','hex'), now() + interval '1 hour' FROM users WHERE email = 'Auth-Constraint-Test@example.com'" >/dev/null 2>&1; then
+            echo "Invalid session token hash length was accepted"
+            exit 1
+          fi
       - name: Verify rollback order
         env:
           PGPASSWORD: anime_test_password
