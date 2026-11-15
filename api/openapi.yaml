@@ -1,0 +1,99 @@
+openapi: 3.1.0
+info:
+  title: Anime Intelligence API
+  version: 1.0.0
+  description: Local development API for anime catalog and personal tracking.
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: API is healthy
+  /api/v1/anime:
+    get:
+      summary: Search catalog
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 24 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Catalog page
+  /api/v1/anime/{id}:
+    get:
+      summary: Get anime by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Anime details }
+        "404": { description: Anime not found }
+  /api/v1/tracker:
+    get:
+      summary: List library entries
+      responses:
+        "200": { description: User library }
+    post:
+      summary: Add anime to library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [animeId, watchStatus, episodesWatched]
+              properties:
+                animeId: { type: string, format: uuid }
+                watchStatus: { type: string, enum: [PLANNING, WATCHING, COMPLETED, ON_HOLD, DROPPED] }
+                episodesWatched: { type: integer, minimum: 0 }
+      responses:
+        "201": { description: Library entry created }
+  /api/v1/tracker/{id}:
+    patch:
+      summary: Update tracking progress or status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                watchStatus: { type: string, enum: [PLANNING, WATCHING, COMPLETED, ON_HOLD, DROPPED] }
+                episodesWatched: { type: integer, minimum: 0 }
+      responses:
+        "200": { description: Updated entry }
+  /api/v1/ratings/{id}:
+    put:
+      summary: Set rating for a library anime
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [score]
+              properties:
+                score: { type: integer, minimum: 1, maximum: 5 }
+      responses:
+        "200": { description: Rating saved }
