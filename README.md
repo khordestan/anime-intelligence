@@ -7,7 +7,7 @@ For current implementation state, security constraints and continuation steps, s
 ## Implemented
 
 - Sourced catalog details, genres/tags/studios, canonical season relations and per-track episode schedules.
-- Reviewed offline provider ingestion with external ID mapping, latest structured provenance, schedule revision history and unique release/announcement events; offline Jikan v4 conversion. Network sources remain disabled pending source-use approval.
+- Reviewed offline provider ingestion with external ID mapping, latest structured provenance, schedule revision history and unique release/announcement events; offline Jikan v4 conversion and bounded CC0 Wikidata factual fetching. Scheduled collection remains disabled; comprehensive availability sources still require approval.
 - Tracker create/list/update/remove, aggregate or exact episode selections (including gaps), 1–5 ratings and a dashboard episode editor.
 - Individual-season or linked-franchise follows, release-track preferences and owner-scoped in-app episode/season-announcement notifications, polled from the dashboard.
 - Optional PostgreSQL runtime with registration, login, current account, logout, and atomic session rotation.
@@ -23,6 +23,8 @@ For current implementation state, security constraints and continuation steps, s
 - Single-user JSON development mode and a Next.js dashboard with PostgreSQL login/registration, logout, session expiry, and account-switch isolation. Browser tokens stay only in memory. Signed-in users can inspect active sessions, revoke a selected login, or sign out all other sessions.
 - Canonical catalog/provenance schema, 40-feature taxonomy, and deterministic Personal Match ranking core (not yet exposed through HTTP).
 - CI for Go race tests, vet/build, PostgreSQL runtime/HTTP isolation, migration apply/rollback, frontend transport/session tests, mocked and real-PostgreSQL browser tests, and frontend typecheck/build; CodeQL and dependency review.
+
+Public source freshness and latest schedule counts are available through `go run ./cmd/catalog-status`; see [catalog operations](docs/CATALOG_OPERATIONS.md). Selected CC0 facts can be fetched with `cmd/catalog-fetch` before reviewed import; this does not enable scheduled availability collection.
 
 Operator queue counts, outcomes and age are available through `go run ./cmd/identity-status` (JSON) or `-format=prometheus` with a restricted database connection; see [queue operations](docs/IDENTITY_QUEUE_OPERATIONS.md) and [disabled monitoring examples](deployments/monitoring/README.md).
 

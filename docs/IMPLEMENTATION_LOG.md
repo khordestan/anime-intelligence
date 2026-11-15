@@ -451,3 +451,11 @@ One manual primary-API smoke check returned HTTP 200 and the expected direct ani
 Review found that treating every new title as a baseline could hide the first confirmed episode of a sequel that first appears already releasing. First provider imports still baseline all history. On later batches, new titles now compare the release time with the prior provider observation, while known titles retain per-title comparison. Historical newly imported titles still produce no release event. Added a two-title regression proving the new first release is retained and the historical backfill suppressed. Exact-commit CI pending.
 
 Verified predecessor 0f1dc2f: all seven CI jobs 43757851776 and both CodeQL analyses 43757851574 passed, including the response-aware fixture setup and real browser feature coverage.
+
+## 2026-11-15 — Public catalog freshness diagnostics
+
+Added catalog-status using a read-only repeatable-read snapshot and separate explicit connection configuration. Reports provider age, enabled/policy-recorded status, never-synced/future observations, stale counts and latest public schedule/confirmation totals. It never reads account resources or fetches network data. Added an optional SELECT-only catalog-reader role and an operations guide distinguishing provider-wide partial-feed timestamps from per-title/upstream freshness.
+
+Added PostgreSQL regression coverage for stale/never/disabled/future sources, threshold changes, latest schedule counts and restricted-role reads. No service/receiver/provider activated. Exact-commit CI pending; shell toolchains unavailable.
+
+Verified predecessor b5b07f9: all seven CI jobs 43758257305 and both CodeQL analyses 43758257358 passed, including the new-season first-release regression. Freshness diagnostics remain pending exact-commit publication/checks.
