@@ -401,3 +401,9 @@ Added tests for gaps/order, count-mode boundaries, known-total validation, dupli
 ## 2026-11-15 — Exact episode dashboard editing
 
 Added explicit count-to-exact replacement UI, comma-separated gap-aware selections, known-total validation, clear/cancel/retry and unmount/revision fencing. Exact-mode library cards disable the aggregate +1 shortcut. Added parser unit tests and browser coverage for replacement semantics, sorted gaps, duplicate rejection and clearing. No dependencies/framework APIs changed. Exact-commit CI pending; local toolchains unavailable.
+
+## 2026-11-15 — Provider format integration and approval boundaries
+
+Added bounded offline Jikan v4 metadata/episode-page conversion into the existing neutral feed, a catalog-convert CLI requiring actual observation time, and synthetic mapping/error tests. Normalizes names, aliases, synopsis, type/status/year/quarter, unknown totals, genres/themes/demographics/studios and supported anime relations. Aired dates become UNKNOWN-track schedules only; no confirmed availability is fabricated.
+
+Recorded primary-source capability/approval review in PROVIDERS.md. AniList's current terms restrict competing trackers/mass collection; Jikan's linked terms were inaccessible and source redistribution rights remain unverified. No network adapter/source activation or live catalog API requests were performed. Exact-commit CI pending; local toolchains unavailable.
