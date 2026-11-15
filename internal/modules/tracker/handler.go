@@ -4,7 +4,7 @@ import (
  "encoding/json"
  "net/http"
  "strings"
- "github.com/example/anime-intelligence/internal/platform/store"
+ "github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 type Handler struct{data *store.Store}
 func NewHandler(data *store.Store)*Handler{return &Handler{data:data}}
