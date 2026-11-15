@@ -341,3 +341,11 @@ Commit `cb428e0` passed all five CI jobs (run 43699049145), including real Postg
 - Local frontend tests, type checking and production build passed. Local browser launch was blocked by missing Chromium; attempted installation returned invalid archives. Browser workflows are verified in CI against mocked transport and real PostgreSQL. Updated roadmap, runtime and continuation docs. Existing deployments still require the previous API batch's reviewed DELETE grants. Nothing deployed or activated; synthetic fixtures only.
 
 - First browser CI caught an ambiguous alert selector matching Next.js's route announcer as well as the application error. Scoped the regression to the main dashboard; the application showed the intended generic failure and retained its entry. The follow-up commit reruns all checks before completion.
+
+## 2026-11-15 — Catalog feed validation and release comparison
+
+Implemented bounded strict JSON snapshot decoding, provider-scoped identities, rich metadata, typed title/season relations, nullable totals and episode schedules by release track. Added dry-run catalog-check CLI and tests for malformed/oversized input, invalid metadata, duplicates, unknown totals, schedule-versus-release semantics, baseline suppression, timestamp corrections, stale snapshots, track isolation and stable ordering. CATALOG_FEEDS.md records remaining persistence/provider boundaries.
+
+No network provider, database ingestion, user progress mutation or notification delivery is enabled. Durable event-key retention, canonical resolution and owner-scoped delivery remain pending.
+
+Validation: existing main 5d5b7d2 CI 43745027034 and Security 43745027043 inspected: success. Local tests not run: no Go toolchain and shell DNS unavailable. New implementation CI pending publication; baseline CI does not validate this change.
