@@ -78,8 +78,8 @@ jobs:
         env:
           PGPASSWORD: anime_test_password
         run: |
-          test "$(psql -h localhost -U anime -d anime_intelligence -Atc \"SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications') AND relrowsecurity AND relforcerowsecurity\")" = "10"
-          test "$(psql -h localhost -U anime -d anime_intelligence -Atc \"SELECT count(*) FROM pg_policies WHERE policyname LIKE '%_self_access'\")" = "10"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications') AND relrowsecurity AND relforcerowsecurity")" = "10"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname LIKE '%_self_access'")" = "10"
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 <<'SQL'
           DO $body$ BEGIN
             CREATE ROLE anime_app NOLOGIN;
