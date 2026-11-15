@@ -49,7 +49,8 @@
 - [x] Provider capability/approval registry and initial primary-source review
 - [ ] Production source-use permissions and licensed network activation
 - [x] Offline reviewed snapshot importer with exact external ID mapping
-- [ ] Licensed network provider adapters
+- [x] Bounded explicit-item Wikidata CC0 factual fetch adapter
+- [ ] Comprehensive approved metadata and confirmed-availability adapters
 - [ ] Raw source snapshots where licensing permits
 - [ ] Canonical entity resolution and field-level provenance
 - [ ] Curated observations with evidence, confidence and spoiler scope

@@ -1,10 +1,11 @@
 # Provider capability and approval registry
 
-Reviewed 2026-11-15 against primary sources. No external provider is enabled by the application or database seed. Adapter code and API/software licenses do not establish a right to build a competing metadata/tracker product or redistribute source content.
+Reviewed 2026-11-15 against primary sources. No scheduled external provider is enabled by the application or database seed. A bounded explicit-item Wikidata fetch command is implemented under its CC0 structured-data terms. Adapter code and API/software licenses do not establish a right to build a competing metadata/tracker product or redistribute source content.
 
 | Source | Implemented input | Metadata | Relations | Episode schedules | Confirmed availability | Activation |
 | --- | --- | --- | --- | --- | --- | --- |
 | Reviewed neutral feed | Strict version-1 JSON | Rich structured title metadata | Typed canonical resolution | Revisioned by track | Explicit releasedAt | Administrator source registration required |
+| Wikidata CC0 | Explicit-item live Action API fetch | Selected TV anime labels/native names/aliases, genres, year and non-conflicting episode totals | Unsupported | Unsupported | Unsupported | No scheduled job or database source enabled |
 | Jikan v4 | Offline full-anime and episode-page converters | Names, aliases, synopsis, media/status/year/quarter, nullable totals, genres/themes/demographics/studios | Anime-only supported relations; manga/adaptation edges excluded | Aired timestamps as UNKNOWN-track schedules | Unsupported; never inferred | Network collection disabled pending source-use approval |
 | AniList | None | Not ingested | Not ingested | Not ingested | Not ingested | Excluded under current tracker/collection restrictions |
 
@@ -32,3 +33,19 @@ No network client, retries, cache, periodic job, source activation or public pub
 ## Remaining evidence and operations
 
 Record approval scope, policy URL/review date, required attribution, permitted fields, cache/retention/deletion terms and quotas before enabling any source. Current data_sources.enabled plus policy_url is an administrator-controlled gate; it is not an automated license check. Scheduling, availability verification, region/language semantics and provider health telemetry remain pending.
+
+## Wikidata CC0 factual metadata
+
+Primary references: [Data access and etiquette](https://www.wikidata.org/wiki/Wikidata:Data_access/en), [structured database license](https://www.wikidata.org/wiki/Wikidata:Database_download), [anime television series class Q63952888](https://www.wikidata.org/wiki/Q63952888). Structured entity facts are CC0; this does not extend to media assets, Wikipedia prose or other linked content. No prose/media is downloaded. Preserve Source: wikidata attribution in the UI as good provenance practice.
+
+```sh
+go run ./cmd/catalog-fetch -ids=Q124570859
+```
+
+The command requests up to 20 explicit Q IDs from the fixed HTTPS Action API endpoint. It requires a direct instance-of anime television series assertion, preventing arbitrary people/manga/franchise items from becoming TV seasons. Broader subclass inference, films/OVA and discovery crawling are unsupported. Labels/aliases, P136 genre labels, P577 publication year and P1113 dimensionless integer episode totals are normalized. Preferred ranks supersede normal ranks; deprecated claims are ignored; conflicting totals stay unknown. The earliest asserted publication year does not establish a precise broadcast date.
+
+Requests include a project User-Agent, maxlag=5, bounded response sizes, 15-second request timeout, process-wide serialization and one-second pacing. Redirects are refused. HTTP 429/503 Retry-After advice is bounded, returned without raw provider content and retained as a process-local cooldown; no automatic retries occur. Genre labels are fetched in at most two batches. Overall command timeout is one minute.
+
+A single primary API smoke check for Q124570859 returned HTTP 200 with the expected direct anime-TV class. No data was imported, user account read, media downloaded or source activated. Synthetic transport tests cover normalization, missing/unsupported entities, rank ambiguity, unknown facts, headers/pacing boundaries, redirects, rate limits, oversized/malformed responses and cancellation.
+
+Review the normalized feed before import. An administrator can register provider_key=wikidata with the official data-access policy URL and enabled=true in their own database, then use catalog-import. No source activation is performed by catalog-fetch. Existing authoritative mappings are not overwritten or name-merged. Wikidata is a sparse factual fallback, not a comprehensive anime/availability feed: synopsis, studio claims, season graph, streaming rights, airing schedules and confirmed SUB/DUB releases remain unknown. Scheduled fetching and persistent caches are not implemented.

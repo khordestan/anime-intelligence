@@ -433,3 +433,11 @@ Audit also found the mocked-browser configuration selected only auth.spec.ts. Ne
 The dashboard no longer limits search to its initial catalog page: debounced server searches return matching imported titles and aliases/native names, while request revisions reject stale queries. PostgreSQL search includes imported synonyms under the public read boundary. Search results and library cards can open sourced metadata, genres/studios/aliases, canonical relation navigation and current schedule/confirmation revisions. Synopsis/tags require explicit spoiler reveal; schedule text does not imply availability. Unknown totals remain explicit.
 
 Added imported-alias database coverage and a mocked browser test for a title outside the initial page, metadata/provenance, unknown totals, schedule-versus-confirmation labels and spoiler reveal/hide. Non-real browser discovery now automatically includes spec files while excluding the two real API suites. Predecessor corrected browser selection ran 11 mocked tests successfully; its real PostgreSQL/browser status must also be inspected. New changes pending exact-commit CI.
+
+## 2026-11-15 — CC0 live factual metadata fallback
+
+Verified f8901e6: all seven CI jobs 43756443646 passed, with 12 explicitly executed mocked browser tests and both real browser suites; both CodeQL analyses 43756443693 passed.
+
+Primary-source review identified Wikidata structured facts as CC0. Added an explicit-item live fetch command and bounded fixed-endpoint client for direct anime-TV entities, selected labels/aliases/genres/publication year/episode totals, rank handling and ambiguous-total preservation. Added process-wide one-second pacing, maxlag, request/response bounds, redirect refusal, cooldown/advice for Retry-After and no automatic retries. It reads no user accounts, prose/media or streaming data and does not infer availability.
+
+One manual primary-API smoke check returned HTTP 200 and the expected direct anime-TV class for Q124570859; no database import or source activation occurred. Added synthetic transport/mapping/security/error tests. Broad coverage, scheduled fetching/caching, studios/relations and confirmed availability remain pending. New code requires exact-commit CI; no local project test pass claimed.

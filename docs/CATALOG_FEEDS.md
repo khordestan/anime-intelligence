@@ -49,3 +49,7 @@ All importer writers use a global transaction advisory lock. Imports atomically 
 Partial feeds never delete titles, confirmed releases or previously resolved relations. Retained source-title relations are revisited when their targets arrive later. The whole persisted prequel/sequel graph is checked for cycles. Canonical episode release events use unique provider-independent keys in domain_events. First imports/new titles establish release history; confirmations older than that title's previous observation are historical backfills and do not notify. Timestamp corrections append schedule revisions without duplicating an event. Persistent event keys survive intervening partial feeds.
 
 Runtime API credentials receive no new catalog write grants. This command currently requires administrator-managed source registration and credentials. A restricted catalog-writer role, scheduled/network fetching, provider failure telemetry, field arbitration, retractions, archive retention policies, event dispatch and user notifications remain pending.
+
+## Explicit CC0 factual fetch
+
+catalog-fetch retrieves a bounded set of Wikidata anime-TV items as a neutral feed. It has no database access and activates no scheduled source. See [provider capabilities](PROVIDERS.md) for mapping, CC0 scope and request etiquette. The factual output intentionally leaves release status/availability and unsupported fields unknown; fetch observation time does not prove every upstream statement is current.
