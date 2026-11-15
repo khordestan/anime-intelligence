@@ -41,7 +41,7 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 		if unsafe {
 			return errors.New("database runtime requires a non-owner role without elevated privileges")
 		}
-		_, err = c.Exec(ctx, `SELECT set_config('app.user_id','',false), set_config('app.login_email','',false), set_config('app.session_token_hash','',false)`)
+		_, err = c.Exec(ctx, `SELECT set_config('app.user_id','',false), set_config('app.login_email','',false), set_config('app.session_token_hash','',false),set_config('app.challenge_token_hash','',false),set_config('app.challenge_purpose','',false)`)
 		return err
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, config)
@@ -54,9 +54,9 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 	}
 	var secured int
 	err = pool.QueryRow(ctx, `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
- WHERE n.nspname='public' AND c.relname IN ('users','auth_sessions','user_anime','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications')
+ WHERE n.nspname='public' AND c.relname IN ('users','auth_sessions','user_anime','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','auth_challenges')
  AND c.relrowsecurity AND c.relforcerowsecurity`).Scan(&secured)
-	if err != nil || secured != 10 {
+	if err != nil || secured != 11 {
 		pool.Close()
 		return nil, errors.New("required forced row-level security is missing; apply schema migrations")
 	}
@@ -77,7 +77,7 @@ func (d *DB) beginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error)
 	if err != nil {
 		return nil, err
 	}
-	_, err = tx.Exec(ctx, `SELECT set_config('app.user_id','',true),set_config('app.login_email','',true),set_config('app.session_token_hash','',true)`)
+	_, err = tx.Exec(ctx, `SELECT set_config('app.user_id','',true),set_config('app.login_email','',true),set_config('app.session_token_hash','',true),set_config('app.challenge_token_hash','',true),set_config('app.challenge_purpose','',true)`)
 	if err != nil {
 		rollback(tx)
 		return nil, err
@@ -90,7 +90,7 @@ func rollback(tx pgx.Tx) {
 	_ = tx.Rollback(ctx)
 }
 func identity(ctx context.Context, tx pgx.Tx, userID string) error {
-	_, err := tx.Exec(ctx, `SELECT set_config('app.user_id',$1,true),set_config('app.login_email','',true),set_config('app.session_token_hash','',true)`, userID)
+	_, err := tx.Exec(ctx, `SELECT set_config('app.user_id',$1,true),set_config('app.login_email','',true),set_config('app.session_token_hash','',true),set_config('app.challenge_token_hash','',true),set_config('app.challenge_purpose','',true)`, userID)
 	return err
 }
 func (d *DB) sessionTx(ctx context.Context, token string) (pgx.Tx, User, error) {
@@ -132,7 +132,7 @@ func (d *DB) sessionTxWithUserLock(ctx context.Context, token string, options pg
 	if exclusive {
 		lock = " FOR UPDATE"
 	}
-	err = tx.QueryRow(ctx, `SELECT id::text,email,display_name FROM users WHERE id=$1 AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until<=now())`+lock, uid).Scan(&u.ID, &u.Email, &u.DisplayName)
+	err = tx.QueryRow(ctx, `SELECT id::text,email,display_name,email_verified_at IS NOT NULL FROM users WHERE id=$1 AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until<=now())`+lock, uid).Scan(&u.ID, &u.Email, &u.DisplayName, &u.EmailVerified)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return fail(ErrUnauthorized)
 	}

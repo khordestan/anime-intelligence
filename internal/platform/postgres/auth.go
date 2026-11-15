@@ -17,9 +17,10 @@ import (
 )
 
 type User struct {
-	ID          string `json:"id"`
-	Email       string `json:"email"`
-	DisplayName string `json:"displayName"`
+	EmailVerified bool   `json:"emailVerified"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	DisplayName   string `json:"displayName"`
 }
 type Session struct {
 	Token     string    `json:"token"`
@@ -131,7 +132,7 @@ func (d *DB) Login(ctx context.Context, email, value string) (Session, error) {
 	var u User
 	var encoded *string
 	var disabled, locked bool
-	err = tx.QueryRow(ctx, `SELECT id::text,email,display_name,password_hash,disabled_at IS NOT NULL,COALESCE(locked_until>now(),false) FROM users WHERE lower(email)=$1`, email).Scan(&u.ID, &u.Email, &u.DisplayName, &encoded, &disabled, &locked)
+	err = tx.QueryRow(ctx, `SELECT id::text,email,display_name,email_verified_at IS NOT NULL,password_hash,disabled_at IS NOT NULL,COALESCE(locked_until>now(),false) FROM users WHERE lower(email)=$1`, email).Scan(&u.ID, &u.Email, &u.DisplayName, &u.EmailVerified, &encoded, &disabled, &locked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		password.Verify(d.dummyHash, value)
 		return Session{}, ErrUnauthorized

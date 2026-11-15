@@ -323,11 +323,12 @@ components:
         current: { type: boolean }
     User:
       type: object
-      required: [id, email, displayName]
+      required: [id, email, displayName, emailVerified]
       properties:
         id: { type: string, format: uuid }
         email: { type: string, format: email }
         displayName: { type: string }
+        emailVerified: { type: boolean }
     Session:
       type: object
       required: [token, expiresAt, user]

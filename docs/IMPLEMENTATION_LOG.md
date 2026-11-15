@@ -169,3 +169,11 @@ Remaining boundaries:
 - Browser CI detected duplicate React keys on the sibling session/password panels, which could duplicate controls across rerenders and leave stale panels after sign-out.
 - Namespaced keys by panel type and account ID, preserving account-specific resets while keeping sibling identities unique.
 - Added explicit one-panel-per-type assertions through authenticated rerenders and complete removal checks after remote sign-out. Both mocked and real PostgreSQL browser suites are rerun; backend/database/password race tests already passed in the preceding CI run.
+
+## 2026-11-15 — Purpose-bound identity challenge foundation
+
+- Added migration 000006 with forced RLS for hashed, expiring, single-use password-reset and email-verification challenges, narrowly scoped digest bootstrap, and a single pending challenge per account/purpose.
+- Added challenge issuance/redemption under account-before-token locks, purpose-separated digests, email-address binding, a one-minute resend cooldown and five-issuance hourly cap, supersession, and invalidation during password changes/reset/deletion.
+- Password reset revokes existing sessions and clears temporary login locks without issuing a new session. Verification records mailbox proof; it does not reset passwords or automatically authenticate. Existing session/account responses expose the current `emailVerified` flag.
+- Added PostgreSQL tests for RLS, digest-only persistence, purpose confusion, expiry, replay, supersession, cooldown, address changes, password-change invalidation, deletion cascades, and concurrent single-use redemption. Raw delivery envelopes cannot be serialized to API JSON and redact structured log output.
+- Runtime role/startup checks and migration/rollback CI now cover eleven private tables. The full local Go race suite passes; HTTP delivery wiring is the next step. No mail was sent to real recipients and no public deployment was performed.

@@ -16,3 +16,5 @@ GRANT SELECT, INSERT, UPDATE ON users, auth_sessions, user_anime,
 GRANT SELECT ON user_preferences, recommendations, recommendation_feedback,
   user_follows, notifications TO anime_runtime;
 GRANT DELETE ON users TO anime_runtime;
+
+GRANT SELECT, INSERT, UPDATE ON auth_challenges TO anime_runtime;
