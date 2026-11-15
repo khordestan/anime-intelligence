@@ -95,6 +95,13 @@ test("real TLS email proof verifies and recovers an account without leaking URL 
       })
     ).status(),
   ).toBe(400);
+  await expect(
+    page.getByRole("region", { name: "Email verification" }),
+  ).toContainText("Email verified");
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your library" }),
+  ).toBeVisible();
   const unknown = await request.post(API + "/auth/password-reset/request", {
     data: { email: `unknown-${randomUUID()}@example.test` },
   });

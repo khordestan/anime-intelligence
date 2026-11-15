@@ -16,9 +16,15 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	dsn := os.Getenv("DATABASE_URL")
+	sender, configErr := identitySenderFromEnv(os.Getenv, dsn != "")
+	if configErr != nil {
+		logger.Error("identity mail requires PostgreSQL and complete valid delivery configuration")
+		os.Exit(1)
+	}
 	var handler http.Handler
 	storage := "local-file"
-	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+	if dsn != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		db, err := postgres.Open(ctx, dsn)
 		cancel()
@@ -28,13 +34,7 @@ func main() {
 		}
 		defer db.Close()
 		var delivery *identitymail.Service
-		config := identitymail.SMTPConfig{Address: os.Getenv("MAIL_SMTP_ADDR"), Username: os.Getenv("MAIL_SMTP_USER"), Password: os.Getenv("MAIL_SMTP_PASSWORD"), From: os.Getenv("MAIL_FROM"), AppOrigin: os.Getenv("PUBLIC_APP_ORIGIN"), CAFile: os.Getenv("MAIL_SMTP_CA_FILE")}
-		if config.Address != "" || config.Username != "" || config.Password != "" || config.From != "" || config.AppOrigin != "" || config.CAFile != "" {
-			sender, err := identitymail.NewSMTP(config)
-			if err != nil {
-				logger.Error("identity mail configuration is incomplete or invalid")
-				os.Exit(1)
-			}
+		if sender != nil {
 			delivery = identitymail.NewService(db, sender, logger)
 			defer delivery.Close()
 		}

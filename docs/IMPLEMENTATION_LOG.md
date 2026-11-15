@@ -192,3 +192,9 @@ Remaining boundaries:
 - Added purpose/duplicate-field/canonical-token parsing tests and a browser assertion that loading a link does not redeem it. Account-scoped keys and API revisions keep stale proof responses from crossing account changes.
 - Added a full-stack CI matrix with separate PostgreSQL baseline and identity variants, avoiding shared rate-limit state. The identity variant provisions generated/masked mail credentials, starts a loopback-only TLS mail fixture before the API, and exercises real delivery, verification, recovery, replay rejection, session revocation, and preserved private tracking data.
 - Local transport/parser tests, frontend typecheck/build, suite discovery, SMTP race tests, and workflow YAML checks pass. The preceding delivery/API commit passed CI and CodeQL (runs 43691791914 and 43691791969). New browser execution is verified in GitHub CI; no public deployment or real-recipient delivery was performed.
+
+## 2026-11-15 — Recovery startup and browser navigation corrections
+
+- The new identity CI variant successfully exercised actual TLS mail and email verification. Its later recovery step incorrectly assumed a same-document fragment navigation would clear the signed-in browser session; the test now explicitly signs out before testing recovery while retaining an independent API session for revocation checks.
+- Mail settings now fail startup if PostgreSQL is absent instead of being silently ignored by JSON development mode. Added configuration tests covering missing database, partial/valid configuration, disabled delivery, and redacted errors without sending mail.
+- Existing frontend, database, PostgreSQL-browser, backend, and CodeQL jobs passed in the preceding run; the corrected mail-enabled suite is rerun.
