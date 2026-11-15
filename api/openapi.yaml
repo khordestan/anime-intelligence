@@ -89,6 +89,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Anime' }
         "404": { description: Anime not found }
+  /api/v1/anime/{id}/details:
+    get:
+      summary: Public catalog enrichment, continuity relations and current episode schedules
+      description: Returns explicit source/time provenance when imported. Schedules are predictions; only releasedAt confirms availability. Synopsis and tags may contain spoilers. No private tracking data is included.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Consistent public catalog snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogDetails' }
+        "400": { description: Invalid UUID }
+        "404": { description: Anime not found }
   /api/v1/tracker:
     get:
       security: [{ bearerAuth: [] }]
@@ -436,6 +453,37 @@ components:
                 format: password
                 description: Registration requires 12–1024 UTF-8 bytes. Request body limit is 4096 bytes.
   schemas:
+    CatalogDetails:
+      type: object
+      required: [anime, synonyms, genres, tags, studios, relations, episodes]
+      properties:
+        anime: { $ref: '#/components/schemas/Anime' }
+        provider: { type: string }
+        observedAt: { type: string, format: date-time }
+        synonyms: { type: array, items: { type: string } }
+        genres: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        studios: { type: array, items: { type: string } }
+        relations:
+          type: array
+          items:
+            type: object
+            required: [animeId, type]
+            properties:
+              animeId: { type: string, format: uuid }
+              type: { type: string }
+        episodes:
+          type: array
+          items:
+            type: object
+            required: [number, track, revision]
+            properties:
+              number: { type: integer }
+              track: { type: string, enum: [RAW, SUB, DUB, UNKNOWN] }
+              revision: { type: integer }
+              scheduledAt: { type: string, format: date-time }
+              releasedAt: { type: string, format: date-time }
+              verifiedAt: { type: string, format: date-time }
     Anime:
       type: object
       required: [id, title, mediaType, status, episodeCountKnown]

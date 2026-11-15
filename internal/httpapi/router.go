@@ -22,6 +22,7 @@ func NewRouter(logger *slog.Logger, data *store.Store) http.Handler {
 	c, t := catalog.NewHandler(store.Local{Store: data}), tracker.NewHandler(store.Local{Store: data})
 	mux.HandleFunc("GET /api/v1/anime", c.List)
 	mux.HandleFunc("GET /api/v1/anime/{id}", c.Get)
+	mux.HandleFunc("GET /api/v1/anime/{id}/details", c.Details)
 	mux.HandleFunc("GET /api/v1/tracker", t.List)
 	mux.HandleFunc("POST /api/v1/tracker", t.Create)
 	mux.HandleFunc("PATCH /api/v1/tracker/{id}", t.Update)

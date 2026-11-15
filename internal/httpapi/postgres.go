@@ -35,6 +35,7 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 	c := catalog.NewHandler(db.Repository(""))
 	mux.HandleFunc("GET /api/v1/anime", c.List)
 	mux.HandleFunc("GET /api/v1/anime/{id}", c.Get)
+	mux.HandleFunc("GET /api/v1/anime/{id}/details", c.Details)
 	gate := newAuthGate()
 	credential := func(register bool) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

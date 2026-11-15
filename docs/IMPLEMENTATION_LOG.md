@@ -371,3 +371,9 @@ Added migration 000011, administrator-only catalog-import command and transactio
 Added PostgreSQL coverage for source disablement, stale/repeated feeds, runtime-write denial, canonical visibility, schedule/correction history, event deduplication across partial feeds, conflict rollback and delayed relation resolution. Updated migration application/rollback CI and restore-ledger count.
 
 Validation: baseline 42111df CI 43746726043 and Security 43746726090 inspected: passed. New ingestion code pending exact-commit Actions. Local Go unavailable in this session; no local test pass claimed. No deployment or provider activation.
+
+## 2026-11-15 — Public catalog details and episode schedules
+
+Added a consistent repeatable-read details endpoint with latest structured metadata/source timestamp, genres/tags/studios/synonyms, resolved canonical season/title relations and latest episode schedule revisions by track. Responses contain only public catalog data; tags/synopses may contain spoilers. Added local-mode empty enrichment and explicit arrays. API role gains read-only catalog tables and only source id/provider-key columns. Readiness now checks migration 000011 and required read grants. Reapply runtime-role.sql before starting an updated runtime.
+
+Tests cover anonymous HTTP metadata, source timestamps, schedule-versus-release semantics, canonical relations, seeded empty enrichment and invalid/missing identifiers. OpenAPI updated. Exact-commit CI pending; local Go unavailable. No deployment.

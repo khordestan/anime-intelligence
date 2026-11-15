@@ -25,3 +25,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON identity_requests TO anime_runtime;
 
 -- Removing an owned library entry also clears its progress and ratings.
 GRANT DELETE ON user_anime, watch_progress, user_ratings TO anime_runtime;
+
+-- Reviewed public catalog facts only; ingestion remains administrator-only.
+GRANT SELECT ON catalog_metadata, anime_relations, airing_schedule TO anime_runtime;
+GRANT SELECT (id, provider_key) ON data_sources TO anime_runtime;
