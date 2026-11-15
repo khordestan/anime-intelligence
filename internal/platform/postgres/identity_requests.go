@@ -67,7 +67,7 @@ func (o *DeliveryOutbox) claimRequest(ctx context.Context) (*requestClaim, error
 	if _, err = tx.Exec(ctx, `SELECT set_config('app.identity_request_worker','on',true)`); err != nil {
 		return nil, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE identity_requests SET payload=NULL,completed_at=now(),lease_hash=NULL,lease_until=NULL WHERE id IN (SELECT id FROM identity_requests WHERE completed_at IS NULL AND (expires_at<=now() OR (attempts>=5 AND (lease_until IS NULL OR lease_until<=now()))) LIMIT 100 FOR UPDATE SKIP LOCKED)`); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE identity_requests SET payload=NULL,completed_at=now(),lease_hash=NULL,lease_until=NULL,outcome=CASE WHEN expires_at<=now() THEN 'EXPIRED' ELSE 'EXHAUSTED' END WHERE id IN (SELECT id FROM identity_requests WHERE completed_at IS NULL AND (expires_at<=now() OR (attempts>=5 AND (lease_until IS NULL OR lease_until<=now()))) LIMIT 100 FOR UPDATE SKIP LOCKED)`); err != nil {
 		return nil, err
 	}
 	if _, err = tx.Exec(ctx, `DELETE FROM identity_requests WHERE id IN (SELECT id FROM identity_requests WHERE completed_at<now()-interval '1 day' LIMIT 100 FOR UPDATE SKIP LOCKED)`); err != nil {
@@ -128,6 +128,7 @@ func (o *DeliveryOutbox) consumeRequest(ctx context.Context, c *requestClaim) er
 	if err != nil {
 		return err
 	}
+	outcome := "NO_ACTION"
 	if user.ID != "" && !(c.purpose == identitymail.EmailVerification && user.EmailVerified) {
 		message, err := issueChallenge(ctx, tx, user.ID, user.Email, c.purpose)
 		if err != nil {
@@ -137,11 +138,13 @@ func (o *DeliveryOutbox) consumeRequest(ctx context.Context, c *requestClaim) er
 			if err = enqueueDelivery(ctx, tx, o.cipher, message); err != nil {
 				return err
 			}
+			outcome = "ISSUED"
 		}
 	}
-	// Known, unknown, disabled and throttled recipients complete identically.
+	// Admission remains generic. Worker-only outcome distinguishes actual proof
+	// issuance from no-op requests without retaining a recipient or reason.
 	// Proof issuance, delivery insertion and consumption either all commit or none.
-	if _, err = tx.Exec(ctx, `UPDATE identity_requests SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL WHERE id=$1 AND lease_hash=decode($2,'hex')`, id, digest); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE identity_requests SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL,outcome=$3 WHERE id=$1 AND lease_hash=decode($2,'hex')`, id, digest, outcome); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -157,7 +160,7 @@ func (o *DeliveryOutbox) retryRequest(ctx context.Context, c *requestClaim) erro
 	}
 	digest, _ := tokenDigest(c.lease)
 	if c.attempts >= 5 {
-		_, err = tx.Exec(ctx, `UPDATE identity_requests SET payload=NULL,completed_at=now(),lease_hash=NULL,lease_until=NULL WHERE id=$1 AND lease_hash=decode($2,'hex')`, c.id, digest)
+		_, err = tx.Exec(ctx, `UPDATE identity_requests SET payload=NULL,completed_at=now(),lease_hash=NULL,lease_until=NULL,outcome='EXHAUSTED' WHERE id=$1 AND lease_hash=decode($2,'hex')`, c.id, digest)
 	} else {
 		_, err = tx.Exec(ctx, `UPDATE identity_requests SET available_at=now()+$3*interval '1 second',lease_hash=NULL,lease_until=NULL WHERE id=$1 AND lease_hash=decode($2,'hex')`, c.id, digest, 5*(1<<(c.attempts-1)))
 	}

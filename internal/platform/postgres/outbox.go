@@ -59,7 +59,7 @@ func (o *DeliveryOutbox) cleanup(ctx context.Context) error {
 	}
 	// Bound cleanup, erase expired/exhausted credentials and retain only one day
 	// of completed delivery metadata. Neither query touches account/proof locks.
-	if _, err = tx.Exec(ctx, `UPDATE identity_outbox SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL WHERE id IN (SELECT id FROM identity_outbox WHERE completed_at IS NULL AND (expires_at<=now() OR (attempts>=5 AND (lease_until IS NULL OR lease_until<=now()))) LIMIT 100 FOR UPDATE SKIP LOCKED)`); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE identity_outbox SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL,outcome=CASE WHEN expires_at<=now() THEN 'EXPIRED' ELSE 'EXHAUSTED' END WHERE id IN (SELECT id FROM identity_outbox WHERE completed_at IS NULL AND (expires_at<=now() OR (attempts>=5 AND (lease_until IS NULL OR lease_until<=now()))) LIMIT 100 FOR UPDATE SKIP LOCKED)`); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `DELETE FROM identity_outbox WHERE id IN (SELECT id FROM identity_outbox WHERE completed_at<now()-interval '1 day' LIMIT 100 FOR UPDATE SKIP LOCKED)`); err != nil {
@@ -123,7 +123,7 @@ func (o *DeliveryOutbox) claim(ctx context.Context) (*deliveryClaim, error) {
 	message, decodeErr := o.cipher.Open(cid, payload)
 	actual, _ := challengeDigest(message.Purpose, message.Token)
 	if disabled || invalid || (decodeErr == nil && (message.Purpose != purpose || message.Recipient != email || !message.ExpiresAt.Equal(expiry) || actual != digest)) {
-		_, err = tx.Exec(ctx, `UPDATE identity_outbox SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL WHERE id=$1 AND user_id=$2`, id, uid)
+		_, err = tx.Exec(ctx, `UPDATE identity_outbox SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL,outcome='INVALIDATED' WHERE id=$1 AND user_id=$2`, id, uid)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +161,11 @@ func (o *DeliveryOutbox) finish(ctx context.Context, c *deliveryClaim, accepted 
 	}
 	// Matching the lease prevents a stale worker acknowledging another claim.
 	if accepted || c.attempts >= 5 {
-		_, err = tx.Exec(ctx, `UPDATE identity_outbox SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL WHERE id=$1 AND lease_hash=decode($2,'hex')`, c.id, digest)
+		outcome := "EXHAUSTED"
+		if accepted {
+			outcome = "ACCEPTED"
+		}
+		_, err = tx.Exec(ctx, `UPDATE identity_outbox SET completed_at=now(),payload=NULL,lease_hash=NULL,lease_until=NULL,outcome=$3 WHERE id=$1 AND lease_hash=decode($2,'hex')`, c.id, digest, outcome)
 	} else {
 		delay := 30 * (1 << (c.attempts - 1))
 		_, err = tx.Exec(ctx, `UPDATE identity_outbox SET available_at=now()+$3*interval '1 second',lease_hash=NULL,lease_until=NULL WHERE id=$1 AND lease_hash=decode($2,'hex')`, c.id, digest, delay)

@@ -18,18 +18,31 @@ type QueueDiagnostics struct {
 	Requests        QueueCounts `json:"requests"`
 	Deliveries      QueueCounts `json:"deliveries"`
 }
+
+// Outcome counts describe retained rows and decrease when cleanup purges them.
+// Accepted means the sender accepted the mail, not confirmed mailbox delivery.
+type QueueOutcomes struct {
+	Issued        int64 `json:"issued"`
+	NoAction      int64 `json:"noAction"`
+	Accepted      int64 `json:"accepted"`
+	Invalidated   int64 `json:"invalidated"`
+	Expired       int64 `json:"expired"`
+	Exhausted     int64 `json:"exhausted"`
+	LegacyUnknown int64 `json:"legacyUnknown"`
+}
 type QueueCounts struct {
-	Active              int64      `json:"active"`
-	Ready               int64      `json:"ready"`
-	Leased              int64      `json:"leased"`
-	Delayed             int64      `json:"delayed"`
-	AttemptedActive     int64      `json:"attemptedActive"`
-	AwaitingCleanup     int64      `json:"awaitingCleanup"`
-	Completed           int64      `json:"completed"`
-	PayloadRows         int64      `json:"payloadRows"`
-	OldestActiveAt      *time.Time `json:"oldestActiveAt"`
-	OldestPayloadAt     *time.Time `json:"oldestPayloadAt"`
-	LatestPayloadExpiry *time.Time `json:"latestPayloadExpiry"`
+	Outcomes            QueueOutcomes `json:"outcomes"`
+	Active              int64         `json:"active"`
+	Ready               int64         `json:"ready"`
+	Leased              int64         `json:"leased"`
+	Delayed             int64         `json:"delayed"`
+	AttemptedActive     int64         `json:"attemptedActive"`
+	AwaitingCleanup     int64         `json:"awaitingCleanup"`
+	Completed           int64         `json:"completed"`
+	PayloadRows         int64         `json:"payloadRows"`
+	OldestActiveAt      *time.Time    `json:"oldestActiveAt"`
+	OldestPayloadAt     *time.Time    `json:"oldestPayloadAt"`
+	LatestPayloadExpiry *time.Time    `json:"latestPayloadExpiry"`
 }
 
 func (d *DB) IdentityQueueDiagnostics(ctx context.Context) (QueueDiagnostics, error) {
@@ -60,10 +73,17 @@ func (d *DB) IdentityQueueDiagnostics(ctx context.Context) (QueueDiagnostics, er
  count(*) FILTER(WHERE completed_at IS NULL AND (expires_at<=now() OR (attempts>=5 AND (lease_until IS NULL OR lease_until<=now())))),
  count(*) FILTER(WHERE completed_at IS NOT NULL),
  count(*) FILTER(WHERE payload IS NOT NULL),
+ count(*) FILTER(WHERE completed_at IS NOT NULL AND outcome='ISSUED'),
+ count(*) FILTER(WHERE completed_at IS NOT NULL AND outcome='NO_ACTION'),
+ count(*) FILTER(WHERE completed_at IS NOT NULL AND outcome='ACCEPTED'),
+ count(*) FILTER(WHERE completed_at IS NOT NULL AND outcome='INVALIDATED'),
+ count(*) FILTER(WHERE completed_at IS NOT NULL AND outcome='EXPIRED'),
+ count(*) FILTER(WHERE completed_at IS NOT NULL AND outcome='EXHAUSTED'),
+ count(*) FILTER(WHERE completed_at IS NOT NULL AND (outcome IS NULL OR outcome='LEGACY_UNKNOWN')),
  min(created_at) FILTER(WHERE completed_at IS NULL AND expires_at>now()),
  min(created_at) FILTER(WHERE payload IS NOT NULL),
  max(expires_at) FILTER(WHERE payload IS NOT NULL)
- FROM `+queue.table).Scan(&q.Active, &q.Ready, &q.Leased, &q.Delayed, &q.AttemptedActive, &q.AwaitingCleanup, &q.Completed, &q.PayloadRows, &q.OldestActiveAt, &q.OldestPayloadAt, &q.LatestPayloadExpiry)
+ FROM `+queue.table).Scan(&q.Active, &q.Ready, &q.Leased, &q.Delayed, &q.AttemptedActive, &q.AwaitingCleanup, &q.Completed, &q.PayloadRows, &q.Outcomes.Issued, &q.Outcomes.NoAction, &q.Outcomes.Accepted, &q.Outcomes.Invalidated, &q.Outcomes.Expired, &q.Outcomes.Exhausted, &q.Outcomes.LegacyUnknown, &q.OldestActiveAt, &q.OldestPayloadAt, &q.LatestPayloadExpiry)
 		if err != nil {
 			return QueueDiagnostics{}, err
 		}

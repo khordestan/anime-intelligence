@@ -1,6 +1,6 @@
 # Identity queue diagnostics
 
-Use `go run ./cmd/identity-status` with `DATABASE_URL` supplied out of band for the restricted runtime role. The command requires the current migrated schema (through 000009) and normal runtime grants. It rejects owner/superuser connections using the same guard as the API. It does not need SMTP settings or encryption keys, contact a mail provider, start workers, decrypt envelopes, or expose an HTTP endpoint.
+Use `go run ./cmd/identity-status` with `DATABASE_URL` supplied out of band for the restricted runtime role. The command requires the current migrated schema (through 000010) and normal runtime grants. It rejects owner/superuser connections using the same guard as the API. It does not need SMTP settings or encryption keys, contact a mail provider, start workers, decrypt envelopes, or expose an HTTP endpoint.
 
 The command reads both queues from a single repeatable-read, read-only transaction and writes one versioned JSON object to stdout. Errors print fixed messages to stderr without connection details. Exit 0 means the snapshot was read and encoded successfully; exit 1 means missing/invalid configuration, database/query failure or output failure. Exit status is not a delivery-health verdict.
 
@@ -17,6 +17,7 @@ The command reads both queues from a single repeatable-read, read-only transacti
 | `attemptedActive` | Active work with at least one persisted claim; includes initial in-flight attempts and is not a failure counter |
 | `awaitingCleanup` | Uncompleted expired work, or attempt-limited work with no unexpired lease |
 | `completed` | Terminal records still retained; includes successful, discarded, expired and exhausted work |
+| `outcomes` | Counts of retained completed rows grouped by the fixed outcome codes below |
 | `payloadRows` | All remaining encrypted payload rows, including work awaiting cleanup |
 | `oldestActiveAt` | Earliest creation time among active records; null if none |
 | `oldestPayloadAt` | Earliest creation time among remaining payloads; null if none |
@@ -30,6 +31,22 @@ Counts overlap and are not a partition. For example, a leased item can also be a
 - Request active count approaching capacity means new admissions may receive a generic 503. Delayed work can reflect ordinary bounded retry backoff; it does not by itself prove an outage.
 - Unexpired leases mean work may be running. Persistent cleanup backlog or old payloads warrants checking that configured API workers are running and can reach PostgreSQL. This command never performs cleanup itself.
 - Payload counts and timestamps help planned key retirement. Follow [the key-rotation runbook](IDENTITY_KEY_ROTATION.md); do not infer key compatibility from counts or a successful diagnostic read, because the command does not decrypt data.
-- Completed counts are not success/failure statistics. The current schema does not retain a terminal outcome code; proving mail-provider acceptance requires additional instrumentation that excludes private data. This command is an operator diagnostic foundation, not a complete monitoring/alerting system.
+- Completed totals are not delivery-success counts. Use the bounded `outcomes` fields below; provider acceptance is not confirmed delivery to a recipient. This command remains an operator diagnostic foundation, not a complete monitoring/alerting system.
 
 Keep diagnostic access restricted to trusted operations. Protect the database connection secret and avoid echoing it in shell history/logs. Monitoring export, alert routing, provider/failure telemetry, retention/backup exercises and independent review remain launch work. Nothing in this command authorizes public deployment.
+
+## Retained terminal outcomes (migration 000010)
+
+| JSON outcome field | Scope | Meaning |
+| --- | --- | --- |
+| `issued` | Requests | Challenge issuance, encrypted mail insertion and request consumption committed together |
+| `noAction` | Requests | No new challenge was issued; unknown/disabled recipients, invalid verification sessions, already-verified accounts and resend quotas share this code |
+| `accepted` | Mail | Sender reported success; the SMTP adapter uses DATA acceptance as this boundary |
+| `invalidated` | Mail | Live account/proof/address/digest validation rejected pending delivery |
+| `expired` | Both | Cleanup discarded expired work |
+| `exhausted` | Both | The attempt limit was reached without a successful completion, including crashed claims |
+| `legacyUnknown` | Both | Historical or rolling old-writer completion with no reliable recorded outcome |
+
+All fields are present; inapplicable fields are zero. New workers write an allowlisted outcome in the same transaction that completes work and erases its encrypted payload. Stale lease acknowledgements cannot overwrite a newer result. Wrong-key/tampered envelopes remain pending without a terminal outcome until configuration is corrected or cleanup expires them. Success on the fifth attempt is still accepted/issued, not inferred exhaustion.
+
+These are counts of retained rows, **not cumulative counters**. They decrease when one-day cleanup or account-deletion cascades remove records. Do not apply counter-rate calculations to them. Migration backfills historical completion as `LEGACY_UNKNOWN`; it never guesses from attempt counts or timestamps. During a rolling upgrade, old writers may still leave a NULL outcome, which diagnostics also reports as legacy unknown. Outcome codes include no recipient/provider reason strings, and the HTTP acceptance response remains generic.

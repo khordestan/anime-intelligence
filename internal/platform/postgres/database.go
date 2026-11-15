@@ -64,6 +64,10 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 		pool.Close()
 		return nil, errors.New("required login security schema is missing; apply schema migrations")
 	}
+	if _, err = pool.Exec(ctx, `SELECT outcome FROM identity_requests LIMIT 0; SELECT outcome FROM identity_outbox LIMIT 0`); err != nil {
+		pool.Close()
+		return nil, errors.New("required identity queue outcome schema is missing; apply schema migrations")
+	}
 	dummy, err := makeDummyHash()
 	if err != nil {
 		pool.Close()

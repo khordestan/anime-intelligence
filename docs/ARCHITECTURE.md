@@ -8,7 +8,7 @@ The first release is a modular monolith. The API and worker are separate process
 - `internal/platform/postgres` implements catalog, tracker, credentials, and session persistence. Every private repository operation resolves a verified bearer token and runs inside a transaction with local RLS context.
 - Next.js consumes the versioned REST API.
 - The worker is a lifecycle placeholder; no background jobs are registered. Identity mail runs in the API through an encrypted PostgreSQL request inbox (committed before HTTP 202) and an encrypted mail outbox, with leased issuance/delivery workers.
-- PostgreSQL migrations through `000009_identity_requests` define the canonical data model, auth/session primitives, and forced row-level security policies. The API selects PostgreSQL when `DATABASE_URL` is configured and establishes transaction-scoped identity from server-verified session digests.
+- PostgreSQL migrations through `000010_identity_queue_outcomes` define the canonical data model, auth/session primitives, and forced row-level security policies. The API selects PostgreSQL when `DATABASE_URL` is configured and establishes transaction-scoped identity from server-verified session digests.
 
 ## Target architecture
 - Go REST API with explicit modules: identity, catalog, tracker, preferences, recommendations, notifications.
