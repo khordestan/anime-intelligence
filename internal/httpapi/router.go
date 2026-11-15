@@ -5,9 +5,9 @@ import (
  "log/slog"
  "net/http"
  "time"
- "github.com/example/anime-intelligence/internal/modules/catalog"
- "github.com/example/anime-intelligence/internal/modules/tracker"
- "github.com/example/anime-intelligence/internal/platform/store"
+ "github.com/khordestan/anime-intelligence/internal/modules/catalog"
+ "github.com/khordestan/anime-intelligence/internal/modules/tracker"
+ "github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 
 func NewRouter(logger *slog.Logger, data *store.Store) http.Handler {
