@@ -434,6 +434,30 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 	if _, ok, err := db.Repository(one.Token).Rate(ctx, anime, 5); err != nil || !ok {
 		t.Fatal(err)
 	}
+	// Populate every exported resource for both accounts, so isolation is
+	// tested against real foreign rows rather than empty tables.
+	for _, seed := range []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT INTO user_preferences(user_id,feature_id,preference_weight,origin)
+    SELECT accounts.uid,f.id,0.5,'DECLARED' FROM (VALUES($1::uuid),($2::uuid)) accounts(uid)
+    CROSS JOIN (SELECT id FROM anime_features ORDER BY feature_key LIMIT 1) f`, []any{one.User.ID, two.User.ID}},
+		{`INSERT INTO recommendations(user_id,anime_id,category,score,algorithm_version)
+    SELECT accounts.uid,$3,'PERSONAL_MATCH',0.75,'synthetic-test-v1' FROM (VALUES($1::uuid),($2::uuid)) accounts(uid)`, []any{one.User.ID, two.User.ID, anime}},
+		{`INSERT INTO recommendation_feedback(recommendation_id,user_id,feedback)
+    SELECT id,user_id,'INTERESTED' FROM recommendations WHERE user_id=$1 OR user_id=$2`, []any{one.User.ID, two.User.ID}},
+		{`INSERT INTO user_follows(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
+		{`INSERT INTO notifications(user_id,title,body) VALUES($1,'Synthetic notice','Synthetic content'),($2,'Synthetic notice','Synthetic content')`, []any{one.User.ID, two.User.ID}},
+	} {
+		if _, err = owner.Exec(ctx, seed.sql, seed.args...); err != nil {
+			t.Fatal("seed private export resources:", err)
+		}
+	}
+	// A separate account also rates the same shared catalog item.
+	if _, ok, err := db.Repository(two.Token).Rate(ctx, anime, 1); err != nil || !ok {
+		t.Fatal(err)
+	}
 	exported, err := db.ExportAccount(ctx, one.Token)
 	if err != nil {
 		t.Fatal(err)
@@ -450,7 +474,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("export leaked another account or credential field")
 		}
 	}
-	for _, key := range []string{"tracker", "ratings", "progress"} {
+	for _, key := range []string{"tracker", "ratings", "progress", "preferences", "recommendations", "feedback", "follows", "notifications"} {
 		var rows []map[string]any
 		if err = json.Unmarshal(exported.Data[key], &rows); err != nil || len(rows) != 1 {
 			t.Fatalf("export %s: %v", key, err)
@@ -481,6 +505,9 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 		var count int
 		if err = owner.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()+` WHERE `+pgx.Identifier{field}.Sanitize()+`=$1`, one.User.ID).Scan(&count); err != nil || count != 0 {
 			t.Fatalf("deletion left %s records: %d %v", table, count, err)
+		}
+		if err = owner.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()+` WHERE `+pgx.Identifier{field}.Sanitize()+`=$1`, two.User.ID).Scan(&count); err != nil || count != 1 {
+			t.Fatalf("deletion damaged another account's %s: %d %v", table, count, err)
 		}
 	}
 	if rows, err := db.Repository(two.Token).Library(ctx); err != nil || len(rows) != 1 || rows[0].EpisodesWatched != 12 {

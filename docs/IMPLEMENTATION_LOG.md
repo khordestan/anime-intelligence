@@ -127,3 +127,9 @@ Remaining boundaries:
 - Extended least-privilege runtime grants and made provisioning safe to rerun. Updated OpenAPI, roadmap, security contract, and runtime documentation. Dashboard export/deletion controls remain pending.
 - Local PostgreSQL 17 race tests, full Go suite, vet/build, and diff checks pass, including concurrent export/update consistency, credential exclusion, cross-user isolation, deletion password failures, cascading removal, and concurrent deletion.
 - The browser-fetch fix passed all GitHub CI jobs, including three production-browser tests (run 43663475819). No public deployment was performed.
+
+## 2026-11-15 — Complete export/deletion isolation coverage
+
+- Populated all eight exported product resources for two synthetic accounts and verified ownership in every exported row.
+- Verified deletion removes every owned resource while preserving the other account's user, sessions, tracker, ratings, progress, preferences, recommendations, feedback, follows, and notifications.
+- The expanded PostgreSQL race test passes locally. The account export/deletion feature commit passed all GitHub CI and CodeQL checks (CI run 43664014126, Security run 43664014129).
