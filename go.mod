@@ -1,3 +1,3 @@
-module github.com/example/anime-intelligence
+module github.com/khordestan/anime-intelligence
 
 go 1.23
