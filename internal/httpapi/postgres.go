@@ -183,7 +183,11 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 			return
 		}
 		if err := db.DeleteAccount(r.Context(), token, q.Password); err != nil {
-			sessionError(w, err)
+			if errors.Is(err, postgres.ErrReauthentication) {
+				authError(w, 401, "invalid_current_password")
+			} else {
+				sessionError(w, err)
+			}
 			return
 		}
 		w.WriteHeader(204)

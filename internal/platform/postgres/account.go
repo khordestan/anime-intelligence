@@ -60,11 +60,11 @@ func (d *DB) exportAccountSnapshot(ctx context.Context, token string) (AccountEx
 	return out, tx.Commit(ctx)
 }
 
-// DeleteAccount requires both a current verified session and the current
+// DeleteAccount requires both a current authenticated session and the current
 // password. The database's foreign keys cascade all user-owned records.
 func (d *DB) DeleteAccount(ctx context.Context, token, value string) error {
 	if len(value) > password.MaxBytes {
-		return ErrUnauthorized
+		return ErrReauthentication
 	}
 	tx, u, err := d.sessionTxWithUserLock(ctx, token, pgx.TxOptions{}, true)
 	if err != nil {
@@ -84,7 +84,7 @@ func (d *DB) DeleteAccount(ctx context.Context, token, value string) error {
 		hash = *encoded
 	}
 	if !password.Verify(hash, value) || encoded == nil {
-		return ErrUnauthorized
+		return ErrReauthentication
 	}
 	tag, err := tx.Exec(ctx, `DELETE FROM users WHERE id=$1 AND password_hash=$2`, u.ID, hash)
 	if err != nil {

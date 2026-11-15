@@ -483,7 +483,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("cross-account export row")
 		}
 	}
-	if err = db.DeleteAccount(ctx, one.Token, "incorrect-password"); !errors.Is(err, postgres.ErrUnauthorized) {
+	if err = db.DeleteAccount(ctx, one.Token, "incorrect-password"); !errors.Is(err, postgres.ErrReauthentication) {
 		t.Fatal("deletion without password accepted", err)
 	}
 	if _, err = db.Authenticate(ctx, one.Token); err != nil {
@@ -543,8 +543,8 @@ func TestHTTPAccountExportAndPasswordConfirmedDeletion(t *testing.T) {
 	if w := call("DELETE", "/api/v1/auth/account", s.Token, `{"password":"synthetic-export-password","userId":"spoofed"}`); w.Code != 400 {
 		t.Fatal("deletion accepted an owner override", w.Code)
 	}
-	if w := call("DELETE", "/api/v1/auth/account", s.Token, `{"password":"wrong-password"}`); w.Code != 401 {
-		t.Fatal("deletion accepted wrong password", w.Code)
+	if w := call("DELETE", "/api/v1/auth/account", s.Token, `{"password":"wrong-password"}`); w.Code != 401 || !strings.Contains(w.Body.String(), "invalid_current_password") {
+		t.Fatal("deletion accepted wrong password or obscured reauthentication failure", w.Code)
 	}
 	if w := call("DELETE", "/api/v1/auth/account", s.Token, `{"password":"synthetic-export-password"}`); w.Code != 204 {
 		t.Fatal("delete failed:", w.Code, w.Body.String())

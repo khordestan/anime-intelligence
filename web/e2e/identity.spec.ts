@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import type { Session } from "../lib/api";
 
 const API =
@@ -162,14 +163,81 @@ test("real TLS email proof verifies and recovers an account without leaking URL 
   ).toBe(401);
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(replacement);
+  const recoveredLogin = page.waitForResponse((response) =>
+    new URL(response.url()).pathname.endsWith("/auth/login"),
+  );
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText(email, { exact: true })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Email verification" }),
   ).toContainText("Email verified");
   await expect(page.getByRole("article")).toContainText("Solo Leveling");
+  const recovered: Session = await (await recoveredLogin).json();
+  const account = page.getByRole("region", { name: "Account data" });
+  const downloadEvent = page.waitForEvent("download");
+  await account
+    .getByRole("button", { name: "Download account export", exact: true })
+    .click();
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe("anime-intelligence-account.json");
+  const exportPath = await download.path();
+  const text = await readFile(exportPath!, "utf8"),
+    snapshot = JSON.parse(text);
+  expect(snapshot.user.id).toBe(original.user.id);
+  expect(snapshot.user.email).toBe(email);
+  expect(snapshot.data.tracker).toHaveLength(1);
+  for (const credential of [
+    original.token,
+    recovered.token,
+    password,
+    replacement,
+    "password_hash",
+    "token_hash",
+  ])
+    expect(text).not.toContain(credential);
   await page.screenshot({
     path: "test-results/identity-recovered.png",
     fullPage: true,
   });
+  await account
+    .getByRole("button", { name: "Delete account", exact: true })
+    .click();
+  const remove = account.getByRole("button", {
+    name: "Permanently delete my account",
+    exact: true,
+  });
+  await expect(remove).toBeDisabled();
+  await account
+    .getByLabel("Deletion password", { exact: true })
+    .fill("incorrect-synthetic-password");
+  await account.getByRole("checkbox").check();
+  await remove.click();
+  await expect(account.getByRole("alert")).toHaveText(
+    "The current password is incorrect.",
+  );
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
+  await expect(
+    account.getByLabel("Deletion password", { exact: true }),
+  ).toHaveValue("");
+  await expect(account.getByRole("checkbox")).not.toBeChecked();
+  await account
+    .getByLabel("Deletion password", { exact: true })
+    .fill(replacement);
+  await account.getByRole("checkbox").check();
+  await remove.click();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your library" }),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(account).toHaveCount(0);
+  await expect(page.getByRole("status")).toHaveText(
+    "Account deleted. All sessions have been signed out.",
+  );
+  expect(
+    (
+      await request.get(API + "/auth/me", {
+        headers: { Authorization: `Bearer ${recovered.token}` },
+      })
+    ).status(),
+  ).toBe(401);
 });

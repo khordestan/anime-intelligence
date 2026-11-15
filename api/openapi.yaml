@@ -215,7 +215,7 @@ paths:
       responses:
         "204": { description: Account and owned records deleted }
         "400": { description: Invalid JSON or unknown fields }
-        "401": { description: Missing/invalid session or incorrect password }
+        "401": { description: Missing/invalid session, or invalid_current_password for incorrect reauthentication }
         "429": { description: Authentication rate or concurrency limit reached }
   /api/v1/auth/sessions:
     get:

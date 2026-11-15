@@ -32,7 +32,7 @@
 - [ ] Durable identity-delivery retries and public-launch verified-email policy
 - [ ] Production abuse controls
 - [x] User data export and password-confirmed deletion (PostgreSQL API)
-- [ ] Account export/deletion dashboard controls
+- [x] Account export/deletion dashboard controls
 
 ## Milestone 2 — Catalog and data platform
 - [x] Initial feature taxonomy covering story, protagonist, powers, tone, pacing and spoiler-sensitive endings

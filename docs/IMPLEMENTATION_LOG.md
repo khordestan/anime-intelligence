@@ -198,3 +198,10 @@ Remaining boundaries:
 - The new identity CI variant successfully exercised actual TLS mail and email verification. Its later recovery step incorrectly assumed a same-document fragment navigation would clear the signed-in browser session; the test now explicitly signs out before testing recovery while retaining an independent API session for revocation checks.
 - Mail settings now fail startup if PostgreSQL is absent instead of being silently ignored by JSON development mode. Added configuration tests covering missing database, partial/valid configuration, disabled delivery, and redacted errors without sending mail.
 - Existing frontend, database, PostgreSQL-browser, backend, and CodeQL jobs passed in the preceding run; the corrected mail-enabled suite is rerun.
+
+
+### Account data controls
+
+- Added authenticated dashboard export downloads through the session-bound client. Exports use a temporary browser object URL and a fixed filename; private data is not placed in browser storage or URLs sent to the API.
+- Added explicit password-confirmed permanent deletion with an acknowledgement checkbox. Successful deletion clears the browser session and library; a wrong password clears the form while retaining the valid session.
+- Distinguished deletion reauthentication failures from invalid sessions in the API, matching password changes. Extended real TLS-mail/PostgreSQL browser coverage to download and inspect the export, reject incorrect deletion passwords, delete the account and reject its old bearer.

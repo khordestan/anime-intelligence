@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SessionManager from "./session-manager";
 import PasswordManager from "./password-manager";
+import AccountManager from "./account-manager";
 import { RecoveryFlow, VerificationRequest } from "./identity-actions";
 
 import {
@@ -358,6 +359,17 @@ export default function Home() {
           onChanged={() => {
             changeSession(null);
             setNotice("Password changed. Sign in with your new password.");
+          }}
+          onError={handleError}
+        />
+      )}
+      {session && (
+        <AccountManager
+          key={`account:${session.user.id}`}
+          client={client}
+          onDeleted={() => {
+            changeSession(null);
+            setNotice("Account deleted. All sessions have been signed out.");
           }}
           onError={handleError}
         />
