@@ -25,7 +25,8 @@ The database primitives in migration `000004_auth_sessions` are implemented and 
 
 - Derive the user identity only from a verified server-side session. Never trust a client-supplied `user_id`, query parameter, or request-body owner field.
 - Every user-owned read, update, delete, and feedback query must include the authenticated `user_id` in its predicate.
-- Use transaction-scoped PostgreSQL row-level security as defense in depth after the repository reliably sets a trusted user context. The application database role must not be a superuser or have `BYPASSRLS`; do not run the application as the schema owner.
+- Migration `000005_row_level_security` enables and forces RLS on users, sessions, watch history, ratings, progress, preferences, recommendations, feedback, follows, and notifications. Policies use the transaction-scoped `app.user_id` setting. The API does not set this context yet, so PostgreSQL runtime access is not ready. The application database role must not be a superuser or have `BYPASSRLS`; do not run the application as the schema owner.
+- The `app.user_id` setting is a trusted server-side context, not an authentication mechanism. Only set it after verifying a server-side session, within the same transaction as the protected queries. Never derive it from request input.
 - Test cross-user access attempts for every user-owned resource, not only happy paths.
 - Keep catalog data public/shared; isolate watch history, ratings, notes, preferences, recommendation feedback, follows, and notifications.
 
