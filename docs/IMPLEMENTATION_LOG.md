@@ -355,3 +355,11 @@ Validation: existing main 5d5b7d2 CI 43745027034 and Security 43745027043 inspec
 Public PostgreSQL catalog list/detail now return existing synopsis, airing season and cover URL columns. Added episodeCountKnown alongside the existing numeric episodeCount to distinguish NULL/unknown from known zero without changing the existing numeric field. Local starter titles explicitly mark known totals. No schema migration or new runtime grants are required.
 
 Added restricted-role PostgreSQL and anonymous HTTP regression coverage for metadata parity, NULL fields, known-zero counts and missing titles, plus local seed count coverage. Local execution unavailable (Go absent); exact-commit Actions pending.
+
+## 2026-11-15 — Catalog validation checkpoint and continuity constraints
+
+Verified exact-commit Actions:
+- 51da5bc: CI 43746409535, all seven jobs passed; Security 43746409597 passed.
+- 2b6781e: CI 43746527946, all seven jobs passed, including restricted PostgreSQL integration/migration tests, restore drill, frontend/mocked-browser tests and both full-stack browser suites. Backend includes unit/race/vet/build/vulnerability checks.
+
+Follow-up adds cycle detection for normalized PREQUEL/SEQUEL edges, with reciprocal-relation, two/three-node cycle, side-story and partial-graph tests. Snapshot validation only sees submitted edges; persistence must additionally check the full canonical graph. Added OpenAPI catalog list/detail schemas, including metadata and episodeCountKnown. Follow-up exact-commit CI pending; local toolchain unavailable. No deployments.

@@ -116,7 +116,7 @@ func (s Snapshot) Validate(now time.Time) error {
 			episodes[key] = true
 		}
 	}
-	return nil
+	return validateContinuity(s.Titles)
 }
 
 func episodeKey(e Episode) string {

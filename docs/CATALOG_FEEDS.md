@@ -8,7 +8,7 @@ Version 1 snapshots contain a provider key, observation timestamp and partial li
 
 Null episode totals mean unknown. Relations may target records outside the partial snapshot. A season is a separately identified title linked by PREQUEL/SEQUEL; WINTER describes an airing quarter, not a franchise season number. Genres/tags do not automatically become curated taxonomy observations. Synopses/tags may contain spoilers and are not automatically published.
 
-Input is capped at 8 MiB. Unknown fields, trailing documents, invalid identities/enums, duplicates, self relations, invalid episode bounds and future observations/releases fail closed. Errors do not print raw input. This validates structure, not licensing, truth, source trust or completeness.
+Input is capped at 8 MiB. Unknown fields, trailing documents, invalid identities/enums, duplicates, self relations, cyclic PREQUEL/SEQUEL chronology, invalid episode bounds and future observations/releases fail closed. Errors do not print raw input. This validates structure, not licensing, truth, source trust or completeness.
 
 ## Local preview
 
@@ -28,6 +28,6 @@ Without a previous snapshot, establish a baseline and emit no historical alerts.
 
 No external provider is approved or enabled. Before a network adapter: document current terms, attribution, redistribution/cache limits, allowed fields, request limits and deletion obligations. Public API access does not establish redistribution rights.
 
-Before applying snapshots: resolve provider IDs to canonical IDs, store permitted evidence/field provenance transactionally, reject stale observations against a durable high-water mark, retain schedule revisions and detect graph cycles. Never delete canonical titles based on absence from a partial feed. Provider identities remain distinct until reviewed resolution merges them.
+Before applying snapshots: resolve provider IDs to canonical IDs, store permitted evidence/field provenance transactionally, reject stale observations against a durable high-water mark, retain schedule revisions and validate continuity against the entire persisted graph (the decoder only checks the submitted snapshot). Never delete canonical titles based on absence from a partial feed. Provider identities remain distinct until reviewed resolution merges them.
 
 Before delivering alerts: retain a durable unique event-key ledger across partial snapshots/corrections, map events to canonical identities for cross-provider deduplication, scope follows/preferences to authenticated owners, and enqueue notifications atomically. Pure comparison cannot guarantee durable or cross-provider deduplication. New-season announcements, retractions, provider conflicts, region/language availability, user episode tracking and in-app delivery remain pending.

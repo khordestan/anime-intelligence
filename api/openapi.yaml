@@ -62,6 +62,18 @@ paths:
       responses:
         "200":
           description: Catalog page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, limit, offset, count]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Anime' }
+                  limit: { type: integer }
+                  offset: { type: integer }
+                  count: { type: integer }
   /api/v1/anime/{id}:
     get:
       summary: Get anime by ID
@@ -71,7 +83,11 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200": { description: Anime details }
+        "200":
+          description: Anime details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Anime' }
         "404": { description: Anime not found }
   /api/v1/tracker:
     get:
@@ -420,6 +436,21 @@ components:
                 format: password
                 description: Registration requires 12–1024 UTF-8 bytes. Request body limit is 4096 bytes.
   schemas:
+    Anime:
+      type: object
+      required: [id, title, mediaType, status, episodeCountKnown]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        nativeTitle: { type: string }
+        mediaType: { type: string }
+        status: { type: string }
+        releaseYear: { type: integer }
+        synopsis: { type: string, description: Optional source text; may contain spoilers. }
+        season: { type: string, description: Optional airing quarter rather than franchise season number. }
+        coverImageUrl: { type: string }
+        episodeCountKnown: { type: boolean, description: False means the episode total is unknown. }
+        episodeCount: { type: integer, description: Omitted when zero; use episodeCountKnown to distinguish known zero from unknown. }
     SessionInfo:
       type: object
       additionalProperties: false
