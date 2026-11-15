@@ -13,7 +13,7 @@ import (
  "time"
 )
 
-type Anime struct { ID string `json:"id"`; Title string `json:"title"`; NativeTitle string `json:"nativeTitle,omitempty"`; MediaType string `json:"mediaType"`; ReleaseYear int `json:"releaseYear,omitempty"`; Status string `json:"status"`; EpisodeCount int `json:"episodeCount,omitempty"` }
+type Anime struct { Synopsis string `json:"synopsis,omitempty"`; Season string `json:"season,omitempty"`; CoverImageURL string `json:"coverImageUrl,omitempty"`; EpisodeCountKnown bool `json:"episodeCountKnown"`; ID string `json:"id"`; Title string `json:"title"`; NativeTitle string `json:"nativeTitle,omitempty"`; MediaType string `json:"mediaType"`; ReleaseYear int `json:"releaseYear,omitempty"`; Status string `json:"status"`; EpisodeCount int `json:"episodeCount,omitempty"` }
 type Entry struct { ID string `json:"id"`; AnimeID string `json:"animeId"`; Title string `json:"title"`; WatchStatus string `json:"watchStatus"`; EpisodesWatched int `json:"episodesWatched"`; TotalEpisodes int `json:"totalEpisodes,omitempty"`; Rating int `json:"rating,omitempty"`; UpdatedAt time.Time `json:"updatedAt"` }
 type diskState struct { Library []Entry `json:"library"` }
 type Store struct { mu sync.RWMutex; path string; catalog []Anime; library map[string]Entry }
@@ -29,6 +29,7 @@ func New(path string) (*Store,error) {
  {ID:"10000000-0000-4000-8000-000000000007",Title:"Steins;Gate",NativeTitle:"シュタインズ・ゲート",MediaType:"TV",ReleaseYear:2011,Status:"FINISHED",EpisodeCount:24},
  {ID:"10000000-0000-4000-8000-000000000008",Title:"Overlord",NativeTitle:"オーバーロード",MediaType:"TV",ReleaseYear:2015,Status:"FINISHED",EpisodeCount:13},
  }}
+ for i := range s.catalog { s.catalog[i].EpisodeCountKnown = true }
  if path!="" { if err:=s.load(); err!=nil&&!os.IsNotExist(err){return nil,err} }
  return s,nil
 }

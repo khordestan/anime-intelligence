@@ -23,7 +23,7 @@ PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures st
 
 ## Implementation status
 
-- Implemented: public catalog search/detail; authenticated tracker create/list/update/remove, basic episode progress and 1–5 ratings; verified email required for PostgreSQL tracker/rating access.
+- Implemented: public catalog search/detail, including stored synopsis, airing quarter, cover URL and explicit episodeCountKnown to distinguish unknown totals from known zero; authenticated tracker create/list/update/remove, basic episode progress and 1–5 ratings; verified email required for PostgreSQL tracker/rating access.
 - Implemented: registration/login/logout, refresh with stable logical session IDs, session listing and remote revocation, password change, email verification, password recovery, consistent private export and password-confirmed deletion, with dashboard controls.
 - Implemented: persisted password-failure window shared across login, password changes/deletion and API instances; ten failures in fifteen minutes cause a fifteen-minute lock. Success/password change/reset clears it; active locks are not extended.
 - Implemented: canonical catalog/provenance schema, eight starter titles and forty-feature taxonomy. Schema coverage is broader than runtime feature coverage.
@@ -62,6 +62,6 @@ Request intake uses a separate forced-RLS inbox and trusted `app.identity_reques
 4. CI has backend, monitoring/parser/rule/unit checks, frontend/mocked-browser, database/migration/rollback, a dedicated isolated PostgreSQL 17 logical recovery drill, and two real PostgreSQL/browser suites (`postgres`, `identity`). Both use disposable restricted database roles and a loopback-only synthetic TLS mailbox. CodeQL runs separately. Verify checks for the exact pushed SHA; a local pass does not prove browser CI.
 5. Commit implementation/tests and context updates together where practical. Record verified results in the implementation log; leave pending checks explicitly pending. Keep code and context in GitHub rather than a separate artifact store.
 
-Latest inspected checkpoint: `5d5b7d2` passed [CI](https://github.com/khordestan/anime-intelligence/actions/runs/43745027034) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/43745027043). Catalog feed changes require exact-commit CI after publication. Local execution is unavailable in this session (Go absent; shell network cannot resolve GitHub). Nothing deployed.
+Latest inspected checkpoint: `5d5b7d2` passed [CI](https://github.com/khordestan/anime-intelligence/actions/runs/43745027034) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/43745027043). Catalog feed and metadata changes require exact-commit CI after publication. Local execution is unavailable in this session (Go absent; shell network cannot resolve GitHub). Nothing deployed.
 
 Previous verified checkpoint: `b38a78c` (transactional tracker removal API), with all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43743233860) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43743233912) passing. The current batch adds dashboard confirmation/removal and browser regression coverage; inspect exact-commit CI after publication. Nothing deployed or activated.

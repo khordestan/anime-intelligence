@@ -349,3 +349,9 @@ Implemented bounded strict JSON snapshot decoding, provider-scoped identities, r
 No network provider, database ingestion, user progress mutation or notification delivery is enabled. Durable event-key retention, canonical resolution and owner-scoped delivery remain pending.
 
 Validation: existing main 5d5b7d2 CI 43745027034 and Security 43745027043 inspected: success. Local tests not run: no Go toolchain and shell DNS unavailable. New implementation CI pending publication; baseline CI does not validate this change.
+
+## 2026-11-15 — Runtime catalog metadata
+
+Public PostgreSQL catalog list/detail now return existing synopsis, airing season and cover URL columns. Added episodeCountKnown alongside the existing numeric episodeCount to distinguish NULL/unknown from known zero without changing the existing numeric field. Local starter titles explicitly mark known totals. No schema migration or new runtime grants are required.
+
+Added restricted-role PostgreSQL and anonymous HTTP regression coverage for metadata parity, NULL fields, known-zero counts and missing titles, plus local seed count coverage. Local execution unavailable (Go absent); exact-commit Actions pending.
