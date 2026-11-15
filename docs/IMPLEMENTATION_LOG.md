@@ -473,3 +473,9 @@ Added verified-account declared feature preference list/update/reset and Postgre
 Added synthetic database/HTTP tests for cold start, owner separation, rating inference, tracker exclusion, preference reset, spoiler/provider/unreferenced filtering and strict request bodies; ranking tie regression added. Runtime-role grants now include read-only feature evidence and owner-scoped preference writes. Reapply the role script on existing installations. No migrations, personal history, external AI calls or deployment added.
 
 Baseline f90800a CI 43758880391 and Security 43758880408 inspected: success. New code pending exact-commit CI; shell toolchains unavailable, so no local test pass claimed.
+
+## 2026-11-16 — Opt-in factual catalog worker with separate write role
+
+Recommendation/preferences 08c6ccc passed CI 43759574712 and Security 43759574718. Added explicit Wikidata worker configuration, bounded non-overlapping cycles, cancellation and full-interval retry behavior. Approval and persisted source observation time are checked before HTTP; a session advisory lock suppresses simultaneous collectors. Import rechecks approval and commits atomically. Default worker remains idle without configuration.
+
+Added a dedicated catalog writer role that cannot enable sources, remap external identities or read/write private tables. CheckWriter rejects elevated/owner/member roles and even private column grants. Narrow label/URL update grants support PostgreSQL row-lock requirements. Added synthetic configuration/scheduler tests and disposable PostgreSQL role, approval, lock, import and persisted-due tests. No real source, scheduler host or deployment activated. Exact-commit CI pending; no local test pass claimed.

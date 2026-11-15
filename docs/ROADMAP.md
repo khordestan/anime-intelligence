@@ -61,17 +61,20 @@
 - [x] Transactional owner-scoped tracker removal API with ratings/progress cleanup
 - [x] Dashboard removal confirmation, retry/cancel and browser isolation coverage
 - [x] Exact episode selections per canonical season/title, separate from aggregate count mode
-- [ ] Dashboard exact-episode editing, rewatches and finer season conventions
+- [x] Dashboard exact-episode editing
+- [ ] Rewatches and finer season conventions
 - [ ] Notes, rewatches and season ratings
 - [ ] Import/export and bulk editing
 - [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence
 - [x] Transactional offline schedule ingestion and revision history
-- [ ] Scheduled network synchronization
+- [x] Opt-in bounded Wikidata factual synchronization with persisted source due time
+- [ ] Durable fetch jobs, broad metadata/availability synchronization and per-title scheduling
 - [x] Durable post-baseline season-announcement and confirmed episode-release detection
 - [x] Owner-scoped polling in-app episode notifications and per-follow release tracks
-- [ ] Dashboard notification controls and background channels
+- [x] Dashboard notification controls
+- [ ] Background delivery channels
 - [x] Durable canonical release-event and owned notification duplicate suppression
 
 ## Milestone 5 — Taste intelligence
