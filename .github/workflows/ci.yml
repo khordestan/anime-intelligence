@@ -107,7 +107,9 @@ jobs:
               RAISE EXCEPTION 'Session RLS expected one visible session, got %', visible_sessions;
             END IF;
           END $body$;
-          SET app.login_email = '';\n          SET app.session_token_hash = '';\n          SET app.user_id = '20000000-0000-4000-8000-000000000001';
+          SET app.login_email = '';
+          SET app.session_token_hash = '';
+          SET app.user_id = '20000000-0000-4000-8000-000000000001';
           DO $body$ DECLARE visible_users integer; BEGIN
             SELECT count(*) INTO visible_users FROM users;
             IF visible_users <> 1 THEN
