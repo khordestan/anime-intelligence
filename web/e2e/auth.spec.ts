@@ -99,6 +99,12 @@ test("account switching and reload never retain another account's library or bea
   await expect(
     page.getByText("browser-one@example.test", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Active sessions" }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("region", { name: "Password settings" }),
+  ).toHaveCount(1);
   await page.getByPlaceholder("Search starter catalog…").fill("Synthetic");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(1);

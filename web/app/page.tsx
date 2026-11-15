@@ -326,14 +326,14 @@ export default function Home() {
       )}
       {session && (
         <SessionManager
-          key={session.user.id}
+          key={`sessions:${session.user.id}`}
           client={client}
           onError={handleError}
         />
       )}
       {session && (
         <PasswordManager
-          key={session.user.id}
+          key={`password:${session.user.id}`}
           client={client}
           onChanged={() => {
             changeSession(null);

@@ -53,6 +53,12 @@ test("real PostgreSQL auth, tracking, remote session control and account isolati
   await entry.getByLabel("Rating Solo Leveling").selectOption("4");
   expect((await ratingResponse).status()).toBe(200);
   await expect(entry.getByLabel("Rating Solo Leveling")).toHaveValue("4");
+  await expect(
+    page.getByRole("region", { name: "Active sessions" }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("region", { name: "Password settings" }),
+  ).toHaveCount(1);
   // Revoke an independently issued token using the actual dashboard/API.
   await page
     .getByRole("button", { name: "Manage sessions", exact: true })
@@ -110,6 +116,9 @@ test("real PostgreSQL auth, tracking, remote session control and account isolati
   ).toBeVisible();
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(panel).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Password settings" }),
+  ).toHaveCount(0);
   // A second account sees no first-account history, despite the shared catalog.
   await signIn(emailTwo);
   await expect(page.getByRole("article")).toHaveCount(0);

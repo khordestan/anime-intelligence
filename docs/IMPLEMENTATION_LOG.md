@@ -163,3 +163,9 @@ Remaining boundaries:
 - Added dashboard controls that clear password inputs after every attempt, preserve a valid session on incorrect reauthentication, and return to sign-in after success. Only allowlisted error codes/messages reach the UI; stale error decoding cannot sign out a different account.
 - Added database/HTTP tests for password validation, failed-change rollback, all-session revocation, foreign-account preservation, concurrent changes, owner-field rejection, and hashed storage. Added focused browser coverage and extended the real PostgreSQL browser flow with password change and sign-in using the replacement.
 - Local transport tests, frontend typecheck/build, and the Go race suite pass. The previous full-stack browser job passed against the production-role provisioning script and PostgreSQL (CI run 43686660913). No public deployment was performed.
+
+## 2026-11-15 — Account-panel reconciliation regression
+
+- Browser CI detected duplicate React keys on the sibling session/password panels, which could duplicate controls across rerenders and leave stale panels after sign-out.
+- Namespaced keys by panel type and account ID, preserving account-specific resets while keeping sibling identities unique.
+- Added explicit one-panel-per-type assertions through authenticated rerenders and complete removal checks after remote sign-out. Both mocked and real PostgreSQL browser suites are rerun; backend/database/password race tests already passed in the preceding CI run.
