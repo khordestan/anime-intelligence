@@ -1,5 +1,18 @@
 # Implementation Log
 
+## 2026-11-15 — Public repository security baseline
+
+Implemented:
+- Added `SECURITY.md` with private vulnerability-reporting guidance and explicit development-stage security boundaries.
+- Added `CONTRIBUTING.md` with test expectations, data provenance requirements, and a strict prohibition on committing personal watch histories or secrets.
+- Added Dependabot update proposals for Go modules, npm dependencies, and GitHub Actions.
+- Added CodeQL workflows for Go and JavaScript/TypeScript plus dependency review on pull requests.
+- Updated the README to state the public-repository privacy rules and current non-production limitations.
+
+Verification:
+- GitHub accepted commits creating all four security/contribution files.
+- Workflow execution is pending; no CodeQL or dependency-review result is claimed yet.
+
 ## 2026-11-15 — Foundation and intelligence core
 
 Implemented:
