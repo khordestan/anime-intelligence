@@ -148,3 +148,11 @@ Remaining boundaries:
 - Preserved the in-memory credential boundary and account-switch cancellation; the panel unmounts on sign-out/unauthorized responses. No device/IP metadata or credential digests are exposed.
 - Added browser coverage for individual and bulk revocation, retained current-session access, disabled repeat actions, and panel cleanup on sign-out.
 - Local frontend transport tests, typecheck, and production build pass. The backend session-management commit passed CI and CodeQL (runs 43685858708 and 43685858600). Browser verification for the new controls runs in GitHub CI.
+
+## 2026-11-15 — Full-stack browser/database verification
+
+- Added a dedicated Playwright suite against the actual Go API, production dashboard build, and PostgreSQL, with no response mocks.
+- Added an isolated CI job that applies the embedded migrations and real role-provisioning script, generates a temporary masked runtime password, and runs the API as the restricted non-owner role on loopback.
+- Covered persisted tracking/progress/ratings, UI-driven individual/bulk remote revocation, browser data cleanup after remote revocation, two-account isolation, foreign entry update rejection, export, and password-confirmed deletion while another account remains usable.
+- Added explicit response synchronization for rating persistence and separated real/mocked browser suites. Local typecheck, test discovery, workflow YAML validation, and production build are verified; actual Chromium execution is checked in GitHub CI because the workspace disallows browser Unix sockets.
+- The session-management dashboard commit passed all CI and CodeQL checks (runs 43686169885 and 43686169895). No public deployment was performed.

@@ -13,7 +13,7 @@ A Go and Next.js foundation for a detailed anime catalog, personal tracking, and
 - Embedded, checksummed, transactional migration runner with advisory locking.
 - Single-user JSON development mode and a Next.js dashboard with PostgreSQL login/registration, logout, session expiry, and account-switch isolation. Browser tokens stay only in memory. Signed-in users can inspect active sessions, revoke a selected login, or sign out all other sessions.
 - Canonical catalog/provenance schema, 40-feature taxonomy, and deterministic Personal Match ranking core (not yet exposed through HTTP).
-- CI for Go race tests, vet/build, PostgreSQL runtime/HTTP isolation, migration apply/rollback, frontend transport/session tests, browser tests, and frontend typecheck/build; CodeQL and dependency review.
+- CI for Go race tests, vet/build, PostgreSQL runtime/HTTP isolation, migration apply/rollback, frontend transport/session tests, mocked and real-PostgreSQL browser tests, and frontend typecheck/build; CodeQL and dependency review.
 
 ## Run locally
 

@@ -40,7 +40,7 @@ Registration/login are bounded by a process-wide token bucket and a two-operatio
 
 ## Verification
 
-Run `go test -race ./...`, `go vet ./...`, and `go build ./...`. In `web`, run `npm ci`, `npm test`, `npm run typecheck`, `npm run build`, then `npx playwright install chromium` and `npm run test:e2e`. Browser tests mock the API to test UI isolation and local-mode compatibility; database integration tests separately exercise the real API and PostgreSQL. Full-stack browser/database testing remains pending.
+Run `go test -race ./...`, `go vet ./...`, and `go build ./...`. In `web`, run `npm ci`, `npm test`, `npm run typecheck`, `npm run build`, then `npx playwright install chromium` and `npm run test:e2e`. Browser tests mock the API to test UI isolation and local-mode compatibility; database integration tests separately exercise the real API and PostgreSQL. A separate full-stack suite runs the built dashboard against the real Go API and PostgreSQL. The standard browser suite uses mocks for focused UI/session behavior.
 
 To include real database tests, set `TEST_DATABASE_URL` to a test administrator connection and run `go test -race -count=1 ./internal/platform/postgres`. The administrator must be allowed to create/drop disposable databases and roles. Tests create randomly named isolated databases and non-owner roles, use synthetic `.test` accounts, and clean them up. They never drop the database named in the supplied connection.
 
@@ -49,3 +49,16 @@ GitHub Actions runs this suite against PostgreSQL 17, alongside the existing mig
 Account export/deletion currently have API endpoints only. Deletion requires the current password in the request body and cannot target a supplied user ID. It permanently removes all the account's product rows and sessions; other accounts and the shared catalog remain untouched. Reauthentication failures leave the account unchanged. The exported snapshot includes tracker, ratings, progress, preferences, recommendations, feedback, follows, and notifications, not password hashes or session digests.
 
 In PostgreSQL mode, select **Manage sessions** while signed in to see the current and other active logins. **Revoke** signs out one other session. **Sign out other sessions** covers all other active logins, even those outside the 100-row listing. No tokens or digests are displayed. The current session stays signed in until the normal sign-out control is used or its server credential expires/is revoked.
+
+## Full-stack browser verification
+
+Use a disposable PostgreSQL database with the schema and restricted runtime role provisioned as above. Export its restricted `DATABASE_URL`; keep administrator credentials separate. Make ports 3000 and 8080 available, install the Chromium test browser, and run in `web`:
+
+```sh
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080/api/v1 npm run build
+E2E_REAL_API=1 CI=1 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080/api/v1 npm run test:e2e
+```
+
+Playwright starts both the Go API and production Next.js server on loopback. The suite uses random synthetic `.test` accounts and exercises real registration/login, tracker progress and ratings, individual/bulk remote revocation, browser cleanup after remote revocation, cross-account history/update isolation, export, and password-confirmed deletion. It does not mock network responses. The default suite (`npm run test:e2e` without `E2E_REAL_API`) keeps the focused mocked tests.
+
+The dedicated CI job provisions an ephemeral PostgreSQL 17 database, applies the embedded migrations and actual `deployments/runtime-role.sql`, generates a temporary masked runtime password, and runs the browser with that non-owner connection. No public deployment or external provider access is involved. Test reports/screenshots contain synthetic fixtures only and are retained for three days.

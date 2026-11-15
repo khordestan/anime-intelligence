@@ -46,6 +46,67 @@ jobs:
           name: browser-test-results
           path: web/test-results
           retention-days: 3
+  full-stack-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_REAL_API: "1"
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8080/api/v1
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: anime
+          POSTGRES_PASSWORD: anime_test_password
+          POSTGRES_DB: anime_intelligence
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anime -d anime_intelligence"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Provision the disposable database and restricted runtime role
+        env:
+          MIGRATION_DATABASE_URL: postgres://anime:anime_test_password@127.0.0.1:5432/anime_intelligence?sslmode=disable
+          PGPASSWORD: anime_test_password
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          go run ./cmd/migrate
+          psql -h 127.0.0.1 -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f deployments/runtime-role.sql
+          runtime_password=$(openssl rand -hex 32)
+          echo "::add-mask::$runtime_password"
+          psql -h 127.0.0.1 -U anime -d anime_intelligence -v ON_ERROR_STOP=1 <<SQL
+          ALTER ROLE anime_runtime PASSWORD '$runtime_password';
+          SQL
+          echo "DATABASE_URL=postgres://anime_runtime:$runtime_password@127.0.0.1:5432/anime_intelligence?sslmode=disable" >> "$GITHUB_ENV"
+      - run: npm ci
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Browser tests against the Go API and PostgreSQL
+        run: npm run test:e2e
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-stack-browser-results
+          path: web/test-results
+          retention-days: 3
   database:
     runs-on: ubuntu-latest
     services:

@@ -70,5 +70,5 @@
 - [ ] Security review, rate limiting and observability
 - [ ] Backups, load and reliability tests
 - [x] Browser auth/account-switch/local-mode tests and transport race tests
-- [ ] Full-stack browser tests against the real PostgreSQL API
+- [x] Full-stack browser tests against the real PostgreSQL API (dedicated disposable CI database and restricted runtime role)
 - [ ] Deployment automation and operational runbooks
