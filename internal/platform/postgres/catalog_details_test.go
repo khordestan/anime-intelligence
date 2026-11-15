@@ -27,6 +27,8 @@ func TestCatalogDetailsPublicAndConsistent(t *testing.T) {
 	var id,target string
 	if err:=owner.QueryRow(ctx,`SELECT anime_id::text FROM anime_external_ids WHERE provider='details-fixture' AND external_id='one'`).Scan(&id);err!=nil {t.Fatal(err)}
 	if err:=owner.QueryRow(ctx,`SELECT anime_id::text FROM anime_external_ids WHERE provider='details-fixture' AND external_id='two'`).Scan(&target);err!=nil {t.Fatal(err)}
+	matches,err:=db.Repository("").Catalog(ctx,"Synthetic Alias",24,0)
+	if err!=nil || len(matches)!=1 || matches[0].ID!=id {t.Fatal("imported alias search",matches,err)}
 	h:=httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard,nil)),db)
 	w:=httptest.NewRecorder()
 	h.ServeHTTP(w,httptest.NewRequest("GET","/api/v1/anime/"+id+"/details",nil))

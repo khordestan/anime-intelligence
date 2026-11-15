@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionManager from "./session-manager";
 import ReleaseAlerts from "./release-alerts";
 import EpisodeEditor from "./episode-editor";
+import CatalogDetails from "./catalog-details";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
 import { RecoveryFlow, VerificationRequest } from "./identity-actions";
@@ -58,6 +59,8 @@ export default function Home() {
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
+  const [searchedCatalog, setSearchedCatalog] = useState<Anime[] | null>(null);
+  const catalogSearchRevision = useRef(0);
   const [client] = useState(() => new ApiClient(API));
   const [identityAvailable, setIdentityAvailable] = useState(false);
   const [mode, setMode] = useState<"local" | "postgres" | null>(null);
@@ -73,6 +76,8 @@ export default function Home() {
   const changeSession = useCallback(
     (next: Session | null) => {
       accountRevision.current++;
+      catalogSearchRevision.current++;
+      setSearchedCatalog(null);
       refreshRevision.current++;
       setRemoval(null);
       client.setSession(next);
@@ -132,6 +137,17 @@ export default function Home() {
       active = false;
     };
   }, [client, handleError]);
+  useEffect(() => {
+    const revision = ++catalogSearchRevision.current;
+    setSearchedCatalog(null);
+    if (!query.trim() || mode === null) return;
+    const timer = setTimeout(() => {
+      client.request<{ items: Anime[] }>("/anime?q=" + encodeURIComponent(query.trim()) + "&limit=100")
+        .then(result => { if (revision === catalogSearchRevision.current) setSearchedCatalog(result.items ?? []); })
+        .catch(error => { if (revision === catalogSearchRevision.current) handleError(error); });
+    }, 250);
+    return () => { clearTimeout(timer); catalogSearchRevision.current++; };
+  }, [query, mode, client, handleError]);
   async function refreshVerifiedUser() {
     if (!session) return;
     try {
@@ -241,14 +257,14 @@ export default function Home() {
   );
   const results = useMemo(
     () =>
-      catalog
+      (searchedCatalog ?? catalog)
         .filter(
           (x) =>
-            x.title.toLowerCase().includes(query.toLowerCase()) &&
+            (searchedCatalog !== null || x.title.toLowerCase().includes(query.toLowerCase())) &&
             !library.some((e) => e.animeId === x.id),
         )
         .slice(0, 8),
-    [catalog, library, query],
+    [catalog, searchedCatalog, library, query],
   );
   async function add(a: Anime) {
     await mutate("/tracker", "POST", {
@@ -461,8 +477,9 @@ export default function Home() {
             {results.map((a) => (
               <div
                 key={a.id}
-                className="flex items-center justify-between rounded-xl bg-white/5 p-3"
+                className="rounded-xl bg-white/5 p-3"
               >
+                <div className="flex items-center justify-between gap-3">
                 <span>
                   {a.title}{" "}
                   <small className="text-slate-500">{a.releaseYear}</small>
@@ -474,6 +491,8 @@ export default function Home() {
                 >
                   Add
                 </button>
+                </div>
+                <CatalogDetails key={`search-catalog:${session?.user.id ?? "public"}:${a.id}`} client={client} id={a.id} title={a.title} onError={handleError} />
               </div>
             ))}
           </div>
@@ -577,6 +596,7 @@ export default function Home() {
                     +1 episode
                   </button>
                 </div>
+                <CatalogDetails key={`catalog:${session?.user.id ?? "public"}:${e.animeId}`} client={client} id={e.animeId} title={e.title} onError={handleError} />
                 {mode === "postgres" && session?.user.emailVerified && (
                   <EpisodeEditor key={`episodes:${session.user.id}:${e.id}`} client={client} id={e.id} title={e.title} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
                 )}
