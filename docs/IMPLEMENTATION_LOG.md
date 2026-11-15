@@ -1,5 +1,25 @@
 # Implementation Log
 
+## 2026-11-15 — Identity schema foundation
+
+Implemented:
+- Added migration `000004_auth_sessions`.
+- Required account email and added case-insensitive uniqueness.
+- Added password-hash storage, email verification, account disablement, failed-login and lockout metadata.
+- Added opaque auth-session records with unique 32-byte token digests, expiry, revocation, and cleanup indexes.
+- Added CI checks for migration application/rollback, case-insensitive email uniqueness, and rejection of invalid session token digest lengths.
+- Added `docs/IDENTITY_SECURITY.md` describing password hashing, session handling, CSRF, rate limiting, authorization, and tenant isolation requirements.
+- Updated README, architecture, and roadmap to distinguish schema work from runtime authentication.
+
+Security boundary:
+- No login or registration endpoint exists yet.
+- No password hashing or session issuance code exists yet.
+- The API still uses the single-user local JSON store; it must not be exposed publicly.
+- PostgreSQL RLS is not enabled yet because the runtime does not establish a trusted per-request database identity.
+
+Verification:
+- GitHub Actions now runs PostgreSQL 17 migration and rollback checks including migration 000004 and auth constraint assertions. The latest workflow result is pending and must be checked before calling it passed.
+
 ## 2026-11-15 — Public repository security baseline
 
 Implemented:
