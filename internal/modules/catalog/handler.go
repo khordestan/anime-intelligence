@@ -5,7 +5,7 @@ import (
  "net/http"
  "strconv"
  "strings"
- "github.com/example/anime-intelligence/internal/platform/store"
+ "github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 
 type Handler struct{ data *store.Store }
