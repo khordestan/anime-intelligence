@@ -35,3 +35,45 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm run build
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: anime
+          POSTGRES_PASSWORD: anime_test_password
+          POSTGRES_DB: anime_intelligence
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anime -d anime_intelligence"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Apply migrations
+        env:
+          PGPASSWORD: anime_test_password
+        run: |
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000001_initial_schema.up.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000002_catalog_seed.up.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000003_feature_taxonomy.up.sql
+      - name: Assert seeded data
+        env:
+          PGPASSWORD: anime_test_password
+        run: |
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc 'SELECT count(*) FROM anime')" = "8"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc 'SELECT count(*) FROM anime_features')" = "40"
+      - name: Verify rollback order
+        env:
+          PGPASSWORD: anime_test_password
+        run: |
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000003_feature_taxonomy.down.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000002_catalog_seed.down.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000001_initial_schema.down.sql
