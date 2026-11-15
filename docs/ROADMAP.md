@@ -45,7 +45,8 @@
 ## Milestone 5 — Taste intelligence
 - [ ] Declared and inferred preference profiles
 - [ ] Explainable analytics
-- [ ] Deterministic recommendation ranking
+- [x] Deterministic Personal Match ranking core (pure Go, explainable, unit-tested)
+- [ ] PostgreSQL-backed recommendation API
 - [ ] Personal Match, Global Essentials and Discovery lanes
 - [ ] Feedback learning and offline evaluation
 
