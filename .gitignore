@@ -7,3 +7,7 @@ node_modules/
 dist/
 coverage/
 .DS_Store
+
+# Generated Next.js and TypeScript build state
+web/next-env.d.ts
+*.tsbuildinfo

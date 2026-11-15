@@ -95,3 +95,11 @@ Remaining boundaries:
 - No public deployment was performed. Independent security review and launch hardening remain required.
 - Browser authentication UI, password recovery/email verification, session management, account export/deletion, and expired-session cleanup remain pending.
 - GitHub CI results must be checked after this commit is pushed.
+
+## 2026-11-15 — Dependency security and reproducible frontend builds
+
+- The PostgreSQL runtime commit passed GitHub backend, frontend, database runtime, migration/rollback, and CodeQL jobs (CI run 43662386866, Security run 43662386880).
+- Local npm audit found critical/high advisories in the previous Next.js 15.5.6 dependency tree. Testing the latest 15.5 patch still left vulnerable transitive dependencies, so the small starter app was upgraded to Next.js 16.4.6 and React/React DOM 19.1.10.
+- Added the npm lockfile, `npm ci`, an npm high-severity audit gate, and a pinned Go govulncheck CI invocation. Generated Next.js/TypeScript state is ignored.
+- Local `npm audit --audit-level=low` reports zero vulnerabilities; frontend typecheck and Next.js 16 production build pass. Go govulncheck on Go 1.26.11 reports no vulnerabilities.
+- Public deployment remains disabled. No live credentials or account data were added.
