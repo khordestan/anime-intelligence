@@ -83,7 +83,9 @@
 ## Milestone 7 — Production readiness
 - [x] Request-log redaction and bounded live dependency/security-schema readiness checks
 - [ ] Security review, rate limiting and broader observability
-- [ ] Backups, load and reliability tests
+- [x] Synthetic PostgreSQL logical restore/key recovery and offline credential-fencing CI drill
+- [ ] Real backup/key storage, post-snapshot deletion/security reconciliation, PITR and recovery objectives
+- [ ] Load and reliability tests
 - [x] Browser auth/account-switch/local-mode tests and transport race tests
 - [x] Full-stack browser tests against the real PostgreSQL API (dedicated disposable CI database and restricted runtime role)
 - [ ] Deployment automation and operational runbooks

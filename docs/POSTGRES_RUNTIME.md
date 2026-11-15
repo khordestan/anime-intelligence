@@ -139,6 +139,8 @@ Atomic collector mode is available as `go run ./cmd/identity-status -format=prom
 
 ## Liveness, readiness and request logs
 
+For isolated logical restore, restricted-role re-provisioning, queue-key recovery and offline credential fencing, see [backup recovery](BACKUP_RECOVERY.md). The dedicated CI recovery job uses synthetic databases only; real backup storage, post-snapshot deletion/security-event reconciliation and PITR remain operational work.
+
 `GET /healthz` confirms the process is responding and stays independent of PostgreSQL availability. `GET /readyz` returns 200 only when a live pool connection still uses a restricted non-owner role and the minimum required security schema is present: thirteen forced-RLS tables, login-budget and identity-queue outcome columns. It shares the startup validation path. Failure returns generic 503 with no connection, schema or role details. Responses carry `Cache-Control: no-store`; the request deadline is capped at two seconds and overlapping database probes are rejected without queuing. Caller cancellation is respected. Local JSON mode reports readiness without an external dependency.
 
 Use readiness for dependency-aware routing and liveness for process checks during an authorized operational rollout. Keep probes on trusted ingress and account for the one-probe concurrency limit. A probe is a momentary check, not a replacement for transaction authorization, correct RLS policies, continuous monitoring, mail-provider checks or independent security review. No deployment/proxy configuration is enabled by these endpoints.

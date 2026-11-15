@@ -31,6 +31,8 @@ Go 1.26+ is required. Without `DATABASE_URL`, `go run ./cmd/api` uses the local 
 
 For PostgreSQL setup, role provisioning, API usage, and verification, see [PostgreSQL runtime](docs/POSTGRES_RUNTIME.md). Migration and runtime connections must use separate database roles. Database initialization errors stop startup; the API never falls back to JSON when a non-empty `DATABASE_URL` fails.
 
+The [backup recovery guide](docs/BACKUP_RECOVERY.md) includes a synthetic logical-restore CI drill and an offline recovery fence. Restored historical credentials and account changes must be reconciled before reopening; no backup service or deployment is activated.
+
 ## Development boundary
 
 **Do not deploy publicly or use sensitive data yet.** JSON mode is single-user and unauthenticated. PostgreSQL authentication and isolation have automated coverage but still need independent security review, production abuse controls, operational mail/key configuration, queue monitoring, and operational hardening. Browser cookie authentication is not implemented; the API accepts explicit bearer headers only. The worker, licensed provider synchronization, release alerts, and recommendation serving remain pending.

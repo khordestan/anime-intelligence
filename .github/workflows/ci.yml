@@ -267,6 +267,39 @@ jobs:
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000002_catalog_seed.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000001_initial_schema.down.sql
 
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Match pg_dump/pg_restore to the server without relying on runner clients.
+    container: postgres:17
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: anime
+          POSTGRES_PASSWORD: anime_test_password
+          POSTGRES_DB: anime_recovery_admin
+        options: >-
+          --health-cmd "pg_isready -U anime -d anime_recovery_admin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Install compiler for race checks
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gcc libc6-dev git ca-certificates
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+      - name: Exercise isolated logical restore, RLS, key recovery and offline fencing
+        env:
+          TEST_DATABASE_URL: postgres://anime:anime_test_password@postgres:5432/anime_recovery_admin?sslmode=disable
+          TEST_POSTGRES_RECOVERY: "1"
+        run: go test -race -count=1 -timeout=3m -v -run '^TestBackupRestoreRecovery$' ./internal/platform/postgres
+
   monitoring:
     runs-on: ubuntu-latest
     timeout-minutes: 10

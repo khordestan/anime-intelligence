@@ -2,6 +2,8 @@
 
 ## Status
 
+Historical database restoration is a separate identity boundary. The [backup recovery guide](BACKUP_RECOVERY.md) and synthetic CI drill cover forced-RLS restore fidelity, missing queue keys, and an offline administrator fence that revokes credentials, forces fresh resets and erases restored identity queues. Reconcile post-backup account deletions/address/security changes independently before reopening recovery intake; the application does not maintain that external inventory. No real backup service is activated.
+
 PostgreSQL mode implements registration, login, session resolution, logout, atomic token rotation, and user-scoped tracker persistence. CI executes these flows through a restricted PostgreSQL role, with direct RLS and HTTP isolation assertions. The JSON API remains unauthenticated and single-user. Neither mode is approved for public deployment; production abuse controls, operational mail configuration, queue monitoring, inbox/outbox key operations and independent review remain pending. See [runtime setup](POSTGRES_RUNTIME.md).
 
 The current API uses explicit `Authorization: Bearer` headers, never cookies. The browser dashboard supports PostgreSQL login, registration, logout, and expiry, with tokens held only in component-scoped memory. Changing accounts aborts pending requests and rejects late results; reload clears the client credential and private library. The server session remains subject to its 24-hour expiry unless explicitly revoked. Raw tokens must remain in volatile client memory, never URLs, logs, or browser persistent storage.
