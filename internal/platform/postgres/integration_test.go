@@ -75,7 +75,7 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if err = migrations.Apply(ctx, owner); err != nil {
 		t.Fatal("migration reapply:", err)
 	}
-	if _, err = owner.Exec(ctx, `GRANT USAGE ON SCHEMA public TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON anime TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON users,auth_sessions,auth_challenges,identity_outbox,user_anime,watch_progress,user_ratings TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+	if _, err = owner.Exec(ctx, `GRANT USAGE ON SCHEMA public TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON anime TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON users,auth_sessions,auth_challenges,identity_outbox,identity_requests,user_anime,watch_progress,user_ratings TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT ON user_preferences,recommendations,recommendation_feedback,user_follows,notifications TO `+pgx.Identifier{role}.Sanitize()); err != nil {

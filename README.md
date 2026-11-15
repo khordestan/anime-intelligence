@@ -9,7 +9,7 @@ For current implementation state, security constraints and continuation steps, s
 - Catalog search/detail, tracker create/list/update, episode progress, and 1–5 ratings.
 - Optional PostgreSQL runtime with registration, login, current account, logout, and atomic session rotation.
 - Active-session listing, individual remote revocation, and sign-out of every other session; refresh keeps a stable logical session ID.
-- Optional SMTP-backed password recovery and email verification use short-lived, single-use hashed challenges, explicit confirmation, and fragment-only mail links. Delivery is disabled without explicit SMTP and outbox-key configuration; issued messages use an encrypted, leased PostgreSQL outbox.
+- Optional SMTP-backed password recovery and email verification use short-lived, single-use hashed challenges, explicit confirmation, and fragment-only mail links. Delivery is disabled without explicit SMTP and outbox-key configuration; accepted requests and issued messages use encrypted, leased PostgreSQL inbox/outbox queues.
 - Password changes require the current password and atomically invalidate every existing session, including the caller.
 - Account-data export from a consistent snapshot and password-confirmed deletion with session/data cascades, available from the signed-in dashboard.
 - Persisted password-failure budgets shared by login, password changes and deletion, with a bounded observation window and temporary account locks; responses remain generic.
@@ -29,6 +29,6 @@ For PostgreSQL setup, role provisioning, API usage, and verification, see [Postg
 
 ## Development boundary
 
-**Do not deploy publicly or use sensitive data yet.** JSON mode is single-user and unauthenticated. PostgreSQL authentication and isolation have automated coverage but still need independent security review, production abuse controls, operational mail/key configuration, durable request acceptance before issuance, and operational hardening. Browser cookie authentication is not implemented; the API accepts explicit bearer headers only. The worker, licensed provider synchronization, release alerts, and recommendation serving remain pending.
+**Do not deploy publicly or use sensitive data yet.** JSON mode is single-user and unauthenticated. PostgreSQL authentication and isolation have automated coverage but still need independent security review, production abuse controls, operational mail/key configuration, queue monitoring, and operational hardening. Browser cookie authentication is not implemented; the API accepts explicit bearer headers only. The worker, licensed provider synchronization, release alerts, and recommendation serving remain pending.
 
 Only source code, synthetic fixtures, and permitted catalog assets belong in this public repository. Never commit secrets, real account data, personal watch histories, or database dumps.

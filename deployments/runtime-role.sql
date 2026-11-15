@@ -20,3 +20,5 @@ GRANT DELETE ON users TO anime_runtime;
 GRANT SELECT, INSERT, UPDATE ON auth_challenges TO anime_runtime;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON identity_outbox TO anime_runtime;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON identity_requests TO anime_runtime;

@@ -35,7 +35,7 @@ func registerIdentityRoutes(mux *http.ServeMux, db *postgres.DB, delivery *ident
 			authError(w, 400, "invalid_request")
 			return
 		}
-		if !delivery.RequestPasswordReset(q.Email) {
+		if !delivery.RequestPasswordReset(r.Context(), q.Email) {
 			authError(w, 503, "identity_delivery_unavailable")
 			return
 		}
@@ -54,7 +54,7 @@ func registerIdentityRoutes(mux *http.ServeMux, db *postgres.DB, delivery *ident
 					return
 				}
 			}
-			if !delivery.RequestVerification(bearer(r)) {
+			if !delivery.RequestVerification(r.Context(), bearer(r)) {
 				authError(w, 503, "identity_delivery_unavailable")
 				return
 			}

@@ -54,38 +54,50 @@ func issueChallenge(ctx context.Context, tx pgx.Tx, userID, email, purpose strin
 func (d *DB) IssuePasswordReset(ctx context.Context, email string) (*identitymail.Message, error) {
 	return d.issuePasswordReset(ctx, email, nil)
 }
-func (d *DB) issuePasswordReset(ctx context.Context, email string, cipher *identitymail.EnvelopeCipher) (*identitymail.Message, error) {
-	email, err := normalizeEmail(email)
-	if err != nil {
-		return nil, nil
-	}
+func (d *DB) passwordResetTx(ctx context.Context, email string) (pgx.Tx, User, error) {
+	normalized, normalizeErr := normalizeEmail(email)
 	tx, err := d.begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, User{}, err
 	}
-	defer rollback(tx)
+	fail := func(e error) (pgx.Tx, User, error) { rollback(tx); return nil, User{}, e }
+	if normalizeErr != nil {
+		return tx, User{}, nil
+	}
+	email = normalized
 	if _, err = tx.Exec(ctx, `SELECT set_config('app.login_email',$1,true)`, email); err != nil {
-		return nil, err
+		return fail(err)
 	}
 	var uid string
 	err = tx.QueryRow(ctx, `SELECT id::text FROM users WHERE lower(email)=$1 AND disabled_at IS NULL AND password_hash IS NOT NULL`, email).Scan(&uid)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+		return tx, User{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 	if err = identity(ctx, tx, uid); err != nil {
-		return nil, err
+		return fail(err)
 	}
-	// Recheck under the same exclusive account lock used by password changes.
 	err = tx.QueryRow(ctx, `SELECT email FROM users WHERE id=$1 AND lower(email)=$2 AND disabled_at IS NULL AND password_hash IS NOT NULL FOR UPDATE`, uid, email).Scan(&email)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+		return tx, User{}, nil
 	}
+	if err != nil {
+		return fail(err)
+	}
+	return tx, User{ID: uid, Email: email}, nil
+}
+func (d *DB) issuePasswordReset(ctx context.Context, email string, cipher *identitymail.EnvelopeCipher) (*identitymail.Message, error) {
+	tx, user, err := d.passwordResetTx(ctx, email)
 	if err != nil {
 		return nil, err
 	}
+	defer rollback(tx)
+	if user.ID == "" {
+		return nil, tx.Commit(ctx)
+	}
+	uid, email := user.ID, user.Email
 	message, err := issueChallenge(ctx, tx, uid, email, identitymail.PasswordReset)
 	if err != nil {
 		return nil, err

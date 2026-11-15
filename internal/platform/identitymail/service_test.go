@@ -48,7 +48,7 @@ func TestDeliveryQueueIsBoundedAndCancellationStopsWork(t *testing.T) {
 	started := make(chan struct{}, 1)
 	s := NewService(issuerStub{started: started}, senderStub{}, slog.Default())
 	t.Cleanup(s.Close)
-	if !s.RequestPasswordReset("synthetic@example.test") {
+	if !s.RequestPasswordReset(context.Background(), "synthetic@example.test") {
 		t.Fatal("initial enqueue rejected")
 	}
 	select {
@@ -57,15 +57,15 @@ func TestDeliveryQueueIsBoundedAndCancellationStopsWork(t *testing.T) {
 		t.Fatal("worker did not start")
 	}
 	for range 32 {
-		if !s.RequestPasswordReset("synthetic@example.test") {
+		if !s.RequestPasswordReset(context.Background(), "synthetic@example.test") {
 			t.Fatal("queue ended too soon")
 		}
 	}
-	if s.RequestPasswordReset("synthetic@example.test") {
+	if s.RequestPasswordReset(context.Background(), "synthetic@example.test") {
 		t.Fatal("unbounded queue")
 	}
 	s.Close()
-	if s.RequestPasswordReset("synthetic@example.test") {
+	if s.RequestPasswordReset(context.Background(), "synthetic@example.test") {
 		t.Fatal("closed worker accepted work")
 	}
 }
@@ -74,7 +74,7 @@ func TestDeliveryErrorsAndEnvelopesDoNotLogSecrets(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
 	delivered := make(chan Message, 1)
 	s := NewService(issuerStub{}, senderStub{delivered: delivered, err: errors.New("secret-token-and-email")}, logger)
-	if !s.RequestPasswordReset("synthetic@example.test") {
+	if !s.RequestPasswordReset(context.Background(), "synthetic@example.test") {
 		t.Fatal("enqueue")
 	}
 	select {
@@ -104,7 +104,7 @@ func TestServiceRetriesDeliveryWithoutReissuingChallenge(t *testing.T) {
 	})
 	service := NewService(issuer, sender, slog.Default())
 	defer service.Close()
-	if !service.RequestPasswordReset("synthetic@example.test") {
+	if !service.RequestPasswordReset(context.Background(), "synthetic@example.test") {
 		t.Fatal("request rejected")
 	}
 	var first Message
@@ -135,4 +135,68 @@ func (i *countingIssuer) IssuePasswordReset(_ context.Context, _ string) (*Messa
 }
 func (i *countingIssuer) IssueEmailVerification(ctx context.Context, token string) (*Message, error) {
 	return i.IssuePasswordReset(ctx, token)
+}
+
+type durableStub struct {
+	issuerStub
+	submit func(context.Context, string, string) error
+}
+
+func (d durableStub) SubmitRequest(ctx context.Context, purpose, value string) error {
+	return d.submit(ctx, purpose, value)
+}
+func (durableStub) ProcessRequest(context.Context) (bool, error)      { return false, nil }
+func (durableStub) DeliverNext(context.Context, Sender) (bool, error) { return false, nil }
+func TestDurableAcceptanceWaitsForPersistenceAndShutdownCancelsIntake(t *testing.T) {
+	for _, mode := range []string{"commit", "shutdown", "request-cancel"} {
+		t.Run(mode, func(t *testing.T) {
+			started := make(chan struct{})
+			commit := make(chan struct{})
+			result := make(chan bool, 1)
+			backend := durableStub{submit: func(ctx context.Context, purpose, value string) error {
+				close(started)
+				select {
+				case <-commit:
+					return nil
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}}
+			s := NewDurableService(backend, senderStub{}, slog.Default())
+			defer s.Close()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			go func() { result <- s.RequestPasswordReset(ctx, "synthetic@example.test") }()
+			select {
+			case <-started:
+			case <-time.After(time.Second):
+				t.Fatal("intake not started")
+			}
+			select {
+			case <-result:
+				t.Fatal("acknowledged before persistence")
+			default:
+			}
+			switch mode {
+			case "commit":
+				close(commit)
+			case "shutdown":
+				s.Close()
+			case "request-cancel":
+				cancel()
+			}
+			select {
+			case accepted := <-result:
+				if accepted != (mode == "commit") {
+					t.Fatal("incorrect acceptance", accepted)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("cancelled intake did not finish")
+			}
+			s.Close()
+			if s.RequestPasswordReset(context.Background(), "synthetic@example.test") {
+				t.Fatal("closed service accepted work")
+			}
+		})
+	}
 }
