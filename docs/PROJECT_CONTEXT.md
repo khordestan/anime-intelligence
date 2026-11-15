@@ -1,6 +1,6 @@
 # Anime Intelligence — project context
 
-Last updated: 2026-11-15. GitHub `main` is the source of truth. Update this document alongside implementation changes; use Git history and Actions for exact commit and validation status. This file contains no real user data or operational credentials.
+Last updated: 2026-11-16. GitHub `main` is the source of truth. Update this document alongside implementation changes; use Git history and Actions for exact commit and validation status. This file contains no real user data or operational credentials.
 
 ## Goal and working agreement
 
@@ -18,7 +18,7 @@ Build a detailed, current anime catalog with personal tracking, explainable tast
 | Mail | Optional certificate-verified implicit-TLS SMTP; AES-256-GCM encrypted PostgreSQL request inbox and mail outbox; admission commits before HTTP 202; leased workers with bounded persisted retries |
 | Catalog operations | Read-only catalog-status reports source age/never-synced/future-clock flags and aggregate latest schedules without private data; optional diagnostics-only role |
 | Worker | `cmd/worker` is a lifecycle placeholder; the API currently owns identity delivery; no durable scheduler/provider sync exists |
-| Intelligence | Deterministic, explainable pure-Go Personal Match core with tests; recommendation HTTP serving is pending |
+| Intelligence | Deterministic, explainable pure-Go Personal Match core with tests; verified-owner PostgreSQL recommendation serving uses referenced curated non-spoiler observations and declared preferences/own ratings; no-evidence results stay empty |
 
 PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures stop startup without falling back to JSON. Provision with `cmd/migrate` and `deployments/runtime-role.sql`. See [runtime guide](POSTGRES_RUNTIME.md), [architecture](ARCHITECTURE.md), [security contract](IDENTITY_SECURITY.md), and [roadmap](ROADMAP.md).
 
@@ -30,7 +30,7 @@ PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures st
 - Implemented: canonical catalog/provenance schema, eight starter titles and forty-feature taxonomy. Schema coverage is broader than runtime feature coverage.
 - Implemented: offline provider-neutral rich catalog snapshot validation and confirmed episode-release comparison, with a dry-run CLI; see [catalog feeds](CATALOG_FEEDS.md). Administrator-only persistent import now resolves exact provider IDs, records latest structured provenance and schedule revisions, validates the persisted continuity graph and writes idempotent release events; no network source is enabled. Verified accounts can follow individual seasons or linked franchises by release track and poll owner-scoped, durably deduplicated in-app episode and new-season announcement notices; see [release alerts](RELEASE_ALERTS.md). The dashboard now provides follow/unfollow, track preferences, mark-read and polling while its alert panel is open. No background email/push is enabled.
 - Implemented: offline Jikan v4 full-anime/episode-page conversion into the neutral feed, with source capability/approval boundaries in [provider registry](PROVIDERS.md). It never infers confirmed availability from airing dates. Jikan network collection remains disabled; AniList is excluded under its current tracker/collection restrictions. Read-only freshness diagnostics are documented in [catalog operations](CATALOG_OPERATIONS.md). A bounded explicit-ID Wikidata CC0 fetcher now provides selected anime-TV facts with source provenance, request pacing and no media/prose or availability inference; no database source or scheduled collection is activated.
-- Pending: comprehensive approved metadata/availability providers and scheduled collection, broader movie/OVA coverage, cross-provider resolution/field arbitration and graph APIs, richer tracking, scheduled network synchronization, franchise curation/retractions, preference profiles, recommendation serving, AI analyst and hybrid-provider integration.
+- Pending: comprehensive approved metadata/availability providers and scheduled collection, broader movie/OVA coverage, cross-provider resolution/field arbitration and graph APIs, richer tracking, scheduled network synchronization, franchise curation/retractions, richer preference profiles, recommendation dashboard, AI analyst and hybrid-provider integration.
 
 ## Key decisions and security constraints
 

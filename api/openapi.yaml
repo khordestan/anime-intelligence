@@ -218,6 +218,60 @@ paths:
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
         "404": { description: Missing or foreign notice }
+  /api/v1/preferences:
+    get:
+      summary: List safe feature taxonomy and the caller's declared weights
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Up to 256 active non-spoiler features with key, name, category and nullable weight }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+  /api/v1/preferences/{key}:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string, maxLength: 128 }
+    put:
+      summary: Set an owned declared feature preference
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [weight]
+              properties:
+                weight: { type: number, minimum: -1, maximum: 1 }
+      responses:
+        "204": { description: Preference saved with declared confidence one }
+        "400": { description: Invalid weight, body or unknown fields }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Missing, inactive or spoiler-sensitive feature }
+    delete:
+      summary: Reset an owned declared preference without deleting rating-derived signals
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204": { description: Declared preference reset idempotently }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Missing, inactive or spoiler-sensitive feature }
+  /api/v1/recommendations:
+    get:
+      summary: Evidence-backed Personal Match ranking for the verified owner
+      description: Uses declared preferences and up to 1000 own series ratings against at most 500 title-ordered untracked candidates. Only referenced curated non-spoiler series observations qualify. Empty evidence produces an empty list. Raw references and private profile records are not returned. Scores are algorithmic compatibility scores, not probabilities.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200": { description: Items with animeId, title, score, algorithmVersion and up to four feature-key evidence records; response includes candidate/rating caps }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/tracker:
     get:
       security: [{ bearerAuth: [] }]

@@ -46,6 +46,9 @@ func checkRuntime(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err = c.Exec(ctx, `SELECT watched_episode_numbers FROM watch_progress LIMIT 0; SELECT release_track FROM user_follows LIMIT 0; SELECT id,event_key,event_type,aggregate_type,aggregate_id,payload,occurred_at FROM domain_events LIMIT 0`); err != nil {
 		return errors.New("required release-alert schema or grants are missing; apply migrations and runtime grants")
 	}
+	if _, err = c.Exec(ctx, `SELECT feature_key FROM anime_features LIMIT 0; SELECT anime_id,feature_id,value,confidence,source_kind,evidence,scope,spoiler_level,observed_at FROM anime_feature_observations LIMIT 0`); err != nil {
+		return errors.New("required recommendation evidence grants are missing; reapply runtime grants")
+	}
 	if _, err = c.Exec(ctx, `SELECT outcome FROM identity_requests LIMIT 0; SELECT outcome FROM identity_outbox LIMIT 0`); err != nil {
 		return errors.New("required identity queue outcome schema is missing; apply schema migrations")
 	}

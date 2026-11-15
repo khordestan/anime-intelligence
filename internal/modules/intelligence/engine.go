@@ -168,6 +168,7 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 		}
 		score := clamp(50+50*(numerator/denominator), 0, 100)
 		sort.Slice(evidence, func(i, j int) bool {
+			if math.Abs(evidence[i].Impact) == math.Abs(evidence[j].Impact) { return evidence[i].FeatureKey < evidence[j].FeatureKey }
 			return math.Abs(evidence[i].Impact) > math.Abs(evidence[j].Impact)
 		})
 		if len(evidence) > 4 {
@@ -180,6 +181,7 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 	}
 	sort.SliceStable(result, func(i, j int) bool {
 		if result[i].Score == result[j].Score {
+			if result[i].Title == result[j].Title { return result[i].AnimeID < result[j].AnimeID }
 			return result[i].Title < result[j].Title
 		}
 		return result[i].Score > result[j].Score

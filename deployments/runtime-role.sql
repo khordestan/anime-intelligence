@@ -34,3 +34,7 @@ GRANT SELECT (id, provider_key) ON data_sources TO anime_runtime;
 GRANT INSERT,UPDATE,DELETE ON user_follows TO anime_runtime;
 GRANT INSERT,UPDATE ON notifications TO anime_runtime;
 GRANT SELECT ON domain_events TO anime_runtime;
+
+-- Evidence-backed recommendations and owned declared preferences.
+GRANT SELECT ON anime_features,anime_feature_observations TO anime_runtime;
+GRANT INSERT,UPDATE,DELETE ON user_preferences TO anime_runtime;

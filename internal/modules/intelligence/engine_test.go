@@ -34,3 +34,12 @@ func TestRankReturnsEmptyWithoutProfileEvidence(t *testing.T) {
 	got:=RankPersonalMatches(TasteProfile{},[]Candidate{{AnimeID:"a",Title:"A",Features:[]FeatureValue{{Key:"x",Value:1,Confidence:1}}}},nil,Options{})
 	if len(got)!=0 { t.Fatalf("expected no unsupported recommendations, got %+v",got) }
 }
+
+func TestStableTiesUseFeatureKeysAndCanonicalIDs(t *testing.T){
+	p:=TasteProfile{Explicit:map[string]Preference{"a":{Weight:1,Confidence:1},"b":{Weight:1,Confidence:1}}}
+	got:=RankPersonalMatches(p,[]Candidate{
+		{AnimeID:"z",Title:"Same",Features:[]FeatureValue{{Key:"b",Value:1,Confidence:1},{Key:"a",Value:1,Confidence:1}}},
+		{AnimeID:"a",Title:"Same",Features:[]FeatureValue{{Key:"b",Value:1,Confidence:1},{Key:"a",Value:1,Confidence:1}}},
+	},nil,Options{})
+	if len(got)!=2||got[0].AnimeID!="a"||got[0].Evidence[0].FeatureKey!="a"{t.Fatal("unstable ties",got)}
+}
