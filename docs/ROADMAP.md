@@ -10,14 +10,19 @@
 - [x] PostgreSQL canonical schema draft
 - [x] Provider-neutral starter catalog seed
 - [x] Curated 40-feature product taxonomy
+- [x] Authentication credential/session schema foundation (migration 000004; no runtime auth)
 - [ ] Live PostgreSQL migration execution and runtime repository
-- [ ] Authentication and enforced user isolation
+- [ ] Authentication endpoints and secure session lifecycle
+- [ ] Enforced authorization and user isolation
 
 ## Milestone 1 — Identity and persistence
+- [x] Authentication/session data model and constraints
 - [ ] PostgreSQL repository interfaces and implementation
-- [ ] Versioned migration runner and integration tests
-- [ ] Password/session or external identity authentication
+- [ ] Versioned migration runner and runtime integration tests
+- [ ] Argon2id password hashing and verification
+- [ ] Registration, login, logout, session refresh/revocation
 - [ ] Authorization and user-scoped queries
+- [ ] PostgreSQL row-level security with transaction-scoped user context
 - [ ] User data export and deletion
 
 ## Milestone 2 — Catalog and data platform
