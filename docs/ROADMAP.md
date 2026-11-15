@@ -23,7 +23,8 @@
 - [x] Registration, login, logout, session refresh/revocation
 - [x] Authorization and user-scoped queries
 - [x] PostgreSQL RLS policies and transaction-scoped user context contract (migration 000005; PostgreSQL runtime context implemented)
-- [ ] Browser authentication UI and session management
+- [x] Browser authentication UI with in-memory tokens and account-switch isolation
+- [ ] Session listing and remote session revocation
 - [ ] Password recovery, email verification and production abuse controls
 - [ ] User data export and deletion
 
@@ -66,5 +67,6 @@
 ## Milestone 7 — Production readiness
 - [ ] Security review, rate limiting and observability
 - [ ] Backups, load and reliability tests
-- [ ] Browser/end-to-end tests
+- [x] Browser auth/account-switch/local-mode tests and transport race tests
+- [ ] Full-stack browser tests against the real PostgreSQL API
 - [ ] Deployment automation and operational runbooks

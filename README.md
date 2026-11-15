@@ -9,9 +9,9 @@ A Go and Next.js foundation for a detailed anime catalog, personal tracking, and
 - Argon2id password hashes; random 256-bit bearer credentials stored only as SHA-256 digests, expiring after 24 hours.
 - User-scoped queries and transaction-local forced PostgreSQL RLS; runtime rejects superuser, BYPASSRLS, and table-owner connections.
 - Embedded, checksummed, transactional migration runner with advisory locking.
-- Single-user JSON development mode and a Next.js dashboard. The dashboard currently supports JSON mode; PostgreSQL authentication is available through the API.
+- Single-user JSON development mode and a Next.js dashboard with PostgreSQL login/registration, logout, session expiry, and account-switch isolation. Browser tokens stay only in memory.
 - Canonical catalog/provenance schema, 40-feature taxonomy, and deterministic Personal Match ranking core (not yet exposed through HTTP).
-- CI for Go race tests, vet/build, PostgreSQL runtime/HTTP isolation, migration apply/rollback, and frontend typecheck/build; CodeQL and dependency review.
+- CI for Go race tests, vet/build, PostgreSQL runtime/HTTP isolation, migration apply/rollback, frontend transport/session tests, browser tests, and frontend typecheck/build; CodeQL and dependency review.
 
 ## Run locally
 

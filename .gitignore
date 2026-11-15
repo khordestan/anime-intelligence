@@ -11,3 +11,5 @@ coverage/
 # Generated Next.js and TypeScript build state
 web/next-env.d.ts
 *.tsbuildinfo
+web/test-results/
+web/playwright-report/

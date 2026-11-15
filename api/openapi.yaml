@@ -6,6 +6,22 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1:
+    get:
+      summary: Runtime metadata for capability detection
+      responses:
+        "200":
+          description: API identity and whether this runtime requires bearer authentication for private resources
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, version, status, authenticationRequired]
+                properties:
+                  name: { type: string }
+                  version: { type: string }
+                  status: { type: string }
+                  authenticationRequired: { type: boolean }
   /healthz:
     get:
       summary: Health check

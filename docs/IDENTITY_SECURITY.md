@@ -4,7 +4,7 @@
 
 PostgreSQL mode implements registration, login, session resolution, logout, atomic token rotation, and user-scoped tracker persistence. CI executes these flows through a restricted PostgreSQL role, with direct RLS and HTTP isolation assertions. The JSON API remains unauthenticated and single-user. Neither mode is approved for public deployment; production abuse controls, account recovery/verification, session management, and independent review remain pending. See [runtime setup](POSTGRES_RUNTIME.md).
 
-The current API uses explicit `Authorization: Bearer` headers, never cookies. The browser dashboard has not yet been wired to PostgreSQL authentication. Raw tokens must remain in volatile client memory, never URLs, logs, or browser persistent storage.
+The current API uses explicit `Authorization: Bearer` headers, never cookies. The browser dashboard supports PostgreSQL login, registration, logout, and expiry, with tokens held only in component-scoped memory. Changing accounts aborts pending requests and rejects late results; reload clears the client credential and private library. The server session remains subject to its 24-hour expiry unless explicitly revoked. Raw tokens must remain in volatile client memory, never URLs, logs, or browser persistent storage.
 
 ## Credential storage
 

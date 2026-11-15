@@ -1,0 +1,171 @@
+import { test, expect, type Page } from "@playwright/test";
+
+async function mockAPI(page: Page, authenticated = true) {
+  const entries = new Map<string, object[]>();
+  let issued = 0;
+  const requests: { path: string; token: string }[] = [];
+  await page.route("http://localhost:8080/api/v1**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    const token = (request.headers().authorization ?? "").replace(
+      "Bearer ",
+      "",
+    );
+    requests.push({ path, token });
+    const headers = {
+      "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, OPTIONS",
+    };
+    const respond = (body: unknown, status = 200) =>
+      route.fulfill({
+        status,
+        headers,
+        contentType: "application/json",
+        body: JSON.stringify(body),
+      });
+    if (request.method() === "OPTIONS")
+      return route.fulfill({ status: 204, headers });
+    if (path === "") return respond({ authenticationRequired: authenticated });
+    if (path === "/anime")
+      return respond({
+        items: [
+          {
+            id: "10000000-0000-4000-8000-000000000001",
+            title: "Synthetic Catalog Title",
+            mediaType: "TV",
+          },
+        ],
+      });
+    if (path === "/auth/register" || path === "/auth/login") {
+      const email = request.postDataJSON().email as string;
+      const token = String(++issued).padStart(43, "a");
+      entries.set(token, []);
+      return respond(
+        {
+          token,
+          user: { id: String(issued), email, displayName: "" },
+          expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+        },
+        path.endsWith("register") ? 201 : 200,
+      );
+    }
+    if (authenticated && !entries.has(token))
+      return respond({ error: "unauthorized" }, 401);
+    if (path === "/auth/logout") {
+      entries.delete(token);
+      return route.fulfill({ status: 204, headers });
+    }
+    if (path === "/tracker") {
+      if (request.method() === "POST") {
+        const entry = {
+          id: "20000000-0000-4000-8000-000000000001",
+          animeId: request.postDataJSON().animeId,
+          title: "Synthetic Catalog Title",
+          watchStatus: "PLANNING",
+          episodesWatched: 0,
+        };
+        entries.set(token, [entry]);
+        return respond(entry, 201);
+      }
+      const items = entries.get(token) ?? [];
+      return respond({ items, count: items.length });
+    }
+    return respond({ error: "not_found" }, 404);
+  });
+  return requests;
+}
+
+test("account switching and reload never retain another account's library or bearer", async ({
+  page,
+}) => {
+  const requests = await mockAPI(page);
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your library" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Create an account", exact: true })
+    .click();
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("browser-one@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("synthetic-browser-password");
+  await page
+    .getByRole("button", { name: "Create account", exact: true })
+    .click();
+  await expect(
+    page.getByText("browser-one@example.test", { exact: true }),
+  ).toBeVisible();
+  await page.getByPlaceholder("Search starter catalog…").fill("Synthetic");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(1);
+  await expect(page.getByRole("article")).toContainText(
+    "Synthetic Catalog Title",
+  );
+  await page.screenshot({
+    path: "test-results/authenticated-dashboard.png",
+    fullPage: true,
+  });
+  const firstToken = requests.find(
+    (x) => x.path === "/tracker" && x.token,
+  )?.token;
+  expect(firstToken).toHaveLength(43);
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill("browser-two@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("synthetic-browser-password");
+  await page
+    .getByRole("button", { name: "Sign in", exact: true })
+    .click();
+  await expect(
+    page.getByText("browser-two@example.test", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  expect(
+    await page.evaluate(() => ({
+      local: Object.keys(localStorage),
+      session: Object.keys(sessionStorage),
+    })),
+  ).toEqual({ local: [], session: [] });
+  const beforeReload = requests.length;
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your library" }),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(0);
+  expect(requests.slice(beforeReload).every((x) => !x.token)).toBe(true);
+});
+
+test("local development still works without an account", async ({ page }) => {
+  await mockAPI(page, false);
+  await page.goto("/");
+  await expect(
+    page.getByText("Local development", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Email", { exact: true })).toHaveCount(0);
+  await page.getByPlaceholder("Search starter catalog…").fill("Synthetic");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(1);
+});
+
+
+test("a rejected session clears private data and returns to sign in",async({page})=>{
+ await mockAPI(page);await page.goto("/");
+ await page.getByLabel("Email",{exact:true}).fill("expired@example.test");
+ await page.getByLabel("Password",{exact:true}).fill("synthetic-expired-password");
+ await page.getByRole("button",{name:"Sign in",exact:true}).click();
+ await expect(page.getByText("expired@example.test",{exact:true})).toBeVisible();
+ await page.route("**/api/v1/tracker",route=>route.fulfill({status:401,contentType:"application/json",headers:{"Access-Control-Allow-Origin":"http://127.0.0.1:3000"},body:'{"error":"unauthorized"}'}));
+ await page.getByRole("button",{name:"Refresh",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Sign in to your library"})).toBeVisible();
+ await expect(page.getByRole("article")).toHaveCount(0);
+ await expect(page.getByLabel("Email",{exact:true})).toHaveValue("");
+});

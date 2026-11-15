@@ -25,7 +25,7 @@ func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "postgresql"})
 	})
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]string{"name": "Anime Intelligence API", "version": "v1", "status": "development"})
+		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true})
 	})
 	c := catalog.NewHandler(db.Repository(""))
 	mux.HandleFunc("GET /api/v1/anime", c.List)

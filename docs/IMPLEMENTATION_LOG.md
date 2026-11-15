@@ -103,3 +103,11 @@ Remaining boundaries:
 - Added the npm lockfile, `npm ci`, an npm high-severity audit gate, and a pinned Go govulncheck CI invocation. Generated Next.js/TypeScript state is ignored.
 - Local `npm audit --audit-level=low` reports zero vulnerabilities; frontend typecheck and Next.js 16 production build pass. Go govulncheck on Go 1.26.11 reports no vulnerabilities.
 - Public deployment remains disabled. No live credentials or account data were added.
+
+## 2026-11-15 — Browser authentication and account-switch isolation
+
+- Added runtime capability metadata and PostgreSQL login/registration, logout, expiry, and unauthorized-session handling in the dashboard, preserving unauthenticated JSON development mode.
+- Browser bearer tokens live only in component-scoped memory. Requests omit cookies and caches. Account changes clear private UI state and abort/discard outstanding responses, including responses still decoding JSON.
+- Added transport race tests and Playwright browser coverage for registration/login, private library mutation, account switching, reload credential loss, rejected-session cleanup, and local-mode compatibility.
+- Local transport tests, frontend typecheck, and production build pass. The workspace prohibits browser Unix sockets, so Chromium cannot launch locally; browser tests are added to GitHub CI with retained test results for verification there.
+- The dependency/security commit passed GitHub CI and CodeQL (CI run 43662636760, Security run 43662636718). No public deployment was performed.

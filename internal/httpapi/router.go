@@ -16,7 +16,7 @@ func NewRouter(logger *slog.Logger, data *store.Store) http.Handler {
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "local-file"})
 	})
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "modules": []string{"catalog", "tracker"}})
+		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": false, "modules": []string{"catalog", "tracker"}})
 	})
 	c, t := catalog.NewHandler(store.Local{Store: data}), tracker.NewHandler(store.Local{Store: data})
 	mux.HandleFunc("GET /api/v1/anime", c.List)
