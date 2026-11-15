@@ -7,6 +7,18 @@ const API =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080/api/v1";
 const password = "synthetic-full-stack-password";
 
+async function withAuthBudget<T extends { status(): number; headers(): Record<string, string> }>(operation: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const response = await operation();
+    if (response.status() !== 429) return response;
+    const seconds = Number(response.headers()["retry-after"]);
+    expect(seconds).toBeGreaterThan(0);
+    expect(seconds).toBeLessThanOrEqual(10);
+    await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  }
+  throw new Error("Fixture authentication budget did not recover within bounded retries");
+}
+
 // Multiple real tests share the process-wide authentication budget. Retry only
 // an explicit 429, honor Retry-After and keep every other status a hard failure.
 async function signInRespectingThrottle(page: Page, email: string) {
@@ -269,13 +281,13 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
   const emails = [`episode-owner-${suffix}@example.test`, `episode-other-${suffix}@example.test`];
   const headers = (token: string) => ({ Authorization: `Bearer ${token}` });
   for (const email of emails) {
-    const registration = await request.post(API + "/auth/register", { data: { email, password } });
+    const registration = await withAuthBudget(() => request.post(API + "/auth/register", { data: { email, password } }));
     expect(registration.status()).toBe(201);
     const session: Session = await registration.json();
     sessions.push(session);
-    expect((await request.post(API + "/auth/email-verification/request", { headers: headers(session.token) })).status()).toBe(202);
+    expect((await withAuthBudget(() => request.post(API + "/auth/email-verification/request", { headers: headers(session.token) }))).status()).toBe(202);
     const proof = await verificationToken(request, email);
-    expect((await request.post(API + "/auth/email-verification/confirm", { data: { token: proof } })).status()).toBe(204);
+    expect((await withAuthBudget(() => request.post(API + "/auth/email-verification/confirm", { data: { token: proof } }))).status()).toBe(204);
   }
   await page.goto("/");
   await signInRespectingThrottle(page, emails[0]);
