@@ -7,7 +7,7 @@ import (
  "net/http/httptest"
  "strings"
  "testing"
- "github.com/example/anime-intelligence/internal/platform/store"
+ "github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 func TestTrackerVerticalSlice(t *testing.T) {
  data,err:=store.New("");if err!=nil{t.Fatal(err)}
