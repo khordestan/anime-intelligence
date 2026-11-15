@@ -94,6 +94,39 @@ func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
 			fn(w, r, token, u)
 		}
 	}
+	mux.HandleFunc("GET /api/v1/auth/sessions", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		items, more, err := db.Sessions(r.Context(), token)
+		if err != nil {
+			sessionError(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]any{"items": items, "count": len(items), "hasMore": more})
+	}))
+	mux.HandleFunc("DELETE /api/v1/auth/sessions/{id}", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		id := r.PathValue("id")
+		if !validSessionID(id) {
+			authError(w, 400, "invalid_session_id")
+			return
+		}
+		found, err := db.RevokeSession(r.Context(), token, id)
+		if err != nil {
+			sessionError(w, err)
+			return
+		}
+		if !found {
+			authError(w, 404, "session_not_found")
+			return
+		}
+		w.WriteHeader(204)
+	}))
+	mux.HandleFunc("POST /api/v1/auth/sessions/revoke-others", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		count, err := db.RevokeOtherSessions(r.Context(), token)
+		if err != nil {
+			sessionError(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]int64{"revoked": count})
+	}))
 	mux.HandleFunc("GET /api/v1/auth/export", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		data, err := db.ExportAccount(r.Context(), token)
 		if err != nil {
@@ -214,3 +247,21 @@ func (g *authGate) acquire() bool {
 	return true
 }
 func (g *authGate) release() { g.mu.Lock(); g.active--; g.mu.Unlock() }
+
+func validSessionID(id string) bool {
+	if len(id) != 36 {
+		return false
+	}
+	for i, c := range id {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if c != '-' {
+				return false
+			}
+			continue
+		}
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}

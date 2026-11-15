@@ -6,6 +6,7 @@ A Go and Next.js foundation for a detailed anime catalog, personal tracking, and
 
 - Catalog search/detail, tracker create/list/update, episode progress, and 1–5 ratings.
 - Optional PostgreSQL runtime with registration, login, current account, logout, and atomic session rotation.
+- Active-session listing, individual remote revocation, and sign-out of every other session; refresh keeps a stable logical session ID.
 - Account-data export from a consistent snapshot and password-confirmed deletion with session/data cascades.
 - Argon2id password hashes; random 256-bit bearer credentials stored only as SHA-256 digests, expiring after 24 hours.
 - User-scoped queries and transaction-local forced PostgreSQL RLS; runtime rejects superuser, BYPASSRLS, and table-owner connections.

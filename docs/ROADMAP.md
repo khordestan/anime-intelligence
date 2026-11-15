@@ -24,7 +24,8 @@
 - [x] Authorization and user-scoped queries
 - [x] PostgreSQL RLS policies and transaction-scoped user context contract (migration 000005; PostgreSQL runtime context implemented)
 - [x] Browser authentication UI with in-memory tokens and account-switch isolation
-- [ ] Session listing and remote session revocation
+- [x] Session listing and remote session revocation (PostgreSQL API)
+- [ ] Session-management dashboard controls
 - [ ] Password recovery, email verification and production abuse controls
 - [x] User data export and password-confirmed deletion (PostgreSQL API)
 - [ ] Account export/deletion dashboard controls

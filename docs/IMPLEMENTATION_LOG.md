@@ -133,3 +133,11 @@ Remaining boundaries:
 - Populated all eight exported product resources for two synthetic accounts and verified ownership in every exported row.
 - Verified deletion removes every owned resource while preserving the other account's user, sessions, tracker, ratings, progress, preferences, recommendations, feedback, follows, and notifications.
 - The expanded PostgreSQL race test passes locally. The account export/deletion feature commit passed all GitHub CI and CodeQL checks (CI run 43664014126, Security run 43664014129).
+
+## 2026-11-15 — Stable session rotation and remote revocation
+
+- Confirmed the previous main commit's CI and CodeQL are green before starting this batch.
+- Added bounded active-session listing, individual remote revocation, and sign-out of all other sessions using explicit owner predicates, forced RLS, non-cacheable responses, and account-before-session locking.
+- Changed refresh to rotate the credential in the same logical session record. Its ID and initial creation time remain stable, so concurrent refresh cannot escape remote revocation of a listed session ID.
+- Added PostgreSQL/HTTP tests covering cross-user listing/revocation boundaries, hidden credential fields, malformed/unknown/foreign IDs, inactive sessions, listing overflow, idempotent bulk revocation, self revocation, refresh/revocation races, and mutual revocation.
+- Local PostgreSQL 17 full Go race suite passes. No public deployment was performed. Dashboard controls are the next step.

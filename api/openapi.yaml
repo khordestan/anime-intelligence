@@ -216,6 +216,58 @@ paths:
         "400": { description: Invalid JSON or unknown fields }
         "401": { description: Missing/invalid session or incorrect password }
         "429": { description: Authentication rate or concurrency limit reached }
+  /api/v1/auth/sessions:
+    get:
+      summary: List the current account's active sessions
+      description: Current session first, then newest sessions, bounded to 100. Excludes expired/revoked sessions and all token/digest fields. No-store response.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Owned active sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, count, hasMore]
+                properties:
+                  count: { type: integer, minimum: 0, maximum: 100 }
+                  hasMore: { type: boolean }
+                  items:
+                    type: array
+                    maxItems: 100
+                    items: { $ref: '#/components/schemas/SessionInfo' }
+        "401": { description: Missing or invalid session }
+  /api/v1/auth/sessions/{id}:
+    delete:
+      summary: Revoke an owned active session
+      description: A stable ID remains revocable after token refresh. Revoking the current ID signs out the caller.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Session revoked }
+        "400": { description: Malformed session ID }
+        "401": { description: Missing or invalid caller session }
+        "404": { description: Unknown, foreign, expired, or already-revoked session }
+  /api/v1/auth/sessions/revoke-others:
+    post:
+      summary: Sign out all other active sessions
+      description: Includes sessions omitted by the bounded listing. Retains the caller session and is idempotent.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Other sessions revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked]
+                properties:
+                  revoked: { type: integer, minimum: 0 }
+        "401": { description: Missing or invalid session }
 components:
   securitySchemes:
     bearerAuth:
@@ -238,6 +290,16 @@ components:
                 format: password
                 description: Registration requires 12–1024 UTF-8 bytes. Request body limit is 4096 bytes.
   schemas:
+    SessionInfo:
+      type: object
+      additionalProperties: false
+      required: [id, createdAt, expiresAt, lastUsedAt, current]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time }
+        current: { type: boolean }
     User:
       type: object
       required: [id, email, displayName]

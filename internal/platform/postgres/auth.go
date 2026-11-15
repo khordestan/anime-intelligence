@@ -58,15 +58,22 @@ func tokenDigest(token string) (string, bool) {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:]), true
 }
-func issue(ctx context.Context, tx pgx.Tx, u User) (Session, error) {
+func newSessionToken() (string, string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return Session{}, err
+		return "", "", err
 	}
 	token := base64.RawURLEncoding.EncodeToString(b)
 	digest, _ := tokenDigest(token)
+	return token, digest, nil
+}
+func issue(ctx context.Context, tx pgx.Tx, u User) (Session, error) {
+	token, digest, err := newSessionToken()
+	if err != nil {
+		return Session{}, err
+	}
 	s := Session{Token: token, User: u}
-	err := tx.QueryRow(ctx, `INSERT INTO auth_sessions(user_id,token_hash,expires_at) VALUES($1,decode($2,'hex'),now()+interval '24 hours') RETURNING expires_at`, u.ID, digest).Scan(&s.ExpiresAt)
+	err = tx.QueryRow(ctx, `INSERT INTO auth_sessions(user_id,token_hash,expires_at) VALUES($1,decode($2,'hex'),now()+interval '24 hours') RETURNING expires_at`, u.ID, digest).Scan(&s.ExpiresAt)
 	return s, err
 }
 func (d *DB) Register(ctx context.Context, email, value string) (Session, error) {
@@ -179,10 +186,15 @@ func (d *DB) Refresh(ctx context.Context, token string) (Session, error) {
 	}
 	defer rollback(tx)
 	digest, _ := tokenDigest(token)
-	if _, err = tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=now() WHERE user_id=$1 AND token_hash=decode($2,'hex')`, u.ID, digest); err != nil {
+	next, nextDigest, err := newSessionToken()
+	if err != nil {
 		return Session{}, err
 	}
-	s, err := issue(ctx, tx, u)
+	s := Session{Token: next, User: u}
+	// Retain the logical session ID across rotation. A revocation aimed at this
+	// session therefore also invalidates a replacement token issued concurrently.
+	err = tx.QueryRow(ctx, `UPDATE auth_sessions SET token_hash=decode($2,'hex'),expires_at=now()+interval '24 hours',last_used_at=now()
+ WHERE user_id=$1 AND token_hash=decode($3,'hex') AND revoked_at IS NULL RETURNING expires_at`, u.ID, nextDigest, digest).Scan(&s.ExpiresAt)
 	if err != nil {
 		return Session{}, err
 	}

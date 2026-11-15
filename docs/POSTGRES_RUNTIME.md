@@ -24,12 +24,15 @@ All paths start with `/api/v1`. Registration and login accept exactly one JSON o
 | GET | `/auth/me` | Returns the verified account; 200 |
 | POST | `/auth/refresh` | Atomically revokes the presented token and issues its replacement; 200 |
 | POST | `/auth/logout` | Revokes the presented token; 204 |
+| GET | `/auth/sessions` | Lists up to 100 owned active sessions, current first, with `hasMore`; no token/digest fields; 200 |
+| DELETE | `/auth/sessions/{id}` | Revokes an owned active session; foreign/unknown/inactive IDs all return 404; 204 on success |
+| POST | `/auth/sessions/revoke-others` | Revokes all other active sessions, including those beyond the listing limit; returns `revoked` count; 200 |
 | GET | `/auth/export` | Downloads a consistent JSON snapshot of the current account's product data, excluding credential/session hashes; 200 |
 | DELETE | `/auth/account` | Requires a JSON password confirmation; permanently deletes the current account, sessions, and owned records; 204 |
 
 A session response contains `token`, `expiresAt`, and `user` (`id`, `email`, `displayName`). Tokens carry 256 random bits and expire in 24 hours. They are returned only at issuance; only SHA-256 digests are stored. Send the token using `Authorization: Bearer <token>`. Keep it in volatile client memory; never persist it in localStorage, URLs, source files, or logs. Cookies and URL/query credentials are not accepted.
 
-`/auth/me`, `/auth/refresh`, `/auth/logout`, `/auth/export`, `/auth/account`, `/tracker`, `/tracker/{id}`, and `/ratings/{id}` require a verified bearer session. Catalog endpoints remain shared and readable without authentication. Expired, revoked, malformed, disabled-account, or locked-account sessions are rejected. Refresh is single use, including under concurrent requests; other independently issued sessions remain valid. Logout revokes only the current session.
+`/auth/me`, `/auth/refresh`, `/auth/logout`, `/auth/export`, `/auth/account`, `/tracker`, `/tracker/{id}`, and `/ratings/{id}` require a verified bearer session. Catalog endpoints remain shared and readable without authentication. Expired, revoked, malformed, disabled-account, or locked-account sessions are rejected. Refresh is single use, including under concurrent requests; other independently issued sessions remain valid. Rotation preserves the session ID and original creation time, replacing the old digest and extending expiry to 24 hours from rotation. Revoking a listed ID therefore also invalidates any replacement credential issued by a racing refresh. Session listing and revocation use the verified caller as owner; request-supplied user IDs are never used. Logout revokes only the current session.
 
 Private queries have explicit owner predicates and forced RLS. Session resolution first reads a server-computed digest using the narrow bootstrap policy, then sets transaction-local identity and locks/rechecks the session before private access. Commit or rollback clears the identity. No request-provided user ID is trusted. Cross-user entry updates return 404.
 
