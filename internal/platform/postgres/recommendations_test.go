@@ -24,7 +24,7 @@ func TestPersonalMatchesEvidenceAndOwnerIsolation(t *testing.T){
 	if _,err=a.PersonalMatches(ctx,20);!errors.Is(err,store.ErrEmailUnverified){t.Fatal("unverified recommendations",err)}
 	verifyAccount(t,db,one.Token);verifyAccount(t,db,two.Token)
 	page,err:=a.PersonalMatches(ctx,20)
-	if err!=nil||len(page.Items)!=0{t.Fatal("unsupported cold start",page,err)}
+	if err!=nil||len(page.Items)!=0||len(page.Profile)!=0{t.Fatal("unsupported cold start",page,err)}
 	if _,err=owner.Exec(ctx,`INSERT INTO anime_features(feature_key,display_name,category,spoiler_sensitive) VALUES
 ('synthetic.power','Synthetic power','SYNTHETIC',false),('synthetic.secret','Synthetic secret','SYNTHETIC',true)`);err!=nil{t.Fatal(err)}
 	const watched="10000000-0000-4000-8000-000000000001"
@@ -52,6 +52,8 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if err!=nil||len(page.Items)!=2||page.Items[0].AnimeID!=strong||page.Items[1].AnimeID!=weak||len(page.Items[0].Evidence)!=1{t.Fatal("positive evidence/exclusion",page,err)}
 	other,err:=b.PersonalMatches(ctx,20)
 	if err!=nil||len(other.Items)!=2||other.Items[0].AnimeID!=weak{t.Fatal("foreign preference used",other,err)}
+	if len(page.Profile)!=1||page.Profile[0].Key!="synthetic.power"||page.Profile[0].Declared==nil||page.Profile[0].Declared.Weight!=1||page.Profile[0].Inferred!=nil{t.Fatal("declared profile",page.Profile)}
+	if len(other.Profile)!=1||other.Profile[0].Declared==nil||other.Profile[0].Declared.Weight != -1||other.Profile[0].Inferred!=nil{t.Fatal("foreign profile leaked",other.Profile)}
 	encoded,_:=json.Marshal(page)
 	if strings.Contains(string(encoded),"example.test")||strings.Contains(string(encoded),two.User.ID)||strings.Contains(string(encoded),"synthetic.secret"){t.Fatal("private/raw/spoiler evidence exposed")}
 	if _,err=a.SetFeaturePreference(ctx,"synthetic.power",nil);err!=nil{t.Fatal(err)}
@@ -59,7 +61,7 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if err!=nil||len(page.Items)!=0{t.Fatal("cleared preference retained",page,err)}
 	if _,ok,err:=a.Rate(ctx,watched,5);err!=nil||!ok{t.Fatal(err)}
 	page,err=a.PersonalMatches(ctx,1)
-	if err!=nil||len(page.Items)!=1||page.Items[0].AnimeID!=strong{t.Fatal("own rating inference",page,err)}
+	if err!=nil||len(page.Items)!=1||page.Items[0].AnimeID!=strong||len(page.Profile)!=1||page.Profile[0].Declared!=nil||page.Profile[0].Inferred==nil||page.Profile[0].Inferred.Weight<=0{t.Fatal("own rating inference",page,err)}
 	prefs,err:=b.FeaturePreferences(ctx)
 	if err!=nil{t.Fatal(err)}
 	found:=false

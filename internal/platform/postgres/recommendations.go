@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"sort"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,7 +19,17 @@ type FeaturePreference struct {
 	Category string `json:"category"`
 	Weight *float64 `json:"weight"`
 }
+type PreferenceSignal struct {
+	Weight float64 `json:"weight"`
+	Confidence float64 `json:"confidence"`
+}
+type FeatureTaste struct {
+	Key string `json:"key"`
+	Declared *PreferenceSignal `json:"declared,omitempty"`
+	Inferred *PreferenceSignal `json:"inferred,omitempty"`
+}
 type PersonalMatches struct {
+	Profile []FeatureTaste `json:"profile"`
 	Items []intelligence.Recommendation `json:"items"`
 	AlgorithmVersion string `json:"algorithmVersion"`
 	CandidateLimit int `json:"candidateLimit"`
@@ -85,7 +96,7 @@ func(r *Repository) PersonalMatches(ctx context.Context,limit int)(PersonalMatch
 }
 func(r *Repository) personalMatchesSnapshot(ctx context.Context,limit int)(PersonalMatches,error){
 	if limit<1{limit=20};if limit>100{limit=100}
-	out:=PersonalMatches{Items:[]intelligence.Recommendation{},AlgorithmVersion:intelligence.PersonalMatchAlgorithmVersion,CandidateLimit:500,RatingLimit:1000}
+	out:=PersonalMatches{Items:[]intelligence.Recommendation{},Profile:[]FeatureTaste{},AlgorithmVersion:intelligence.PersonalMatchAlgorithmVersion,CandidateLimit:500,RatingLimit:1000}
 	tx,u,err:=r.preferenceTx(ctx)
 	if err!=nil{return out,err}
 	defer rollback(tx)
@@ -139,6 +150,19 @@ ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC`,ids)
 	for i:=range rated{rated[i].Features=features[rated[i].AnimeID]}
 	for i:=range candidates{candidates[i].Features=features[candidates[i].AnimeID]}
 	profile:=intelligence.BuildTasteProfile(rated,explicit)
+	keys:=map[string]bool{}
+	for key:=range profile.Explicit{keys[key]=true}
+	for key:=range profile.Inferred{keys[key]=true}
+	ordered:=make([]string,0,len(keys))
+	for key:=range keys{ordered=append(ordered,key)}
+	sort.Strings(ordered)
+	if len(ordered)>256{ordered=ordered[:256]}
+	for _,key:=range ordered{
+		signal:=FeatureTaste{Key:key}
+		if p,ok:=profile.Explicit[key];ok{signal.Declared=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence}}
+		if p,ok:=profile.Inferred[key];ok{signal.Inferred=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence}}
+		out.Profile=append(out.Profile,signal)
+	}
 	out.Items=intelligence.RankPersonalMatches(profile,candidates,nil,intelligence.Options{Limit:limit})
 	return out,tx.Commit(ctx)
 }

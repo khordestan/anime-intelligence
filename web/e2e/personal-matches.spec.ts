@@ -31,7 +31,7 @@ async function mockMatches(page: Page, hold = false) {
     if (path === "/recommendations") {
       const items = preferences.get(token) === null ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
       if (hold && token.endsWith("1")) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
-      try { return await respond({ items }); } catch { return; }
+      try { return await respond({ items, profile: items.length ? [{ key: "synthetic.mystery", declared: { weight: preferences.get(token), confidence: 1 }, inferred: { weight: 0.5, confidence: 0.25 } }] : [] }); } catch { return; }
     }
     return respond({}, 404);
   });
@@ -53,6 +53,7 @@ test("preferences save/reset and unsupported evidence remain explicit", async ({
   await panel.getByLabel("Preference Synthetic mystery", { exact: true }).fill("1");
   await panel.getByRole("button", { name: "Save preference Synthetic mystery", exact: true }).click();
   await expect(panel.getByText("Synthetic account match", { exact: false })).toBeVisible();
+  await expect(panel.getByText("Rating-derived signal: prefers this feature · strength 0.25", { exact: true })).toBeVisible();
   expect(api.calls.some(call => call.path === "/preferences/synthetic.mystery" && (call.body as { weight?: number } | undefined)?.weight === 1)).toBe(true);
   await panel.getByRole("button", { name: "Reset preference Synthetic mystery", exact: true }).click();
   await expect(panel.getByText(/No supported matches yet/)).toBeVisible();
@@ -71,4 +72,5 @@ test("late Personal Match results do not cross accounts", async ({ page }) => {
   await page.getByRole("button", { name: "Personal Match settings", exact: true }).click();
   await expect(page.getByText(/No supported matches yet/)).toBeVisible();
   await expect(page.getByText("Synthetic account match", { exact: false })).toHaveCount(0);
+  await expect(page.getByText(/Rating-derived signal:/)).toHaveCount(0);
 });

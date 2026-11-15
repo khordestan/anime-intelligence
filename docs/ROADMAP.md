@@ -53,7 +53,8 @@
 - [ ] Comprehensive approved metadata and confirmed-availability adapters
 - [ ] Raw source snapshots where licensing permits
 - [ ] Canonical entity resolution and field-level provenance
-- [ ] Curated observations with evidence, confidence and spoiler scope
+- [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
+- [ ] Real evidence corpus and broader reviewed scope coverage
 - [ ] Data quality and freshness monitoring
 - [ ] Franchise, season and episode relation graph
 
@@ -78,7 +79,8 @@
 - [x] Durable canonical release-event and owned notification duplicate suppression
 
 ## Milestone 5 — Taste intelligence
-- [ ] Declared and inferred preference profiles
+- [x] Owner-scoped declared preferences and bounded runtime rating-derived profile signals
+- [ ] Richer profile analytics and feedback learning
 - [ ] Explainable analytics
 - [x] Deterministic Personal Match ranking core (pure Go, explainable, unit-tested)
 - [x] Verified-owner PostgreSQL Personal Match API with conservative curated non-spoiler evidence

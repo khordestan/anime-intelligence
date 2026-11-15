@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 
 type Preference = { key: string; name: string; category: string; weight: number | null };
+type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number } };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
 export default function PersonalMatches({ client, onError }: { client: ApiClient; onError: (error: unknown) => void }) {
   const [open, setOpen] = useState(false);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [matches, setMatches] = useState<Match[]>([]);
+  const [profile, setProfile] = useState<Signal[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const alive = useRef(true), revision = useRef(0);
@@ -17,10 +19,10 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
   async function read(current: number) {
     const [p, m] = await Promise.all([
       client.request<{ items: Preference[] }>("/preferences"),
-      client.request<{ items: Match[] }>("/recommendations"),
+      client.request<{ items: Match[]; profile?: Signal[] }>("/recommendations"),
     ]);
     if (!alive.current || current !== revision.current) return;
-    setPreferences(p.items); setMatches(m.items);
+    setPreferences(p.items); setMatches(m.items); setProfile(m.profile ?? []);
   }
   async function load() {
     const current = ++revision.current;
@@ -51,6 +53,7 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
     finally { if (alive.current && current === revision.current) setBusy(false); }
   }
   const names = new Map(preferences.map(p => [p.key, p.name]));
+  const inferred = new Map(profile.filter(p => p.inferred).map(p => [p.key, p.inferred!]));
   return <section aria-label="Personal Match" className="mt-8 rounded-2xl border border-white/10 bg-white/[.03] p-5">
     <button disabled={busy} aria-expanded={open} onClick={() => { if (open) setOpen(false); else void load(); }} className="text-sm text-violet-200 underline disabled:opacity-50">
       {open ? "Hide Personal Match" : "Personal Match settings"}
@@ -69,6 +72,7 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
               className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" />
           </label>
           <p className="mt-1 text-xs text-slate-500">{p.category}</p>
+          {inferred.has(p.key) && <p className="mt-1 text-xs text-slate-400">Rating-derived signal: {inferred.get(p.key)!.weight > 0 ? "prefers" : inferred.get(p.key)!.weight < 0 ? "avoids" : "neutral toward"} this feature · strength {inferred.get(p.key)!.confidence.toFixed(2)}</p>}
           <div className="mt-2 flex gap-3">
             <button disabled={busy} aria-label={"Save preference " + p.name} onClick={() => void save(p)} className="text-xs text-violet-200 underline disabled:opacity-50">Save preference</button>
             <button disabled={busy} aria-label={"Reset preference " + p.name} onClick={() => void save(p, true)} className="text-xs underline disabled:opacity-50">Reset preference</button>
@@ -83,7 +87,7 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
           <ul className="mt-2 space-y-1">{match.evidence.map(e => <li key={e.featureKey} className="text-xs text-slate-400">{names.get(e.featureKey) ?? e.featureKey}: {e.direction}</li>)}</ul>
         </li>)}
       </ul>
-      <p className="mt-4 text-xs text-slate-500">Compatibility scores are not probabilities. Matches consider up to 500 untracked titles and 1,000 recent series ratings. Unsupported or spoiler-sensitive observations are excluded.</p>
+      <p className="mt-4 text-xs text-slate-500">Compatibility scores are not probabilities. Matches consider up to 500 untracked titles and 1,000 recent series ratings. Unsupported or spoiler-sensitive observations are excluded. Rating-derived signal strength is an algorithmic weight, not a probability.</p>
     </div>}
   </section>;
 }

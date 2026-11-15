@@ -21,7 +21,7 @@ For current implementation state, security constraints and continuation steps, s
 - User-scoped queries and transaction-local forced PostgreSQL RLS; runtime rejects superuser, BYPASSRLS, and table-owner connections.
 - Embedded, checksummed, transactional migration runner with advisory locking.
 - Single-user JSON development mode and a Next.js dashboard with PostgreSQL login/registration, logout, session expiry, and account-switch isolation. Browser tokens stay only in memory. Signed-in users can inspect active sessions, revoke a selected login, or sign out all other sessions.
-- Canonical catalog/provenance schema, 40-feature taxonomy, and deterministic Personal Match ranking core (not yet exposed through HTTP).
+- Canonical catalog/provenance schema, 40-feature taxonomy, append-only reviewed evidence import, and verified-owner Personal Match API/dashboard with declared and rating-derived signals.
 - CI for Go race tests, vet/build, PostgreSQL runtime/HTTP isolation, migration apply/rollback, frontend transport/session tests, mocked and real-PostgreSQL browser tests, and frontend typecheck/build; CodeQL and dependency review.
 
 Public source freshness and latest schedule counts are available through `go run ./cmd/catalog-status`; see [catalog operations](docs/CATALOG_OPERATIONS.md). Selected CC0 facts can be fetched with `cmd/catalog-fetch` before reviewed import; this does not enable scheduled availability collection.
@@ -40,6 +40,6 @@ The [backup recovery guide](docs/BACKUP_RECOVERY.md) includes a synthetic logica
 
 ## Development boundary
 
-**Do not deploy publicly or use sensitive data yet.** JSON mode is single-user and unauthenticated. PostgreSQL authentication and isolation have automated coverage but still need independent security review, production abuse controls, operational mail/key configuration, queue monitoring, and operational hardening. Browser cookie authentication is not implemented; the API accepts explicit bearer headers only. Scheduled workers, approved network provider synchronization, background delivery channels and recommendation serving remain pending. See [catalog ingestion](docs/CATALOG_FEEDS.md), [provider approval registry](docs/PROVIDERS.md), [episode progress](docs/EPISODE_PROGRESS.md) and [release alerts](docs/RELEASE_ALERTS.md).
+**Do not deploy publicly or use sensitive data yet.** JSON mode is single-user and unauthenticated. PostgreSQL authentication and isolation have automated coverage but still need independent security review, production abuse controls, operational mail/key configuration, queue monitoring, and operational hardening. Browser cookie authentication is not implemented; the API accepts explicit bearer headers only. The bounded Wikidata fact worker is opt-in and idle by default; real source activation, broad licensed metadata/availability coverage, durable per-title scheduling, background delivery channels and hybrid AI remain pending. See [catalog ingestion](docs/CATALOG_FEEDS.md), [provider approval registry](docs/PROVIDERS.md), [episode progress](docs/EPISODE_PROGRESS.md) and [release alerts](docs/RELEASE_ALERTS.md).
 
 Only source code, synthetic fixtures, and permitted catalog assets belong in this public repository. Never commit secrets, real account data, personal watch histories, or database dumps.

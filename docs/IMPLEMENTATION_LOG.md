@@ -509,3 +509,9 @@ Normalized validated curation values/confidence to four-decimal storage before r
 9f74636 passed all seven CI jobs 43774180551 and both CodeQL analyses 43774180537. Added separate curator-role provisioning with public SELECT/observation INSERT only. feature-import now uses a bounded connection with fixed search_path and rejects elevated/owner/member/private-data roles before applying input. It cannot use migration credentials as a shortcut.
 
 Added disposable role tests proving successful curation append, rejection of private reads/observation update/delete/taxonomy mutations and rejection after a private-column grant. No production role or corpus activated. Exact-commit CI pending; shell toolchains unavailable.
+
+## 2026-11-16 — Inspectable owner-only preference signals
+
+95eac9c passed all seven CI jobs 43774528051 and both CodeQL analyses 43774528063. Recommendation responses now include a bounded, key-ordered profile separating declared and rating-derived signals, using the same owner snapshot and eligible non-spoiler evidence as ranking. Inferred signals remain ephemeral; no rated-title lists, raw references or private record identifiers are returned. The dashboard labels derived direction/strength and explains its algorithmic meaning.
+
+Extended PostgreSQL tests for cold start, declared/rating-derived transitions and foreign-profile isolation, plus mocked-browser derived display and late-account-result exclusion. Updated stale README/roadmap/context boundaries. No external AI, personal corpus, new grant or deployment. Existing client-component conventions apply; no dependencies/framework APIs changed. Exact-commit CI pending; no local Go/Node toolchains available.

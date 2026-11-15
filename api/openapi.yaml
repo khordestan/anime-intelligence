@@ -262,14 +262,14 @@ paths:
   /api/v1/recommendations:
     get:
       summary: Evidence-backed Personal Match ranking for the verified owner
-      description: Uses declared preferences and up to 1000 own series ratings against at most 500 title-ordered untracked candidates. Only referenced curated non-spoiler series observations qualify. Empty evidence produces an empty list. Raw references and private profile records are not returned. Scores are algorithmic compatibility scores, not probabilities.
+      description: Uses declared preferences and up to 1000 own series ratings against at most 500 title-ordered untracked candidates. Only referenced curated non-spoiler series observations qualify. Empty evidence produces an empty list. A key-ordered profile of at most 256 active non-spoiler features separates declared and own-rating-derived weight/confidence signals. Raw references, rated-title lists and private record identifiers are not returned. Scores are algorithmic compatibility scores, not probabilities.
       security: [{ bearerAuth: [] }]
       parameters:
         - in: query
           name: limit
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
-        "200": { description: Items with animeId, title, score, algorithmVersion and up to four feature-key evidence records; response includes candidate/rating caps }
+        "200": { description: Items with animeId, title, score, algorithmVersion and up to four feature-key evidence records; response includes candidate/rating caps and bounded declared/inferred profile signals }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/tracker:
