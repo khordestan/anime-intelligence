@@ -56,7 +56,7 @@
 
 ## Milestone 3 — Tracker completeness
 - [x] Transactional owner-scoped tracker removal API with ratings/progress cleanup
-- [ ] Dashboard removal controls
+- [x] Dashboard removal confirmation, retry/cancel and browser isolation coverage
 - [ ] Season and episode-level progress
 - [ ] Notes, rewatches and season ratings
 - [ ] Import/export and bulk editing

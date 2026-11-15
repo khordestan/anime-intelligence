@@ -160,6 +160,24 @@ test("real PostgreSQL auth, tracking, remote session control and account isolati
       })
     ).status(),
   ).toBe(404);
+  // Remove only the second account's entry through the real UI/API, then
+  // re-add with clean progress/rating while the first account remains intact.
+  await page.getByRole("article").getByRole("button", { name: "Remove Solo Leveling", exact: true }).click();
+  await page.getByRole("article").getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(1);
+  await page.getByRole("article").getByRole("button", { name: "Remove Solo Leveling", exact: true }).click();
+  const removed = page.waitForResponse(response => response.request().method() === "DELETE" && new URL(response.url()).pathname.startsWith("/api/v1/tracker/"));
+  await page.getByRole("button", { name: "Confirm removal", exact: true }).click();
+  expect((await removed).status()).toBe(204);
+  await expect(page.getByRole("article")).toHaveCount(0);
+  const untouched = await request.get(API + "/tracker", { headers: headers(controller.token) });
+  expect((await untouched.json()).items[0].rating).toBe(4);
+  const cleared = await request.get(API + "/tracker", { headers: headers(two.token) });
+  expect((await cleared.json()).items).toHaveLength(0);
+  await page.getByPlaceholder("Search starter catalog…").fill("Solo Leveling");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("article")).toContainText("0/12 episodes watched");
+  await expect(page.getByLabel("Rating Solo Leveling")).toHaveValue("");
   const exported = await request.get(API + "/auth/export", {
     headers: headers(controller.token),
   });

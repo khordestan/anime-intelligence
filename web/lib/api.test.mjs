@@ -140,3 +140,14 @@ test("verification denial preserves a typed policy error and hides server detail
       error.message === "Verify your email before using your library.",
   );
 });
+
+
+test("late DELETE completion cannot cross an account boundary and never decodes 204", async () => {
+  let complete;
+  const client = new ApiClient("http://api.test", () => new Promise(resolve => { complete = resolve; }));
+  client.setSession(session("synthetic-one"));
+  const pending = client.request("/tracker/synthetic-entry", {method: "DELETE"});
+  client.setSession(session("synthetic-two"));
+  complete({ok: true, status: 204, json: () => { throw new Error("204 body must not be decoded"); }});
+  await assert.rejects(pending, StaleSessionError);
+});

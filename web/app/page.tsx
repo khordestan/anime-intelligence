@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionManager from "./session-manager";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
@@ -64,8 +64,14 @@ export default function Home() {
   const [register, setRegister] = useState(false),
     [authBusy, setAuthBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [removal, setRemoval] = useState<string | null>(null);
+  const accountRevision = useRef(0);
+  const refreshRevision = useRef(0);
   const changeSession = useCallback(
     (next: Session | null) => {
+      accountRevision.current++;
+      refreshRevision.current++;
+      setRemoval(null);
       client.setSession(next);
       setSession(next);
       setLibrary([]);
@@ -136,6 +142,7 @@ export default function Home() {
   }
   const refresh = useCallback(async () => {
     if (mode === null) return;
+    const revision = ++refreshRevision.current;
     setLoading(true);
     try {
       const [c, l] = await Promise.all([
@@ -144,13 +151,14 @@ export default function Home() {
           ? client.request<{ items: Entry[] }>("/tracker")
           : Promise.resolve({ items: [] as Entry[] }),
       ]);
+      if (revision !== refreshRevision.current) return;
       setCatalog(c.items ?? []);
       setLibrary(l.items ?? []);
       setError("");
     } catch (e) {
-      handleError(e);
+      if (revision === refreshRevision.current) handleError(e);
     } finally {
-      setLoading(false);
+      if (revision === refreshRevision.current) setLoading(false);
     }
   }, [client, mode, session, handleError]);
   useEffect(() => {
@@ -204,20 +212,24 @@ export default function Home() {
       setAuthBusy(false);
     }
   }
-  async function mutate(path: string, method: string, body: object) {
+  async function mutate(path: string, method: string, body?: object) {
+    const revision = accountRevision.current;
     setBusy(true);
+    setError("");
     try {
       await client.request(path, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: body === undefined ? undefined : JSON.stringify(body),
       });
+      if (revision !== accountRevision.current) return;
+      setRemoval(null);
       setQuery("");
       await refresh();
     } catch (e) {
       handleError(e);
     } finally {
-      setBusy(false);
+      if (revision === accountRevision.current) setBusy(false);
     }
   }
   const filtered = useMemo(
@@ -557,6 +569,31 @@ export default function Home() {
                   >
                     +1 episode
                   </button>
+                </div>
+                <div className="mt-4 border-t border-white/10 pt-3">
+                  {removal === e.id ? (
+                    <div role="group" aria-label={"Remove " + e.title}>
+                      <p className="text-sm text-slate-300">
+                        Remove {e.title} from your library? This also deletes its
+                        ratings and progress. Adding it again starts fresh.
+                      </p>
+                      <div className="mt-3 flex gap-3">
+                        <button disabled={busy || !canEdit}
+                          onClick={() => void mutate("/tracker/" + e.id, "DELETE")}
+                          className="rounded-lg border border-rose-400/30 px-3 py-2 text-xs text-rose-200 disabled:opacity-50">
+                          {busy ? "Please wait…" : "Confirm removal"}
+                        </button>
+                        <button disabled={busy} onClick={() => setRemoval(null)}
+                          className="text-xs text-slate-300 underline">Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button disabled={busy || !canEdit} onClick={() => setRemoval(e.id)}
+                      aria-label={"Remove " + e.title}
+                      className="text-xs text-rose-300 underline disabled:opacity-50">
+                      Remove from library
+                    </button>
+                  )}
                 </div>
               </article>
             ))}

@@ -20,7 +20,7 @@ async function mockAPI(
     const headers = {
       "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
       "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
     };
     const respond = (body: unknown, status = 200) =>
       route.fulfill({
@@ -68,6 +68,11 @@ async function mockAPI(
       return respond({ error: "unauthorized" }, 401);
     if (path === "/auth/logout") {
       entries.delete(token);
+      return route.fulfill({ status: 204, headers });
+    }
+    if (path.startsWith("/tracker/") && request.method() === "DELETE") {
+      const items = entries.get(token) ?? [];
+      entries.set(token, items.filter((item) => (item as {id: string}).id !== path.split("/").at(-1)));
       return route.fulfill({ status: 204, headers });
     }
     if (path === "/tracker") {
@@ -133,6 +138,8 @@ test("account switching and reload never retain another account's library or bea
     (x) => x.path === "/tracker" && x.token,
   )?.token;
   expect(firstToken).toHaveLength(43);
+  await page.getByRole("article").getByRole("button", { name: "Remove Synthetic Catalog Title", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Confirm removal", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(0);
   await page
@@ -147,6 +154,7 @@ test("account switching and reload never retain another account's library or bea
   ).toBeVisible();
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Confirm removal", exact: true })).toHaveCount(0);
   expect(
     await page.evaluate(() => ({
       local: Object.keys(localStorage),
@@ -459,4 +467,40 @@ test("unverified accounts stay signed in with library locked when mail is unavai
   expect(
     requests.filter((request) => request.path === "/tracker"),
   ).toHaveLength(0);
+});
+
+
+test("library removal confirms, cancels, preserves failures and permits re-add", async ({ page }) => {
+  await mockAPI(page, false);
+  await page.goto("/");
+  await page.getByPlaceholder("Search starter catalog…").fill("Synthetic");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  const article = page.getByRole("article");
+  await expect(article).toHaveCount(1);
+  let deletes = 0;
+  let fail = true;
+  await page.route("**/api/v1/tracker/*", async route => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    deletes++;
+    if (fail) return route.fulfill({status: 503, contentType: "application/json", body: JSON.stringify({error:"private-server-error"}), headers:{"Access-Control-Allow-Origin":"http://127.0.0.1:3000"}});
+    return route.fallback();
+  });
+  await article.getByRole("button", { name: "Remove Synthetic Catalog Title", exact: true }).click();
+  await expect(article.getByText(/Adding it again starts fresh/)).toBeVisible();
+  await article.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect(deletes).toBe(0);
+  await article.getByRole("button", { name: "Remove Synthetic Catalog Title", exact: true }).click();
+  await article.getByRole("button", { name: "Confirm removal", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveText("Request failed. Please try again.");
+  await expect(article).toHaveCount(1);
+  await expect(article.getByRole("button", { name: "Confirm removal", exact: true })).toBeEnabled();
+  fail = false;
+  await article.getByRole("button", { name: "Confirm removal", exact: true }).click();
+  await expect(article).toHaveCount(0);
+  expect(deletes).toBe(2);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByPlaceholder("Search starter catalog…").fill("Synthetic");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(article).toHaveCount(1);
+  await expect(article.getByRole("group", { name: "Remove Synthetic Catalog Title" })).toHaveCount(0);
 });
