@@ -1,5 +1,21 @@
 # Implementation Log
 
+## 2026-11-15 — PostgreSQL row-level security foundation
+
+Implemented:
+- Added migration `000005_row_level_security` with forced RLS policies for users, auth sessions, watch history, ratings, progress, preferences, recommendations, recommendation feedback, follows, and notifications.
+- Added a transaction-scoped `app_current_user_id()` helper reading the trusted `app.user_id` setting.
+- Added PostgreSQL CI assertions for RLS enablement/force and policy count, plus an application-role isolation test proving one user cannot see another user's account row.
+- Updated security and architecture documentation to clarify that RLS schema policies exist but the API does not yet establish a trusted per-request database identity.
+
+Security boundary:
+- RLS is not a replacement for authentication. The API still uses the local JSON store and does not set `app.user_id`.
+- The setting must only be populated by trusted server code after session verification, inside the same transaction as protected queries. Never accept it from client input.
+- The application role must be non-superuser, must not have `BYPASSRLS`, and must not own protected tables.
+
+Verification:
+- CI has been extended to apply and roll back migration 000005 and exercise RLS using a restricted database role. The new run has not yet completed.
+
 ## 2026-11-15 — Identity schema foundation
 
 Implemented:
