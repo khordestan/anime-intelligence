@@ -31,7 +31,7 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 	// A compromised or stale connection must never carry identity into a request.
 	config.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
 		var unsafe bool
-		err := c.QueryRow(ctx, `SELECT r.rolsuper OR r.rolbypassrls OR EXISTS (
+		err := c.QueryRow(ctx, `SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR EXISTS (
    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE n.nspname='public' AND c.relkind='r' AND pg_has_role(current_user,c.relowner,'USAGE')
   ) FROM pg_roles r WHERE r.rolname=current_user`).Scan(&unsafe)
@@ -39,7 +39,7 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 			return err
 		}
 		if unsafe {
-			return errors.New("database runtime requires a non-owner role without superuser or BYPASSRLS")
+			return errors.New("database runtime requires a non-owner role without elevated privileges")
 		}
 		_, err = c.Exec(ctx, `SELECT set_config('app.user_id','',false), set_config('app.login_email','',false), set_config('app.session_token_hash','',false)`)
 		return err
@@ -54,9 +54,9 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 	}
 	var secured int
 	err = pool.QueryRow(ctx, `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
- WHERE n.nspname='public' AND c.relname IN ('users','auth_sessions','user_anime','watch_progress','user_ratings')
+ WHERE n.nspname='public' AND c.relname IN ('users','auth_sessions','user_anime','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications')
  AND c.relrowsecurity AND c.relforcerowsecurity`).Scan(&secured)
-	if err != nil || secured != 5 {
+	if err != nil || secured != 10 {
 		pool.Close()
 		return nil, errors.New("required forced row-level security is missing; apply schema migrations")
 	}
@@ -70,7 +70,10 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 func (d *DB) Close() { d.pool.Close() }
 
 func (d *DB) begin(ctx context.Context) (pgx.Tx, error) {
-	tx, err := d.pool.Begin(ctx)
+	return d.beginTx(ctx, pgx.TxOptions{})
+}
+func (d *DB) beginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error) {
+	tx, err := d.pool.BeginTx(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -91,11 +94,17 @@ func identity(ctx context.Context, tx pgx.Tx, userID string) error {
 	return err
 }
 func (d *DB) sessionTx(ctx context.Context, token string) (pgx.Tx, User, error) {
+	return d.sessionTxOptions(ctx, token, pgx.TxOptions{})
+}
+func (d *DB) sessionTxOptions(ctx context.Context, token string, options pgx.TxOptions) (pgx.Tx, User, error) {
+	return d.sessionTxWithUserLock(ctx, token, options, false)
+}
+func (d *DB) sessionTxWithUserLock(ctx context.Context, token string, options pgx.TxOptions, exclusive bool) (pgx.Tx, User, error) {
 	digest, ok := tokenDigest(token)
 	if !ok {
 		return nil, User{}, ErrUnauthorized
 	}
-	tx, err := d.begin(ctx)
+	tx, err := d.beginTx(ctx, options)
 	if err != nil {
 		return nil, User{}, err
 	}
@@ -116,15 +125,21 @@ func (d *DB) sessionTx(ctx context.Context, token string) (pgx.Tx, User, error) 
 	if err = identity(ctx, tx, uid); err != nil {
 		return fail(err)
 	}
-	err = tx.QueryRow(ctx, `SELECT user_id::text FROM auth_sessions WHERE user_id=$1 AND token_hash=decode($2,'hex') AND revoked_at IS NULL AND expires_at>now() FOR UPDATE`, uid, digest).Scan(&uid)
+	// Lock account state before session rows everywhere. Deletion takes an
+	// exclusive account lock, preventing lock upgrades/cross-session deadlocks.
+	var u User
+	lock := " FOR SHARE"
+	if exclusive {
+		lock = " FOR UPDATE"
+	}
+	err = tx.QueryRow(ctx, `SELECT id::text,email,display_name FROM users WHERE id=$1 AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until<=now())`+lock, uid).Scan(&u.ID, &u.Email, &u.DisplayName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return fail(ErrUnauthorized)
 	}
 	if err != nil {
 		return fail(err)
 	}
-	var u User
-	err = tx.QueryRow(ctx, `SELECT id::text,email,display_name FROM users WHERE id=$1 AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until<=now()) FOR SHARE`, uid).Scan(&u.ID, &u.Email, &u.DisplayName)
+	err = tx.QueryRow(ctx, `SELECT user_id::text FROM auth_sessions WHERE user_id=$1 AND token_hash=decode($2,'hex') AND revoked_at IS NULL AND expires_at>now() FOR UPDATE`, uid, digest).Scan(&uid)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return fail(ErrUnauthorized)
 	}

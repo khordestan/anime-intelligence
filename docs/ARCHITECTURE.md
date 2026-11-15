@@ -21,6 +21,7 @@ The first release is a modular monolith. The API and worker are separate process
 - Migrations `000004_auth_sessions` and `000005_row_level_security` add case-insensitive email uniqueness, password-hash storage, account security metadata, hashed session-token records, and forced per-user RLS policies.
 - The intended password format is Argon2id PHC; the database stores only an encoded hash, never plaintext.
 - Raw random session tokens are returned once and only SHA-256 digests are persisted.
+- Account export uses a repeatable-read snapshot; password-confirmed deletion uses an exclusive account lock and foreign-key cascades. All session-backed transactions acquire account state locks before session locks.
 - PostgreSQL mode implements login, registration, token rotation/revocation, authorization, and a bounded process-wide password gate. Cookie authentication is unsupported; explicit bearer headers avoid ambient-cookie CSRF. Production abuse controls and independent review remain pending.
 - User identity must come from a verified server-side session, never a client-supplied user ID.
 - User-owned data must be scoped by authenticated user ID in every query. Migration `000005_row_level_security` installs forced RLS policies using `app.user_id`; the PostgreSQL runtime sets this trusted context within each session-verified private transaction. RLS is defense in depth, not a substitute for correct application authorization.

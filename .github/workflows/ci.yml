@@ -71,7 +71,7 @@ jobs:
       - name: PostgreSQL runtime, authentication, isolation and migration tests
         env:
           TEST_DATABASE_URL: postgres://anime:anime_test_password@localhost:5432/anime_intelligence?sslmode=disable
-        run: go test -race -count=1 -v ./internal/platform/postgres
+        run: go test -race -count=1 -timeout=3m -v ./internal/platform/postgres
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update

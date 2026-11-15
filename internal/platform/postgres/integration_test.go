@@ -78,6 +78,9 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT USAGE ON SCHEMA public TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON anime TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON users,auth_sessions,user_anime,watch_progress,user_ratings TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = owner.Exec(ctx, `GRANT SELECT ON user_preferences,recommendations,recommendation_feedback,user_follows,notifications TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	ownerDSN := u.String()
 	u.User = url.UserPassword(role, credential)
 	db, err := postgres.Open(ctx, u.String())
@@ -403,5 +406,207 @@ func TestLockedAndUnprovisionedAccountsRejectAuthentication(t *testing.T) {
 	}
 	if _, err = db.Login(ctx, "unprovisioned@example.test", "synthetic-locked-password"); !errors.Is(err, postgres.ErrUnauthorized) {
 		t.Fatal("account without credentials accepted", err)
+	}
+}
+
+func TestAccountExportAndDeletionIsolation(t *testing.T) {
+	db, owner, _, _ := testDB(t)
+	ctx := context.Background()
+	one, err := db.Register(ctx, "export-one@example.test", "synthetic-export-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	two, err := db.Register(ctx, "export-two@example.test", "synthetic-other-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	another, err := db.Login(ctx, one.User.Email, "synthetic-export-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const anime = "10000000-0000-4000-8000-000000000001"
+	if _, err = db.Repository(one.Token).Add(ctx, anime, "WATCHING", 3); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.Repository(two.Token).Add(ctx, anime, "COMPLETED", 12); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := db.Repository(one.Token).Rate(ctx, anime, 5); err != nil || !ok {
+		t.Fatal(err)
+	}
+	exported, err := db.ExportAccount(ctx, one.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 8 {
+		t.Fatal("export contract failed")
+	}
+	encoded, err := json.Marshal(exported)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{two.User.ID, two.User.Email, one.Token, "password_hash", "token_hash", "synthetic-export-password", "argon2id"} {
+		if bytes.Contains(encoded, []byte(secret)) {
+			t.Fatal("export leaked another account or credential field")
+		}
+	}
+	for _, key := range []string{"tracker", "ratings", "progress"} {
+		var rows []map[string]any
+		if err = json.Unmarshal(exported.Data[key], &rows); err != nil || len(rows) != 1 {
+			t.Fatalf("export %s: %v", key, err)
+		}
+		if rows[0]["user_id"] != one.User.ID {
+			t.Fatal("cross-account export row")
+		}
+	}
+	if err = db.DeleteAccount(ctx, one.Token, "incorrect-password"); !errors.Is(err, postgres.ErrUnauthorized) {
+		t.Fatal("deletion without password accepted", err)
+	}
+	if _, err = db.Authenticate(ctx, one.Token); err != nil {
+		t.Fatal("failed deletion modified account", err)
+	}
+	if err = db.DeleteAccount(ctx, one.Token, "synthetic-export-password"); err != nil {
+		t.Fatal("delete:", err)
+	}
+	for _, token := range []string{one.Token, another.Token} {
+		if _, err = db.Authenticate(ctx, token); !errors.Is(err, postgres.ErrUnauthorized) {
+			t.Fatal("deleted account session accepted", err)
+		}
+	}
+	for _, table := range []string{"users", "auth_sessions", "user_anime", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "user_follows", "notifications"} {
+		field := "user_id"
+		if table == "users" {
+			field = "id"
+		}
+		var count int
+		if err = owner.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()+` WHERE `+pgx.Identifier{field}.Sanitize()+`=$1`, one.User.ID).Scan(&count); err != nil || count != 0 {
+			t.Fatalf("deletion left %s records: %d %v", table, count, err)
+		}
+	}
+	if rows, err := db.Repository(two.Token).Library(ctx); err != nil || len(rows) != 1 || rows[0].EpisodesWatched != 12 {
+		t.Fatal("deletion affected another account", err)
+	}
+}
+
+func TestHTTPAccountExportAndPasswordConfirmedDeletion(t *testing.T) {
+	db, _, _, _ := testDB(t)
+	ctx := context.Background()
+	s, err := db.Register(ctx, "http-export@example.test", "synthetic-export-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), db)
+	call := func(method, path, token, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		if token != "" {
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w
+	}
+	for _, spec := range [][2]string{{"GET", "/api/v1/auth/export"}, {"DELETE", "/api/v1/auth/account"}} {
+		if w := call(spec[0], spec[1], "", "{}"); w.Code != 401 {
+			t.Fatal("unprotected account route", w.Code)
+		}
+	}
+	if w := call("GET", "/api/v1/auth/export", s.Token, ""); w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" || !strings.Contains(w.Header().Get("Content-Disposition"), "attachment") {
+		t.Fatal("export response contract:", w.Code)
+	}
+	if w := call("DELETE", "/api/v1/auth/account", s.Token, `{"password":"synthetic-export-password","userId":"spoofed"}`); w.Code != 400 {
+		t.Fatal("deletion accepted an owner override", w.Code)
+	}
+	if w := call("DELETE", "/api/v1/auth/account", s.Token, `{"password":"wrong-password"}`); w.Code != 401 {
+		t.Fatal("deletion accepted wrong password", w.Code)
+	}
+	if w := call("DELETE", "/api/v1/auth/account", s.Token, `{"password":"synthetic-export-password"}`); w.Code != 204 {
+		t.Fatal("delete failed:", w.Code, w.Body.String())
+	}
+	if w := call("GET", "/api/v1/auth/me", s.Token, ""); w.Code != 401 {
+		t.Fatal("deleted account retained access", w.Code)
+	}
+}
+
+func TestConcurrentAccountExportUsesConsistentSnapshot(t *testing.T) {
+	db, _, _, _ := testDB(t)
+	ctx := context.Background()
+	s, err := db.Register(ctx, "snapshot@example.test", "synthetic-snapshot-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer, err := db.Login(ctx, s.User.Email, "synthetic-snapshot-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const anime = "10000000-0000-4000-8000-000000000001"
+	if _, err = db.Repository(writer.Token).Add(ctx, anime, "WATCHING", 1); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		for i := 0; i < 12; i++ {
+			status, n := "WATCHING", 1
+			if i%2 == 1 {
+				status, n = "COMPLETED", 12
+			}
+			if _, err := db.Repository(writer.Token).Add(ctx, anime, status, n); err != nil {
+				done <- err
+				return
+			}
+		}
+		done <- nil
+	}()
+	for range 8 {
+		out, err := db.ExportAccount(ctx, s.Token)
+		if err != nil {
+			t.Fatal("concurrent export:", err)
+		}
+		var tracker []struct {
+			Status string `json:"watch_status"`
+		}
+		var progress []struct {
+			Episodes int `json:"episodes_watched"`
+		}
+		if err = json.Unmarshal(out.Data["tracker"], &tracker); err != nil {
+			t.Fatal(err)
+		}
+		if err = json.Unmarshal(out.Data["progress"], &progress); err != nil {
+			t.Fatal(err)
+		}
+		if len(tracker) != 1 || len(progress) != 1 || (tracker[0].Status == "WATCHING" && progress[0].Episodes != 1) || (tracker[0].Status == "COMPLETED" && progress[0].Episodes != 12) {
+			t.Fatal("export mixed transaction snapshots")
+		}
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestConcurrentAccountDeletionIsSerialized(t *testing.T) {
+	db, _, _, _ := testDB(t)
+	ctx := context.Background()
+	s, err := db.Register(ctx, "delete-race@example.test", "synthetic-delete-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := db.Login(ctx, s.User.Email, "synthetic-delete-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := make(chan error, 2)
+	for _, token := range []string{s.Token, other.Token} {
+		go func(token string) { results <- db.DeleteAccount(ctx, token, "synthetic-delete-password") }(token)
+	}
+	success := 0
+	for range 2 {
+		err := <-results
+		if err == nil {
+			success++
+		} else if !errors.Is(err, postgres.ErrUnauthorized) {
+			t.Fatal("concurrent deletion failed unexpectedly:", err)
+		}
+	}
+	if success != 1 {
+		t.Fatalf("expected one deletion, got %d", success)
 	}
 }

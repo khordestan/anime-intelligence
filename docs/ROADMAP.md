@@ -26,7 +26,8 @@
 - [x] Browser authentication UI with in-memory tokens and account-switch isolation
 - [ ] Session listing and remote session revocation
 - [ ] Password recovery, email verification and production abuse controls
-- [ ] User data export and deletion
+- [x] User data export and password-confirmed deletion (PostgreSQL API)
+- [ ] Account export/deletion dashboard controls
 
 ## Milestone 2 — Catalog and data platform
 - [x] Initial feature taxonomy covering story, protagonist, powers, tone, pacing and spoiler-sensitive endings

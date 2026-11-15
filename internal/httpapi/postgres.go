@@ -94,6 +94,35 @@ func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
 			fn(w, r, token, u)
 		}
 	}
+	mux.HandleFunc("GET /api/v1/auth/export", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		data, err := db.ExportAccount(r.Context(), token)
+		if err != nil {
+			sessionError(w, err)
+			return
+		}
+		w.Header().Set("Content-Disposition", `attachment; filename="anime-intelligence-account.json"`)
+		writeJSON(w, 200, data)
+	}))
+	mux.HandleFunc("DELETE /api/v1/auth/account", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		if !gate.acquire() {
+			w.Header().Set("Retry-After", "6")
+			authError(w, 429, "too_many_requests")
+			return
+		}
+		defer gate.release()
+		var q struct {
+			Password string `json:"password"`
+		}
+		if decodeAuth(w, r, &q) != nil {
+			authError(w, 400, "invalid_json")
+			return
+		}
+		if err := db.DeleteAccount(r.Context(), token, q.Password); err != nil {
+			sessionError(w, err)
+			return
+		}
+		w.WriteHeader(204)
+	}))
 	mux.HandleFunc("GET /api/v1/auth/me", protect(func(w http.ResponseWriter, r *http.Request, _ string, u postgres.User) { writeJSON(w, 200, u) }))
 	mux.HandleFunc("POST /api/v1/auth/logout", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		if err := db.Logout(r.Context(), token); err != nil {

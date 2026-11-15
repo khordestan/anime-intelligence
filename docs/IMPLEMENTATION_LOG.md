@@ -118,3 +118,12 @@ Remaining boundaries:
 - The first browser CI run exposed native `fetch` being invoked with the API client as its receiver, causing an illegal-invocation error in the browser. Fixed by explicitly preserving the global receiver and added a native-style transport regression test.
 - Browser CI now tests the built production server. Docker frontend builds also use the committed lockfile via `npm ci`.
 - Added locally passing PostgreSQL race tests for atomic migration failure rollback and denial of locked/unprovisioned accounts. Backend and database jobs passed in the previous CI run; browser verification is rerun after this fix.
+
+## 2026-11-15 — Account data portability and deletion
+
+- Added session-protected product-data export using a consistent repeatable-read snapshot, explicit owner predicates, forced RLS, stable row ordering, and bounded serialization retries. Password/session hashes and security metadata are excluded.
+- Added password-confirmed account deletion with the hashing abuse gate, exclusive account locking, atomic foreign-key cascades, and invalidation of all account sessions. Request-provided target user IDs are rejected.
+- Standardized account-before-session lock ordering and tested concurrent deletion from separate sessions. Runtime startup now checks all ten private tables and rejects role/database creation and replication privileges in addition to owner/superuser/BYPASSRLS roles.
+- Extended least-privilege runtime grants and made provisioning safe to rerun. Updated OpenAPI, roadmap, security contract, and runtime documentation. Dashboard export/deletion controls remain pending.
+- Local PostgreSQL 17 race tests, full Go suite, vet/build, and diff checks pass, including concurrent export/update consistency, credential exclusion, cross-user isolation, deletion password failures, cascading removal, and concurrent deletion.
+- The browser-fetch fix passed all GitHub CI jobs, including three production-browser tests (run 43663475819). No public deployment was performed.

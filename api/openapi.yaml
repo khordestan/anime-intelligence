@@ -173,6 +173,49 @@ paths:
       responses:
         "204": { description: Session revoked }
         "401": { description: Missing or invalid session }
+  /api/v1/auth/export:
+    get:
+      summary: Download the current account's product data
+      description: Consistent versioned JSON snapshot. Excludes credential/session hashes and security metadata. No-store response with an attachment filename.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Account data export
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schemaVersion, exportedAt, user, data]
+                properties:
+                  schemaVersion: { type: integer, const: 1 }
+                  exportedAt: { type: string, format: date-time }
+                  user: { $ref: '#/components/schemas/User' }
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items: { type: object }
+        "401": { description: Missing or invalid session }
+  /api/v1/auth/account:
+    delete:
+      summary: Permanently delete the current account and its data
+      description: Requires the current password. Revokes all account sessions by deleting them. Does not accept a target user ID. This operation cannot be undone.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password]
+              properties:
+                password: { type: string, format: password }
+      responses:
+        "204": { description: Account and owned records deleted }
+        "400": { description: Invalid JSON or unknown fields }
+        "401": { description: Missing/invalid session or incorrect password }
+        "429": { description: Authentication rate or concurrency limit reached }
 components:
   securitySchemes:
     bearerAuth:
