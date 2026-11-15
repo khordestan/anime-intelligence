@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/khordestan/anime-intelligence/internal/platform/metrics"
@@ -18,12 +20,13 @@ import (
 
 func main() { os.Exit(run(os.Args[1:], os.Getenv("DATABASE_URL"), os.Stdout, os.Stderr)) }
 
-const usage = "usage: identity-status [-format=json|prometheus]"
+const usage = "usage: identity-status [-format=json|prometheus] [-output-file=/absolute/path.prom]"
 
 func run(args []string, dsn string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("identity-status", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	format := flags.String("format", "json", "snapshot output format")
+	outputFile := flags.String("output-file", "", "atomic Prometheus textfile destination")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			if _, writeErr := fmt.Fprintln(stdout, usage); writeErr != nil {
@@ -35,7 +38,7 @@ func run(args []string, dsn string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, usage)
 		return 1
 	}
-	if flags.NArg() != 0 || (*format != "json" && *format != "prometheus") {
+	if flags.NArg() != 0 || (*format != "json" && *format != "prometheus") || (*outputFile != "" && (*format != "prometheus" || !filepath.IsAbs(*outputFile) || !strings.HasSuffix(*outputFile, ".prom"))) {
 		fmt.Fprintln(stderr, usage)
 		return 1
 	}
@@ -57,7 +60,12 @@ func run(args []string, dsn string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "identity queue diagnostics query failed")
 		return 1
 	}
-	if err = writeSnapshot(stdout, *format, snapshot); err != nil {
+	if *outputFile != "" {
+		err = writeSnapshotFile(*outputFile, snapshot)
+	} else {
+		err = writeSnapshot(stdout, *format, snapshot)
+	}
+	if err != nil {
 		fmt.Fprintln(stderr, "identity queue diagnostics output failed")
 		return 1
 	}

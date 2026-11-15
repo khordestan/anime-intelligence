@@ -1,0 +1,13 @@
+# Example for an explicitly configured local node_exporter textfile collector.
+# No scrape target or notification receiver is installed automatically.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+rule_files:
+  - identity-alerts.yml
+scrape_configs:
+  - job_name: anime-identity-queues
+    static_configs:
+      - targets: ['127.0.0.1:9100']
+        labels:
+          anime_identity_monitor: 'true'

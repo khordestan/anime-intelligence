@@ -1,0 +1,73 @@
+groups:
+  - name: anime-identity-queues
+    interval: 30s
+    rules:
+      - record: anime_identity:snapshot_fresh_timestamp_seconds
+        expr: >-
+          (anime_identity_snapshot_timestamp_seconds{anime_identity_monitor="true"} >= time() - 180)
+          and (anime_identity_snapshot_timestamp_seconds{anime_identity_monitor="true"} <= time() + 60)
+          and on(job, instance) (up{anime_identity_monitor="true"} == 1)
+      - alert: AnimeIdentityMonitorTargetDown
+        expr: up{anime_identity_monitor="true"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity queue monitoring target is unreachable'}
+      - alert: AnimeIdentitySnapshotMissing
+        expr: >-
+          (up{anime_identity_monitor="true"} == 1)
+          unless on(job, instance) anime_identity_snapshot_timestamp_seconds{anime_identity_monitor="true"}
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity queue snapshot is missing on a reachable target'}
+      - alert: AnimeIdentitySnapshotStale
+        expr: >-
+          (time() - anime_identity_snapshot_timestamp_seconds{anime_identity_monitor="true"} > 180)
+          and on(job, instance) (up{anime_identity_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity queue snapshot is no longer refreshing'}
+      - alert: AnimeIdentitySnapshotClockAhead
+        expr: >-
+          (anime_identity_snapshot_timestamp_seconds{anime_identity_monitor="true"} - time() > 60)
+          and on(job, instance) (up{anime_identity_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity snapshot database clock is ahead of monitoring time'}
+      - alert: AnimeIdentityRequestCapacityPressure
+        expr: >-
+          (anime_identity_queue_active{anime_identity_monitor="true",queue="requests"}
+          / ignoring(queue) group_left anime_identity_requests_capacity{anime_identity_monitor="true"} >= 0.8)
+          and on(job, instance) anime_identity:snapshot_fresh_timestamp_seconds
+        for: 3m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity request inbox is approaching shared capacity'}
+      - alert: AnimeIdentityRequestBacklogAge
+        expr: >-
+          (anime_identity_queue_oldest_active_age_seconds{anime_identity_monitor="true",queue="requests"} > 300)
+          and on(job, instance, queue) (anime_identity_queue_active{anime_identity_monitor="true",queue="requests"} > 0)
+          and on(job, instance) anime_identity:snapshot_fresh_timestamp_seconds
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity request backlog is aging toward its deadline'}
+      - alert: AnimeIdentityDeliveryBacklogAge
+        expr: >-
+          (anime_identity_queue_oldest_active_age_seconds{anime_identity_monitor="true",queue="deliveries"} > 600)
+          and on(job, instance, queue) (anime_identity_queue_active{anime_identity_monitor="true",queue="deliveries"} > 0)
+          and on(job, instance) anime_identity:snapshot_fresh_timestamp_seconds
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity mail backlog has remained old'}
+      - alert: AnimeIdentityQueueCleanupBacklog
+        expr: >-
+          (anime_identity_queue_awaiting_cleanup{anime_identity_monitor="true"} > 0)
+          and on(job, instance) anime_identity:snapshot_fresh_timestamp_seconds
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity queue terminal cleanup is not keeping up'}
+      - alert: AnimeIdentityRetainedExhaustion
+        expr: >-
+          (anime_identity_queue_outcome_rows{anime_identity_monitor="true",outcome="exhausted"} > 0)
+          and on(job, instance) anime_identity:snapshot_fresh_timestamp_seconds
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: 'Identity queue retains work that exhausted its attempt budget'}

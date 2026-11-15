@@ -53,7 +53,7 @@ These are counts of retained rows, **not cumulative counters**. They decrease wh
 
 ## Prometheus text output
 
-Run `go run ./cmd/identity-status -format=prometheus` with the same restricted database connection supplied out of band. JSON remains the default; `-format=json` is explicit. Unsupported formats/arguments fail with fixed usage text without echoing supplied values, and `-h` works without database configuration. No HTTP listener, scheduler, collector installation or alert routing is added.
+Run `go run ./cmd/identity-status -format=prometheus` with the same restricted database connection supplied out of band. JSON remains the default; `-format=json` is explicit. Unsupported formats/arguments fail with fixed usage text without echoing supplied values, and `-h` works without database configuration. No HTTP listener, collector installation or alert routing is added. Disabled scheduler/Prometheus templates and tested rules are available separately; nothing is activated.
 
 All fourteen metric families are **gauges**. Label values come only from fixed queue names (`requests`, `deliveries`) and outcome names (`issued`, `no_action`, `accepted`, `invalidated`, `expired`, `exhausted`, `legacy_unknown`). The format always emits the same 38 series, including zeros for empty queues and inapplicable outcomes. No recipient, account ID, connection URL, provider response, key or ciphertext becomes a label.
 
@@ -68,6 +68,10 @@ All fourteen metric families are **gauges**. Label values come only from fixed q
 | `anime_identity_queue_oldest_payload_age_seconds` | Snapshot-relative oldest encrypted payload age; zero when empty or future |
 | `anime_identity_queue_latest_payload_expiry_timestamp_seconds` | Latest retained payload expiry in Unix seconds; zero when empty |
 
-For a textfile collector, write stdout to a temporary file in the destination directory and atomically rename it to the final `.prom` path only after the command exits successfully. Configure file permissions for the trusted scraper. A failed run must not replace the last complete snapshot; monitor its timestamp so old data cannot look healthy. Collector/scheduling/alert configuration is an operator responsibility and is not installed by the command.
+For a textfile collector, write stdout to a temporary file in the destination directory and atomically rename it to the final `.prom` path only after the command exits successfully. Configure file permissions for the trusted scraper. A failed run must not replace the last complete snapshot; monitor its timestamp so old data cannot look healthy. The CLI now supports `-output-file=/absolute/path.prom` to perform same-directory staging, sync/close, 0640 mode and atomic rename itself. It requires `-format=prometheus`, an absolute `.prom` destination and an existing trusted directory. Collector activation/receiver routing remains an operator responsibility and is not installed by the command.
 
 Interpret ages together with active/payload counts, since zero also represents empty queues. Counts describe the shared database, not an individual API process; avoid summing duplicate snapshots of the same database across collector hosts. Retention and account deletion reduce outcome counts, so use gauge comparisons and avoid counter functions such as `rate`/`increase` on these series. Provider failure timing, end-recipient delivery, missing-scrape detection and reviewed production alert thresholds still need additional monitoring design.
+
+## Tested monitoring templates
+
+See [deployments/monitoring](../deployments/monitoring/README.md) for inactive systemd/timer and loopback Prometheus examples plus tested alert rules. They cover marked target availability, missing/stale/future snapshots, queue capacity/age, cleanup and retained exhaustion. State alerts require fresh data; missing snapshots are detected per marked job/instance even when another target is healthy. Tests use checksum-pinned Prometheus LTS tooling and actual exporter rendering. No unit, scrape configuration or notification receiver is activated by these files.

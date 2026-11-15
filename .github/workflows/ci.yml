@@ -128,6 +128,11 @@ jobs:
       - name: Browser tests against the Go API and PostgreSQL
         run: npm run test:e2e
         working-directory: web
+      - name: Verify atomic diagnostic export through the restricted database role
+        run: |
+          go run ./cmd/identity-status -format=prometheus -output-file="$RUNNER_TEMP/anime_identity.prom"
+          test -s "$RUNNER_TEMP/anime_identity.prom"
+          test "$(stat -c '%a' "$RUNNER_TEMP/anime_identity.prom")" = "640"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -261,3 +266,26 @@ jobs:
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000003_feature_taxonomy.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000002_catalog_seed.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000001_initial_schema.down.sql
+
+  monitoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+      - name: Install checksum-pinned Prometheus LTS test tooling
+        run: scripts/install-promtool.sh "$RUNNER_TEMP/anime-promtool"
+      - name: Validate monitoring configuration and alert behavior
+        run: |
+          "$RUNNER_TEMP/anime-promtool/promtool" check config deployments/monitoring/prometheus.example.yml
+          "$RUNNER_TEMP/anime-promtool/promtool" check rules deployments/monitoring/identity-alerts.yml
+          "$RUNNER_TEMP/anime-promtool/promtool" test rules deployments/monitoring/identity-alerts.test.yml
+      - name: Validate inactive systemd example syntax
+        run: scripts/check-monitoring-units.sh
+      - name: Validate actual exporter output with Prometheus parser
+        run: |
+          set -o pipefail
+          go run ./scripts/render-monitoring-fixture.go | "$RUNNER_TEMP/anime-promtool/promtool" check metrics

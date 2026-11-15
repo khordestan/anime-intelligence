@@ -1,0 +1,338 @@
+rule_files:
+- identity-alerts.yml
+evaluation_interval: 30s
+tests:
+- name: fresh-empty-queues-are-quiet
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x20
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 0+60x20
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 0+0x20
+  - series: anime_identity_queue_oldest_active_age_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 0+0x20
+  - series: anime_identity_queue_awaiting_cleanup{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="deliveries"}
+    values: 0+0x20
+  - series: anime_identity_queue_outcome_rows{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="deliveries",outcome="exhausted"}
+    values: 0+0x20
+  - series: anime_identity_requests_capacity{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 256+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: AnimeIdentityMonitorTargetDown
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentitySnapshotMissing
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentitySnapshotStale
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentitySnapshotClockAhead
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityRequestCapacityPressure
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityRequestBacklogAge
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityDeliveryBacklogAge
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityQueueCleanupBacklog
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityRetainedExhaustion
+    exp_alerts: []
+- name: missing-one-target-despite-another-healthy
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x10
+  - series: up{job="anime-identity-queues",instance="other:9100",anime_identity_monitor="true"}
+    values: 1+0x10
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="other:9100",anime_identity_monitor="true"}
+    values: 0+60x10
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: AnimeIdentitySnapshotMissing
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: AnimeIdentitySnapshotMissing
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Identity queue snapshot is missing on a reachable target
+- name: down-is-not-missing
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 0+0x10
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: AnimeIdentityMonitorTargetDown
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: AnimeIdentityMonitorTargetDown
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Identity queue monitoring target is unreachable
+  - eval_time: 3m
+    alertname: AnimeIdentitySnapshotMissing
+    exp_alerts: []
+- name: stale-export-suppresses-old-queue-alerts
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x10
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 0+0x10
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 255+0x10
+  - series: anime_identity_requests_capacity{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 256+0x10
+  - series: anime_identity_queue_oldest_active_age_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 800+0x10
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: AnimeIdentitySnapshotStale
+    exp_alerts: []
+  - eval_time: 6m
+    alertname: AnimeIdentitySnapshotStale
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Identity queue snapshot is no longer refreshing
+  - eval_time: 6m
+    alertname: AnimeIdentityRequestCapacityPressure
+    exp_alerts: []
+  - eval_time: 6m
+    alertname: AnimeIdentityRequestBacklogAge
+    exp_alerts: []
+- name: future-clock-is-not-healthy
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x10
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1000+60x10
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 255+0x10
+  - series: anime_identity_requests_capacity{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 256+0x10
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: AnimeIdentitySnapshotClockAhead
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: AnimeIdentitySnapshotClockAhead
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Identity snapshot database clock is ahead of monitoring time
+  - eval_time: 4m
+    alertname: AnimeIdentityRequestCapacityPressure
+    exp_alerts: []
+- name: capacity-persistence-and-recovery
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x20
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 0+60x20
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 230+0x3 0+0x16
+  - series: anime_identity_requests_capacity{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 256+0x20
+  - series: up{job="anime-identity-queues",instance="healthy:9100",anime_identity_monitor="true"}
+    values: 1+0x20
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="healthy:9100",anime_identity_monitor="true"}
+    values: 0+60x20
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="healthy:9100",anime_identity_monitor="true",queue="requests"}
+    values: 230+0x20
+  - series: anime_identity_requests_capacity{job="anime-identity-queues",instance="healthy:9100",anime_identity_monitor="true"}
+    values: 1000+0x20
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: AnimeIdentityRequestCapacityPressure
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: AnimeIdentityRequestCapacityPressure
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+        queue: requests
+      exp_annotations:
+        summary: Identity request inbox is approaching shared capacity
+  - eval_time: 5m
+    alertname: AnimeIdentityRequestCapacityPressure
+    exp_alerts: []
+- name: backlog-thresholds-and-for-windows
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x20
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 0+60x20
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 2+0x20
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="deliveries"}
+    values: 3+0x20
+  - series: anime_identity_queue_oldest_active_age_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 301+0x20
+  - series: anime_identity_queue_oldest_active_age_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="deliveries"}
+    values: 601+0x20
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: AnimeIdentityRequestBacklogAge
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: AnimeIdentityRequestBacklogAge
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+        queue: requests
+      exp_annotations:
+        summary: Identity request backlog is aging toward its deadline
+  - eval_time: 4m
+    alertname: AnimeIdentityDeliveryBacklogAge
+    exp_alerts: []
+  - eval_time: 6m
+    alertname: AnimeIdentityDeliveryBacklogAge
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+        queue: deliveries
+      exp_annotations:
+        summary: Identity mail backlog has remained old
+- name: cleanup-and-retained-outcome-are-gauges
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x20
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 0+60x20
+  - series: anime_identity_queue_awaiting_cleanup{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="requests"}
+    values: 1+0x6 0+0x13
+  - series: anime_identity_queue_outcome_rows{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true",queue="deliveries",outcome="exhausted"}
+    values: 2+0x3 0+0x16
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: AnimeIdentityQueueCleanupBacklog
+    exp_alerts: []
+  - eval_time: 6m
+    alertname: AnimeIdentityQueueCleanupBacklog
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+        queue: requests
+      exp_annotations:
+        summary: Identity queue terminal cleanup is not keeping up
+  - eval_time: 8m
+    alertname: AnimeIdentityQueueCleanupBacklog
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: AnimeIdentityRetainedExhaustion
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+        queue: deliveries
+        outcome: exhausted
+      exp_annotations:
+        summary: Identity queue retains work that exhausted its attempt budget
+  - eval_time: 5m
+    alertname: AnimeIdentityRetainedExhaustion
+    exp_alerts: []
+- name: unmarked-host-is-never-in-scope
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="false"}
+    values: 0+0x20
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="false"}
+    values: 0+0x20
+  - series: anime_identity_queue_active{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="false",queue="requests"}
+    values: 255+0x20
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: AnimeIdentityMonitorTargetDown
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentitySnapshotMissing
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentitySnapshotStale
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentitySnapshotClockAhead
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityRequestCapacityPressure
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityRequestBacklogAge
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityDeliveryBacklogAge
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityQueueCleanupBacklog
+    exp_alerts: []
+  - eval_time: 10m
+    alertname: AnimeIdentityRetainedExhaustion
+    exp_alerts: []
+- name: snapshot-disappearing-after-success-becomes-missing
+  interval: 1m
+  input_series:
+  - series: up{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 1+0x10
+  - series: anime_identity_snapshot_timestamp_seconds{job="anime-identity-queues",instance="fixture:9100",anime_identity_monitor="true"}
+    values: 0+60x2 stale
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: AnimeIdentitySnapshotMissing
+    exp_alerts: []
+  - eval_time: 6m
+    alertname: AnimeIdentitySnapshotMissing
+    exp_alerts:
+    - exp_labels:
+        job: anime-identity-queues
+        instance: fixture:9100
+        anime_identity_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Identity queue snapshot is missing on a reachable target
