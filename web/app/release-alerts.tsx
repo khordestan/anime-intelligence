@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 
-type Follow = { animeId: string; title: string; track: string; createdAt: string };
+type Follow = { animeId: string; title: string; track: string; scope?: "ANIME" | "FRANCHISE"; createdAt: string };
 type Notice = { id: string; title: string; body: string; createdAt: string; readAt?: string };
 const tracks = ["SUB", "DUB", "RAW", "UNKNOWN", "ALL"];
 
@@ -16,6 +16,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const [follows, setFollows] = useState<Follow[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [preferences, setPreferences] = useState<Record<string, string>>({});
+  const [scopes, setScopes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const alive = useRef(true);
@@ -96,7 +97,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
       </button>
       {open && <div id="release-alert-panel" className="mt-4">
         <h2 className="font-semibold">Release alerts</h2>
-        <p className="mt-2 text-sm text-slate-400">Checks every minute while this panel is open. Only confirmed releases appear; scheduled times can change.</p>
+        <p className="mt-2 text-sm text-slate-400">Checks every minute while this panel is open. Episode notices require confirmed releases; linked-season follows also include new announcements. Scheduled times can change.</p>
         <button disabled={busy} onClick={() => void refresh()} className="mt-3 text-sm underline disabled:opacity-50">Refresh alerts</button>
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
         <h3 className="mt-5 font-medium">Followed releases</h3>
@@ -106,16 +107,21 @@ export default function ReleaseAlerts({ client, library, onError }: {
             const follow = follows.find(item => item.animeId === id);
             return <li key={id} className="flex flex-wrap items-center gap-3 rounded-xl bg-white/5 p-3">
               <span className="grow text-sm">{title}</span>
+              <select aria-label={"Release scope " + title} value={scopes[id] ?? follow?.scope ?? "ANIME"} disabled={busy}
+                onChange={e => setScopes(current => ({ ...current, [id]: e.target.value }))}
+                className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs">
+                <option value="ANIME">This season</option><option value="FRANCHISE">All linked seasons</option>
+              </select>
               <select aria-label={"Release track " + title} value={preferences[id] ?? follow?.track ?? "SUB"}
                 disabled={busy} onChange={e => setPreferences(current => ({ ...current, [id]: e.target.value }))}
                 className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs">
                 {tracks.map(track => <option key={track} value={track}>{track === "ALL" ? "All tracks" : track}</option>)}
               </select>
               <button disabled={busy} aria-label={(follow ? "Save release track " : "Follow releases ") + title}
-                onClick={() => void mutate("/follows/" + id, "PUT", { track: preferences[id] ?? follow?.track ?? "SUB" })}
+                onClick={() => void mutate("/follows/" + id, "PUT", { track: preferences[id] ?? follow?.track ?? "SUB", scope: scopes[id] ?? follow?.scope ?? "ANIME" })}
                 className="text-xs text-violet-200 underline disabled:opacity-50">{follow ? "Save track" : "Follow releases"}</button>
               {follow && <button disabled={busy} aria-label={"Stop alerts " + title}
-                onClick={() => void mutate("/follows/" + id, "DELETE")} className="text-xs text-rose-200 underline disabled:opacity-50">Stop alerts</button>}
+                onClick={() => void mutate("/follows/" + id + "?scope=" + (follow.scope ?? "ANIME"), "DELETE")} className="text-xs text-rose-200 underline disabled:opacity-50">Stop alerts</button>}
             </li>;
           })}
         </ul>

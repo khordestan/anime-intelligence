@@ -12,6 +12,8 @@ func releaseError(w http.ResponseWriter,err error) {
 	switch {
 	case errors.Is(err,store.ErrEmailUnverified): authError(w,403,"email_verification_required")
 	case errors.Is(err,postgres.ErrUnauthorized): authError(w,401,"unauthorized")
+	case errors.Is(err,postgres.ErrFollowLimit): authError(w,409,"follow_limit_reached")
+	case errors.Is(err,postgres.ErrFollowScope): authError(w,400,"invalid_follow_scope")
 	case errors.Is(err,postgres.ErrReleaseTrack): authError(w,400,"invalid_release_track")
 	default: authError(w,500,"release_operation_failed")
 	}
@@ -25,10 +27,11 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 	mux.HandleFunc("PUT /api/v1/follows/{id}",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")
 		if !validSessionID(id) {authError(w,400,"invalid_anime_id");return}
-		var body struct {Track string `json:"track"`}
+		var body struct {Track string `json:"track"`; Scope string `json:"scope"`}
 		if decodeAuth(w,r,&body)!=nil {authError(w,400,"invalid_json");return}
 		if body.Track=="" {body.Track="SUB"}
-		found,err:=db.Repository(token).Follow(r.Context(),id,body.Track)
+		if body.Scope=="" {body.Scope="ANIME"}
+		found,err:=db.Repository(token).FollowScope(r.Context(),id,body.Track,body.Scope)
 		if err!=nil {releaseError(w,err);return}
 		if !found {authError(w,404,"anime_not_found");return}
 		w.WriteHeader(204)
@@ -36,7 +39,9 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 	mux.HandleFunc("DELETE /api/v1/follows/{id}",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")
 		if !validSessionID(id) {authError(w,400,"invalid_anime_id");return}
-		found,err:=db.Repository(token).Unfollow(r.Context(),id)
+		scope:=r.URL.Query().Get("scope")
+		if scope=="" {scope="ANIME"}
+		found,err:=db.Repository(token).UnfollowScope(r.Context(),id,scope)
 		if err!=nil {releaseError(w,err);return}
 		if !found {authError(w,404,"follow_not_found");return}
 		w.WriteHeader(204)

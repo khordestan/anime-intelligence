@@ -46,7 +46,8 @@
 
 ## Milestone 2 — Catalog and data platform
 - [x] Initial feature taxonomy covering story, protagonist, powers, tone, pacing and spoiler-sensitive endings
-- [ ] Provider capability registry and license review
+- [x] Provider capability/approval registry and initial primary-source review
+- [ ] Production source-use permissions and licensed network activation
 - [x] Offline reviewed snapshot importer with exact external ID mapping
 - [ ] Licensed network provider adapters
 - [ ] Raw source snapshots where licensing permits
@@ -62,12 +63,12 @@
 - [ ] Dashboard exact-episode editing, rewatches and finer season conventions
 - [ ] Notes, rewatches and season ratings
 - [ ] Import/export and bulk editing
-- [ ] Franchise follows
+- [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence
 - [x] Transactional offline schedule ingestion and revision history
 - [ ] Scheduled network synchronization
-- [ ] Announcement and release event detection
+- [x] Durable post-baseline season-announcement and confirmed episode-release detection
 - [x] Owner-scoped polling in-app episode notifications and per-follow release tracks
 - [ ] Dashboard notification controls and background channels
 - [x] Durable canonical release-event and owned notification duplicate suppression

@@ -407,3 +407,9 @@ Added explicit count-to-exact replacement UI, comma-separated gap-aware selectio
 Added bounded offline Jikan v4 metadata/episode-page conversion into the existing neutral feed, a catalog-convert CLI requiring actual observation time, and synthetic mapping/error tests. Normalizes names, aliases, synopsis, type/status/year/quarter, unknown totals, genres/themes/demographics/studios and supported anime relations. Aired dates become UNKNOWN-track schedules only; no confirmed availability is fabricated.
 
 Recorded primary-source capability/approval review in PROVIDERS.md. AniList's current terms restrict competing trackers/mass collection; Jikan's linked terms were inaccessible and source redistribution rights remain unverified. No network adapter/source activation or live catalog API requests were performed. Exact-commit CI pending; local toolchains unavailable.
+
+## 2026-11-15 — Linked-season follows and announcement events
+
+Added explicit ANIME/FRANCHISE follow scopes and transitive prequel/sequel membership. Scope changes replace the former mode for the title and preserve follow time. New post-baseline ANNOUNCED titles/UNKNOWN transitions create unique canonical announcement events; polls distinguish announcements from confirmed episode availability. SQL deduplicates multiple graph paths/follows, uses a fixed two-second statement timeout and serializes subscription changes/materialization with an account advisory lock after existing account/session locks. New subscriptions are capped at 1000 titles, with existing preference changes preserved.
+
+Dashboard and OpenAPI expose scope selection. Added end-to-end database coverage for delayed/transitive linked seasons, announcement/episode distinctions, single-season isolation, repeat polls, scope replacement and quotas; browser scope preference coverage updated. No network source or deployment enabled. Exact-commit CI pending.

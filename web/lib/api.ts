@@ -54,6 +54,7 @@ export class ApiClient {
       try {
         const body = await response.json();
         if (
+          (response.status === 409 && body?.error === "follow_limit_reached") ||
           (response.status === 403 &&
             body?.error === "email_verification_required") ||
           (response.status === 401 &&
@@ -77,6 +78,8 @@ export class ApiClient {
       if (response.status === 400)
         message =
           "Check your input. Passwords must contain 12–1024 bytes when registering.";
+      if (code === "follow_limit_reached")
+        message = "You can follow up to 1,000 titles. Stop alerts for a title first.";
       if (code === "email_verification_required")
         message = "Verify your email before using your library.";
       if (code === "invalid_current_password")

@@ -154,8 +154,8 @@ paths:
         "403": { description: Verified email required }
   /api/v1/follows/{id}:
     put:
-      summary: Follow an anime's confirmed releases or change its track preference
-      description: Retains the original subscription time on updates. Does not replay releases before a new subscription.
+      summary: Follow a season or its linked franchise and choose a release track
+      description: Retains the original subscription time on updates and replaces the previous scope for this title. FRANCHISE follows traverse prequel/sequel links and include new-season announcements. Does not replay events before a new subscription.
       security: [{ bearerAuth: [] }]
       parameters:
         - in: path
@@ -171,20 +171,25 @@ paths:
               additionalProperties: false
               properties:
                 track: { type: string, enum: [RAW, SUB, DUB, UNKNOWN, ALL], default: SUB }
+                scope: { type: string, enum: [ANIME, FRANCHISE], default: ANIME }
       responses:
         "204": { description: Owned subscription saved }
+        "409": { description: Account already follows 1000 titles; existing preferences can still change }
         "400": { description: Invalid identifier, track or body }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
         "404": { description: Unknown anime }
     delete:
-      summary: Remove an owned anime release subscription
+      summary: Remove an owned season or franchise subscription
       security: [{ bearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
           schema: { type: string, format: uuid }
+        - in: query
+          name: scope
+          schema: { type: string, enum: [ANIME, FRANCHISE], default: ANIME }
       responses:
         "204": { description: Subscription removed; existing notices retained }
         "401": { description: Missing or invalid session }

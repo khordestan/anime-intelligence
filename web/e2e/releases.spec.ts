@@ -6,7 +6,7 @@ async function mockReleases(page: Page, holdFirst = false) {
   let release = () => {};
   let blocked = false;
   const calls: { path: string; method: string; token: string; body: unknown }[] = [];
-  const follows = new Map<string, { animeId: string; title: string; track: string }[]>();
+  const follows = new Map<string, { animeId: string; title: string; track: string; scope?: string }[]>();
   const notices = new Map<string, { id: string; title: string; body: string; createdAt: string; readAt?: string }[]>();
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
@@ -34,7 +34,7 @@ async function mockReleases(page: Page, holdFirst = false) {
     if (path === "/tracker") return respond({ items: [{ id: "entry", animeId: anime, title: "Synthetic Release Sky", watchStatus: "WATCHING", episodesWatched: 1 }] });
     if (path === "/follows") return respond({ items: follows.get(token) });
     if (path === "/follows/" + anime) {
-      follows.set(token, request.method() === "DELETE" ? [] : [{ animeId: anime, title: "Synthetic Release Sky", track: request.postDataJSON().track }]);
+      follows.set(token, request.method() === "DELETE" ? [] : [{ animeId: anime, title: "Synthetic Release Sky", track: request.postDataJSON().track, scope: request.postDataJSON().scope }]);
       return route.fulfill({ status: 204, headers });
     }
     if (path === "/notifications") {
@@ -67,9 +67,10 @@ test("release subscriptions, tracks, read state and account reset", async ({ pag
   await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
   await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
   await panel.getByLabel("Release track Synthetic Release Sky", { exact: true }).selectOption("DUB");
+  await panel.getByLabel("Release scope Synthetic Release Sky", { exact: true }).selectOption("FRANCHISE");
   await panel.getByRole("button", { name: "Follow releases Synthetic Release Sky", exact: true }).click();
   await expect(panel.getByRole("button", { name: "Stop alerts Synthetic Release Sky", exact: true })).toBeVisible();
-  expect(api.calls.some(call => call.path === "/follows/" + anime && call.method === "PUT" && (call.body as { track: string }).track === "DUB")).toBe(true);
+  expect(api.calls.some(call => call.path === "/follows/" + anime && call.method === "PUT" && (call.body as { track: string; scope: string }).track === "DUB" && (call.body as { scope: string }).scope === "FRANCHISE")).toBe(true);
   await panel.getByRole("button", { name: "Mark as read", exact: true }).click();
   await expect(panel.getByText("Unread", { exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: "Stop alerts Synthetic Release Sky", exact: true }).click();

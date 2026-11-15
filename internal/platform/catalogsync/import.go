@@ -22,6 +22,7 @@ var (
 )
 type Result struct {
 	Titles int `json:"titles"`
+	SeasonAnnouncements int `json:"seasonAnnouncements"`
 	ScheduleRevisions int `json:"scheduleRevisions"`
 	ReleaseEvents int `json:"releaseEvents"`
 	UnresolvedRelations int `json:"unresolvedRelations"`
@@ -63,8 +64,8 @@ func apply(ctx context.Context, conn *pgx.Conn, s feed.Snapshot) (Result,error) 
 			if err=tx.QueryRow(ctx,`INSERT INTO anime(canonical_title) VALUES($1) RETURNING id::text`,title.Title).Scan(&id);err!=nil {return out,err}
 			if _,err=tx.Exec(ctx,`INSERT INTO anime_external_ids(anime_id,provider,external_id) VALUES($1,$2,$3)`,id,s.Provider,title.ExternalID);err!=nil {return out,err}
 		} else if err!=nil {return out,err}
-		var authority string
-		err=tx.QueryRow(ctx,`SELECT source_id::text FROM catalog_metadata WHERE anime_id=$1 FOR UPDATE`,id).Scan(&authority)
+		var authority, priorStatus string
+		err=tx.QueryRow(ctx,`SELECT source_id::text,COALESCE(payload->>'status','UNKNOWN') FROM catalog_metadata WHERE anime_id=$1 FOR UPDATE`,id).Scan(&authority,&priorStatus)
 		known := err==nil
 		if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,err}
 		if known && authority!=source {return out,ErrConflict}
@@ -74,6 +75,12 @@ func apply(ctx context.Context, conn *pgx.Conn, s feed.Snapshot) (Result,error) 
 ON CONFLICT(anime_id) DO UPDATE SET observed_at=excluded.observed_at,payload=excluded.payload`,id,source,s.ObservedAt,payload);err!=nil {return out,err}
 		if _,err=tx.Exec(ctx,`UPDATE anime SET canonical_title=$2,native_title=NULLIF($3,''),synopsis=NULLIF($4,''),media_type=$5,status=$6,release_year=NULLIF($7,0),season_name=NULLIF($8,''),episode_count=$9,updated_at=now() WHERE id=$1`,
 			id,title.Title,title.NativeTitle,title.Synopsis,title.MediaType,title.Status,title.ReleaseYear,title.Season,title.EpisodeCount);err!=nil {return out,err}
+		if !previous.IsZero() && title.Status=="ANNOUNCED" && (!known || priorStatus=="UNKNOWN") {
+			tag,err:=tx.Exec(ctx,`INSERT INTO domain_events(event_key,event_type,aggregate_type,aggregate_id,payload,occurred_at)
+VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) DO NOTHING`,"season-announced:"+id,id,s.ObservedAt)
+			if err!=nil {return out,err}
+			out.SeasonAnnouncements+=int(tag.RowsAffected())
+		}
 		for _,episode:=range title.Episodes {
 			revision,event,err:=syncEpisode(ctx,tx,source,id,episode,s.ObservedAt,previous,known)
 			if err!=nil {return out,err}

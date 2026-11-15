@@ -8,11 +8,14 @@ import (
 )
 
 var ErrReleaseTrack = errors.New("invalid release track")
+var ErrFollowScope = errors.New("invalid follow scope")
+var ErrFollowLimit = errors.New("follow limit reached")
 
 type Follow struct {
 	AnimeID string `json:"animeId"`
 	Title string `json:"title"`
 	Track string `json:"track"`
+	Scope string `json:"scope"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 type Notification struct {
@@ -26,12 +29,12 @@ func (r *Repository) Follows(ctx context.Context) ([]Follow,error) {
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return nil,err}
 	defer rollback(tx)
-	rows,err:=tx.Query(ctx,`SELECT f.anime_id::text,a.canonical_title,f.release_track,f.created_at FROM user_follows f JOIN anime a ON a.id=f.anime_id WHERE f.user_id=$1 AND f.follow_scope='ANIME' ORDER BY f.created_at DESC,f.id LIMIT 1000`,u.ID)
+	rows,err:=tx.Query(ctx,`SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.created_at FROM user_follows f JOIN anime a ON a.id=f.anime_id WHERE f.user_id=$1 ORDER BY f.created_at DESC,f.id LIMIT 1000`,u.ID)
 	if err!=nil {return nil,err}
 	out:=[]Follow{}
 	for rows.Next() {
 		var f Follow
-		if err=rows.Scan(&f.AnimeID,&f.Title,&f.Track,&f.CreatedAt);err!=nil {rows.Close();return nil,err}
+		if err=rows.Scan(&f.AnimeID,&f.Title,&f.Track,&f.Scope,&f.CreatedAt);err!=nil {rows.Close();return nil,err}
 		out=append(out,f)
 	}
 	rows.Close()
@@ -39,6 +42,10 @@ func (r *Repository) Follows(ctx context.Context) ([]Follow,error) {
 	return out,tx.Commit(ctx)
 }
 func (r *Repository) Follow(ctx context.Context,id,track string) (bool,error) {
+	return r.FollowScope(ctx,id,track,"ANIME")
+}
+func (r *Repository) FollowScope(ctx context.Context,id,track,scope string) (bool,error) {
+	if scope!="ANIME" && scope!="FRANCHISE" {return false,ErrFollowScope}
 	switch track {case "RAW","SUB","DUB","UNKNOWN","ALL":default:return false,ErrReleaseTrack}
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return false,err}
@@ -46,16 +53,29 @@ func (r *Repository) Follow(ctx context.Context,id,track string) (bool,error) {
 	var exists bool
 	if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM anime WHERE id=$1)`,id).Scan(&exists);err!=nil {return false,err}
 	if !exists {return false,nil}
-	_,err=tx.Exec(ctx,`INSERT INTO user_follows(user_id,anime_id,follow_scope,release_track) VALUES($1,$2,'ANIME',$3)
-ON CONFLICT(user_id,anime_id,follow_scope) DO UPDATE SET release_track=excluded.release_track`,u.ID,id,track)
+	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return false,err}
+	var already bool
+	var count int
+	if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM user_follows WHERE user_id=$1 AND anime_id=$2), (SELECT count(*) FROM user_follows WHERE user_id=$1)`,u.ID,id).Scan(&already,&count);err!=nil {return false,err}
+	if !already && count>=1000 {return false,ErrFollowLimit}
+	var started time.Time
+	if err=tx.QueryRow(ctx,`SELECT COALESCE(min(created_at),now()) FROM user_follows WHERE user_id=$1 AND anime_id=$2`,u.ID,id).Scan(&started);err!=nil {return false,err}
+	if _,err=tx.Exec(ctx,`DELETE FROM user_follows WHERE user_id=$1 AND anime_id=$2 AND follow_scope<>$3`,u.ID,id,scope);err!=nil {return false,err}
+	_,err=tx.Exec(ctx,`INSERT INTO user_follows(user_id,anime_id,follow_scope,release_track,created_at) VALUES($1,$2,$3,$4,$5)
+ON CONFLICT(user_id,anime_id,follow_scope) DO UPDATE SET release_track=excluded.release_track`,u.ID,id,scope,track,started)
 	if err!=nil {return false,err}
 	return true,tx.Commit(ctx)
 }
 func (r *Repository) Unfollow(ctx context.Context,id string) (bool,error) {
+	return r.UnfollowScope(ctx,id,"ANIME")
+}
+func (r *Repository) UnfollowScope(ctx context.Context,id,scope string) (bool,error) {
+	if scope!="ANIME" && scope!="FRANCHISE" {return false,ErrFollowScope}
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return false,err}
 	defer rollback(tx)
-	tag,err:=tx.Exec(ctx,`DELETE FROM user_follows WHERE user_id=$1 AND anime_id=$2 AND follow_scope='ANIME'`,u.ID,id)
+	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return false,err}
+	tag,err:=tx.Exec(ctx,`DELETE FROM user_follows WHERE user_id=$1 AND anime_id=$2 AND follow_scope=$3`,u.ID,id,scope)
 	if err!=nil {return false,err}
 	return tag.RowsAffected()>0,tx.Commit(ctx)
 }
@@ -67,15 +87,29 @@ func (r *Repository) Notifications(ctx context.Context) ([]Notification,error) {
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return nil,err}
 	defer rollback(tx)
-	_,err=tx.Exec(ctx,`INSERT INTO notifications(user_id,event_id,channel,title,body)
-SELECT $1,e.id,'IN_APP','New episode released',
-a.canonical_title || ' · Episode ' || COALESCE(e.payload->>'number','?') || ' (' || COALESCE(e.payload->>'track','UNKNOWN') || ')'
-FROM domain_events e
-JOIN user_follows f ON f.anime_id=e.aggregate_id AND f.user_id=$1 AND f.follow_scope='ANIME'
-JOIN anime a ON a.id=e.aggregate_id
-WHERE e.event_type='EPISODE_RELEASED' AND e.aggregate_type='ANIME'
-AND e.occurred_at>=f.created_at
-AND (f.release_track='ALL' OR f.release_track=e.payload->>'track')
+	if _,err=tx.Exec(ctx,`SET LOCAL statement_timeout='2s'`);err!=nil {return nil,err}
+	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return nil,err}
+	_,err=tx.Exec(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track,created_at) AS (
+SELECT anime_id,anime_id,release_track,created_at FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
+UNION
+SELECT f.origin,CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track,f.created_at
+FROM franchise f JOIN anime_relations r ON r.relation_type IN ('PREQUEL','SEQUEL')
+AND (r.source_anime_id=f.anime_id OR r.target_anime_id=f.anime_id)
+), targets(anime_id,release_track,created_at,scope) AS (
+SELECT anime_id,release_track,created_at,'ANIME' FROM user_follows WHERE user_id=$1 AND follow_scope='ANIME'
+UNION
+SELECT anime_id,release_track,created_at,'FRANCHISE' FROM franchise
+)
+INSERT INTO notifications(user_id,event_id,channel,title,body,created_at)
+SELECT DISTINCT $1,e.id,'IN_APP',
+CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced' ELSE 'New episode released' END,
+CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN a.canonical_title || ' · A new linked season has been announced.'
+ELSE a.canonical_title || ' · Episode ' || COALESCE(e.payload->>'number','?') || ' (' || COALESCE(e.payload->>'track','UNKNOWN') || ')' END,
+e.occurred_at
+FROM domain_events e JOIN targets f ON f.anime_id=e.aggregate_id JOIN anime a ON a.id=e.aggregate_id
+WHERE e.aggregate_type='ANIME' AND e.occurred_at>=f.created_at
+AND ((e.event_type='EPISODE_RELEASED' AND (f.release_track='ALL' OR f.release_track=e.payload->>'track'))
+OR (e.event_type='SEASON_ANNOUNCED' AND f.scope='FRANCHISE'))
 AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.user_id=$1 AND n.event_id=e.id AND n.channel='IN_APP')
 ORDER BY e.occurred_at,e.id LIMIT 100
 ON CONFLICT(user_id,event_id,channel) WHERE event_id IS NOT NULL DO NOTHING`,u.ID)
