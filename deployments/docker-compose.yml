@@ -4,7 +4,7 @@ services:
       context: ..
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       HTTP_ADDR: ":8080"
       DATA_FILE: /app/data/local.json
@@ -16,7 +16,7 @@ services:
       context: ../web
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
     depends_on:

@@ -18,7 +18,7 @@ Please allow maintainers reasonable time to investigate and coordinate a fix bef
 
 ## Security boundaries
 
-This project is under active development and is not production-ready. The current API uses a local JSON development store and has no authentication or multi-user authorization. Do not expose it to the public internet or use it to store sensitive information.
+This project is under active development and is not production-ready. JSON mode uses an unauthenticated local development store. Optional PostgreSQL mode implements bearer authentication and transaction-scoped multi-user isolation, but public-release security hardening and review are incomplete. Do not expose it to the public internet or use it to store sensitive information.
 
 Never commit:
 - API keys, passwords, access tokens, private keys, session cookies, or real `.env` files.

@@ -2,7 +2,9 @@
 
 ## Status
 
-The database primitives in migration `000004_auth_sessions` are implemented and covered by PostgreSQL CI checks. This document describes the intended application contract. **Authentication is not implemented in the running API yet.** The local JSON API remains single-user development-only and must not be exposed publicly.
+PostgreSQL mode implements registration, login, session resolution, logout, atomic token rotation, and user-scoped tracker persistence. CI executes these flows through a restricted PostgreSQL role, with direct RLS and HTTP isolation assertions. The JSON API remains unauthenticated and single-user. Neither mode is approved for public deployment; production abuse controls, account recovery/verification, session management, and independent review remain pending. See [runtime setup](POSTGRES_RUNTIME.md).
+
+The current API uses explicit `Authorization: Bearer` headers, never cookies. The browser dashboard has not yet been wired to PostgreSQL authentication. Raw tokens must remain in volatile client memory, never URLs, logs, or browser persistent storage.
 
 ## Credential storage
 
@@ -26,7 +28,7 @@ The database primitives in migration `000004_auth_sessions` are implemented and 
 - Derive the user identity only from a verified server-side session. Never trust a client-supplied `user_id`, query parameter, or request-body owner field.
 - During login, set `app.login_email` from the normalized submitted email only for the account lookup transaction. During session resolution, set `app.session_token_hash` to the server-computed SHA-256 hex digest of the presented token. After verification, set `app.user_id` to the session's user ID for protected queries. Clear context by ending the transaction.
 - Every user-owned read, update, delete, and feedback query must include the authenticated `user_id` in its predicate.
-- Migration `000005_row_level_security` enables and forces RLS on users, sessions, watch history, ratings, progress, preferences, recommendations, feedback, follows, and notifications. User-owned policies use the transaction-scoped `app.user_id` setting. Two narrowly scoped SELECT policies also support identity bootstrap: `app.login_email` can resolve one login account, and `app.session_token_hash` can resolve a session by the SHA-256 digest of the presented opaque token. These settings must be populated only by trusted server code from the login form or a server-computed token digest. The API does not set these contexts yet, so PostgreSQL runtime access is not ready. The application database role must not be a superuser or have `BYPASSRLS`; do not run the application as the schema owner.
+- Migration `000005_row_level_security` enables and forces RLS on users, sessions, watch history, ratings, progress, preferences, recommendations, feedback, follows, and notifications. User-owned policies use the transaction-scoped `app.user_id` setting. Two narrowly scoped SELECT policies also support identity bootstrap: `app.login_email` can resolve one login account, and `app.session_token_hash` can resolve a session by the SHA-256 digest of the presented opaque token. These settings must be populated only by trusted server code from the login form or a server-computed token digest. The PostgreSQL runtime sets and clears these contexts inside transactions. Session bootstrap first resolves the digest, then establishes identity and rechecks the session under a row lock before private queries. Logout and refresh take the same lock; concurrent refresh can succeed only once. The application database role must not be a superuser or have `BYPASSRLS`; do not run the application as the schema owner.
 - The `app.user_id` setting is a trusted server-side context, not an authentication mechanism. Only set it after verifying a server-side session, within the same transaction as the protected queries. Never derive it from request input.
 - Test cross-user access attempts for every user-owned resource, not only happy paths.
 - Keep catalog data public/shared; isolate watch history, ratings, notes, preferences, recommendation feedback, follows, and notifications.
@@ -42,3 +44,13 @@ The database primitives in migration `000004_auth_sessions` are implemented and 
 ## Public repository rules
 
 Only schema, source code, synthetic fixtures, and documentation belong in this public repository. Real account details, personal anime histories, session tokens, password hashes from real accounts, production database dumps, and secrets must stay out of Git history.
+
+## Implemented limits and remaining launch work
+
+- Argon2id v19, 64 MiB, three iterations, parallelism two, 16-byte random salt, 32-byte output. Verification accepts only this bounded profile. Password input is 12–1024 bytes when registering.
+- Authentication request bodies are limited to 4 KiB and reject unknown fields and trailing JSON. Login failures use generic responses, and missing accounts perform dummy hash verification.
+- Registration/login share a process-wide burst of ten attempts, replenished at one attempt per six seconds, with at most two password operations in flight. This bounds memory use but does not replace distributed/per-account production controls; a global limiter can be exhausted by an attacker.
+- Sessions expire after 24 hours. Refresh atomically revokes the old token and issues a new one. Disabled/locked accounts are checked on every private transaction. Last-used writes are limited to a five-minute cadence.
+- API responses containing credentials/private data carry `Cache-Control: no-store`. CORS allows only the local development origins. Database URLs are not logged by startup failures.
+- Runtime requires forced RLS on implemented private resources and rejects roles that own public tables (including inherited ownership), superusers, and BYPASSRLS roles. Migration credentials are never used by the API.
+- Password changes, email verification, recovery, session listing/revoke-all, export/deletion, cleanup of expired sessions, TLS/ingress configuration, distributed rate limiting, and independent review remain launch prerequisites.

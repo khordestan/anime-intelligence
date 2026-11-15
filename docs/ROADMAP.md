@@ -11,18 +11,20 @@
 - [x] Provider-neutral starter catalog seed
 - [x] Curated 40-feature product taxonomy
 - [x] Authentication credential/session schema foundation (migration 000004; no runtime auth)
-- [ ] Live PostgreSQL migration execution and runtime repository
-- [ ] Authentication endpoints and secure session lifecycle
-- [ ] Enforced authorization and user isolation
+- [x] Live PostgreSQL migration execution and runtime repository
+- [x] Authentication endpoints and secure bearer-session lifecycle (production security review pending)
+- [x] Enforced runtime authorization and tested user isolation
 
 ## Milestone 1 — Identity and persistence
 - [x] Authentication/session data model and constraints
-- [ ] PostgreSQL repository interfaces and implementation
-- [ ] Versioned migration runner and runtime integration tests
-- [ ] Argon2id password hashing and verification
-- [ ] Registration, login, logout, session refresh/revocation
-- [ ] Authorization and user-scoped queries
-- [x] PostgreSQL RLS policies and transaction-scoped user context contract (migration 000005; runtime context wiring remains pending)
+- [x] PostgreSQL repository interfaces and implementation (catalog, tracker, identity)
+- [x] Versioned migration runner and runtime integration tests
+- [x] Argon2id password hashing and verification
+- [x] Registration, login, logout, session refresh/revocation
+- [x] Authorization and user-scoped queries
+- [x] PostgreSQL RLS policies and transaction-scoped user context contract (migration 000005; PostgreSQL runtime context implemented)
+- [ ] Browser authentication UI and session management
+- [ ] Password recovery, email verification and production abuse controls
 - [ ] User data export and deletion
 
 ## Milestone 2 — Catalog and data platform

@@ -75,3 +75,23 @@ Not yet implemented:
 Environment limitations:
 - Local environment cannot reach the Go module proxy or run a PostgreSQL server. The PostgreSQL CI service is being used to validate migrations.
 - The Next.js production build is validated in GitHub Actions rather than this local environment.
+
+## 2026-11-15 — PostgreSQL runtime, identity and tenant isolation
+
+Implemented:
+- Added a request-aware repository interface and PostgreSQL implementations for catalog, tracker, progress, and ratings while preserving local JSON development mode.
+- Wired optional `DATABASE_URL` startup, restricted runtime-role checks, forced-RLS verification, and transaction-local identity from verified session digests. No migration-owner fallback.
+- Added Argon2id hashing with fixed resource bounds; registration, login, current account, logout, and atomic refresh endpoints; 256-bit random opaque bearer tokens stored only as SHA-256 digests with 24-hour expiry.
+- Added explicit user predicates and private-query session revalidation/locking, generic login failures, bounded authentication bodies, process-wide rate/concurrency limits, and no-store private responses.
+- Added the embedded transactional migration runner, checksum/history validation, advisory locking, and separate role-provisioning documentation.
+- Updated Go/dependency versions, OpenAPI, runtime/security documentation, roadmap, and local-only Compose port bindings.
+- Extended PostgreSQL CI to run race-enabled runtime/HTTP integration tests using disposable databases and restricted roles.
+
+Verified locally:
+- PostgreSQL 17.12 integration tests and `go test -race -count=1 ./...` pass, including cross-user reads/writes, refresh races, rollback/context cleanup, disabled/expired/revoked tokens, repeated rating upserts, restricted-role startup, and migration integrity.
+- `go vet ./...`, `go build ./...`, and `git diff --check` pass.
+
+Remaining boundaries:
+- No public deployment was performed. Independent security review and launch hardening remain required.
+- Browser authentication UI, password recovery/email verification, session management, account export/deletion, and expired-session cleanup remain pending.
+- GitHub CI results must be checked after this commit is pushed.

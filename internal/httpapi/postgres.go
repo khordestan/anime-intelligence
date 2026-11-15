@@ -1,0 +1,187 @@
+package httpapi
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/khordestan/anime-intelligence/internal/modules/catalog"
+	"github.com/khordestan/anime-intelligence/internal/modules/tracker"
+	"github.com/khordestan/anime-intelligence/internal/platform/password"
+	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
+)
+
+// NewPostgresRouter never registers the unauthenticated local-store routes.
+// Browser cookie authentication is deliberately unsupported: only explicit
+// Authorization bearer headers are accepted, avoiding ambient-cookie CSRF.
+func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "postgresql"})
+	})
+	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]string{"name": "Anime Intelligence API", "version": "v1", "status": "development"})
+	})
+	c := catalog.NewHandler(db.Repository(""))
+	mux.HandleFunc("GET /api/v1/anime", c.List)
+	mux.HandleFunc("GET /api/v1/anime/{id}", c.Get)
+	gate := newAuthGate()
+	credential := func(register bool) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			if !gate.acquire() {
+				w.Header().Set("Retry-After", "6")
+				authError(w, 429, "too_many_requests")
+				return
+			}
+			defer gate.release()
+			var q struct {
+				Email    string `json:"email"`
+				Password string `json:"password"`
+			}
+			if decodeAuth(w, r, &q) != nil {
+				authError(w, 400, "invalid_json")
+				return
+			}
+			var s postgres.Session
+			var err error
+			if register {
+				s, err = db.Register(r.Context(), q.Email, q.Password)
+			} else {
+				s, err = db.Login(r.Context(), q.Email, q.Password)
+			}
+			if err != nil {
+				switch {
+				case errors.Is(err, postgres.ErrUnauthorized):
+					authError(w, 401, "invalid_credentials")
+				case errors.Is(err, postgres.ErrConflict):
+					authError(w, 409, "account_unavailable")
+				case errors.Is(err, postgres.ErrEmail), errors.Is(err, password.ErrInvalid):
+					authError(w, 400, "invalid_credentials")
+				default:
+					authError(w, 500, "authentication_failed")
+				}
+				return
+			}
+			status := 200
+			if register {
+				status = 201
+			}
+			writeJSON(w, status, s)
+		}
+	}
+	mux.HandleFunc("POST /api/v1/auth/register", credential(true))
+	mux.HandleFunc("POST /api/v1/auth/login", credential(false))
+	protect := func(fn func(http.ResponseWriter, *http.Request, string, postgres.User)) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			token := bearer(r)
+			u, err := db.Authenticate(r.Context(), token)
+			if err != nil {
+				if errors.Is(err, postgres.ErrUnauthorized) {
+					w.Header().Set("WWW-Authenticate", "Bearer")
+					authError(w, 401, "unauthorized")
+				} else {
+					authError(w, 503, "authentication_unavailable")
+				}
+				return
+			}
+			fn(w, r, token, u)
+		}
+	}
+	mux.HandleFunc("GET /api/v1/auth/me", protect(func(w http.ResponseWriter, r *http.Request, _ string, u postgres.User) { writeJSON(w, 200, u) }))
+	mux.HandleFunc("POST /api/v1/auth/logout", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		if err := db.Logout(r.Context(), token); err != nil {
+			sessionError(w, err)
+			return
+		}
+		w.WriteHeader(204)
+	}))
+	mux.HandleFunc("POST /api/v1/auth/refresh", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		s, err := db.Refresh(r.Context(), token)
+		if err != nil {
+			sessionError(w, err)
+			return
+		}
+		writeJSON(w, 200, s)
+	}))
+	mux.HandleFunc("GET /api/v1/tracker", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		tracker.NewHandler(db.Repository(token)).List(w, r)
+	}))
+	mux.HandleFunc("POST /api/v1/tracker", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		tracker.NewHandler(db.Repository(token)).Create(w, r)
+	}))
+	mux.HandleFunc("PATCH /api/v1/tracker/{id}", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		tracker.NewHandler(db.Repository(token)).Update(w, r)
+	}))
+	mux.HandleFunc("PUT /api/v1/ratings/{id}", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		tracker.NewHandler(db.Repository(token)).Rate(w, r)
+	}))
+	return requestMiddleware(logger, corsMiddleware(mux))
+}
+func bearer(r *http.Request) string {
+	values := r.Header.Values("Authorization")
+	if len(values) != 1 {
+		return ""
+	}
+	parts := strings.Fields(values[0])
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+	return parts[1]
+}
+func decodeAuth(w http.ResponseWriter, r *http.Request, v any) error {
+	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	d.DisallowUnknownFields()
+	if err := d.Decode(v); err != nil {
+		return err
+	}
+	if err := d.Decode(new(any)); err != io.EOF {
+		return errors.New("expected one JSON object")
+	}
+	return nil
+}
+func authError(w http.ResponseWriter, status int, code string) {
+	writeJSON(w, status, map[string]string{"error": code})
+}
+func sessionError(w http.ResponseWriter, err error) {
+	if errors.Is(err, postgres.ErrUnauthorized) {
+		authError(w, 401, "unauthorized")
+	} else {
+		authError(w, 500, "session_update_failed")
+	}
+}
+
+// A bounded, process-wide gate limits expensive password hashing without an
+// unbounded per-IP map or reliance on spoofable forwarding headers. Production
+// still needs ingress/per-account abuse controls and distributed limits.
+type authGate struct {
+	mu      sync.Mutex
+	tokens  float64
+	updated time.Time
+	active  int
+}
+
+func newAuthGate() *authGate { return &authGate{tokens: 10, updated: time.Now()} }
+func (g *authGate) acquire() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	now := time.Now()
+	g.tokens += now.Sub(g.updated).Seconds() / 6
+	if g.tokens > 10 {
+		g.tokens = 10
+	}
+	g.updated = now
+	if g.tokens < 1 || g.active >= 2 {
+		return false
+	}
+	g.tokens--
+	g.active++
+	return true
+}
+func (g *authGate) release() { g.mu.Lock(); g.active--; g.mu.Unlock() }
