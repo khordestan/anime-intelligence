@@ -22,7 +22,7 @@
 - [ ] Argon2id password hashing and verification
 - [ ] Registration, login, logout, session refresh/revocation
 - [ ] Authorization and user-scoped queries
-- [ ] PostgreSQL row-level security with transaction-scoped user context
+- [x] PostgreSQL RLS policies and transaction-scoped user context contract (migration 000005; runtime context wiring remains pending)
 - [ ] User data export and deletion
 
 ## Milestone 2 — Catalog and data platform
