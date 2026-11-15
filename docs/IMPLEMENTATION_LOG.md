@@ -1,29 +1,28 @@
 # Implementation Log
 
-## 2026-11-15 — Initial end-to-end vertical slice
+## 2026-11-15 — Foundation and intelligence core
 
 Implemented:
-- Local JSON-backed catalog and personal library store.
-- Catalog search and detail endpoints.
-- Add/list/update tracker endpoints.
-- Episode progress and rating endpoints.
-- Interactive Next.js dashboard for search, library filters, progress, and ratings.
-- Request validation, local-origin CORS, structured request logging, graceful shutdown.
-- OpenAPI 3.1 contract and GitHub Actions CI workflow.
-- Initial PostgreSQL canonical schema and provider-neutral seed fixtures.
+- Go API process with health, catalog search/detail, tracker create/list/update, progress, and rating routes.
+- Local JSON-backed development store and Next.js dashboard.
+- Request validation, bounded request bodies, local-origin CORS, structured request logging, graceful shutdown.
+- PostgreSQL canonical schema for users, anime, source records, feature observations, user tracking/ratings/preferences, recommendations, airing schedules, domain events, follows, and notifications.
+- Provider-neutral starter catalog fixtures.
+- Curated 40-key feature taxonomy, including spoiler-sensitive ending/revelation features.
+- Deterministic Personal Match ranking core: explicit and inferred preference separation, confidence-weighted profile inference, explainable evidence, candidate exclusion, deduplication, bounded score and algorithm version.
+- GitHub Actions CI for Go tests, race detector, vet/build, frontend typecheck/build, and PostgreSQL migration/rollback validation.
 
-Verified locally:
-- `go test ./...` — passed.
-- `go vet ./...` — passed.
-- `go build ./...` — passed.
-- HTTP smoke tests — health, catalog search, tracker create/list/update and rating passed.
+Verified:
+- Local Go: `go test -race ./...`, `go vet ./...`, and `go build ./...` passed for the local vertical slice.
+- GitHub Actions: backend tests, race detector, vet/build and frontend typecheck/production build passed on commit `0fb6789`.
+- PostgreSQL migration validation is being added to CI; the latest run must finish before claiming database migration execution passed.
 
-Not verified:
-- Next.js install/build: package registry access unavailable in the build environment.
-- Docker image build: Docker engine unavailable.
-- PostgreSQL migration execution: no PostgreSQL server/client available; API still uses JSON persistence.
+Not yet implemented:
+- PostgreSQL runtime repository and API wiring. The running API still uses local JSON persistence.
+- Authentication, sessions, authorization, and enforced multi-user isolation.
+- Loading catalog observations into the recommendation engine or exposing recommendations through HTTP.
+- Licensed external data providers, AI analyst, discovery UI, and release notifications.
 
-Known limitations:
-- Single-user local-development mode; no authentication or production authorization.
-- Small provider-neutral starter catalog; no third-party catalog synchronization.
-- Recommendations, feature enrichment, AI analysis, and release notifications are not implemented.
+Environment limitations:
+- Local environment cannot reach the Go module proxy or run a PostgreSQL server. The PostgreSQL CI service is being used to validate migrations.
+- The Next.js production build is validated in GitHub Actions rather than this local environment.
