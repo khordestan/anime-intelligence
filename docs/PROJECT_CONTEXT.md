@@ -49,10 +49,10 @@ PostgreSQL is selected by `DATABASE_URL`; connection/schema/security failures st
 
 ## Verification and resuming work
 
-1. Fetch GitHub and inspect `git status`, latest commits, this file, `ROADMAP.md`, `IMPLEMENTATION_LOG.md`, and current Actions/CodeQL results. Read any scoped `AGENTS.md` before editing (including `web/AGENTS.md`). Do not assume cached toolchains or databases exist in a fresh Work session.
+1. Read root `AGENTS.md`, fetch GitHub and inspect `git status`, latest commits, this file, `ROADMAP.md`, `IMPLEMENTATION_LOG.md`, and current Actions/CodeQL results. Read any scoped `AGENTS.md` before editing (including `web/AGENTS.md`). Do not assume cached toolchains or databases exist in a fresh Work session.
 2. Run `go test ./...`, `go test -race ./...`, `go vet ./...`, `go build ./...`. Supply `TEST_DATABASE_URL` pointing to a disposable PostgreSQL 17 administrator connection for integration tests; without it database tests skip. Tests create isolated random databases/roles and exercise restricted runtime access.
 3. For frontend changes use `npm ci`, `npm test`, `npm run typecheck`, `npm run build` in `web`; use the lockfile. CI also audits dependencies and runs Go vulnerability checks.
 4. CI has backend, frontend/mocked-browser, database/migration/rollback, and two real PostgreSQL/browser suites (`postgres`, `identity`). Both use disposable restricted database roles and a loopback-only synthetic TLS mailbox. CodeQL runs separately. Verify checks for the exact pushed SHA; a local pass does not prove browser CI.
 5. Commit implementation/tests and context updates together where practical. Record verified results in the implementation log; leave pending checks explicitly pending. Keep code and context in GitHub rather than a separate artifact store.
 
-Before this batch, commit `63c8f49` passed [CI](https://github.com/khordestan/anime-intelligence/actions/runs/43696134908). This batch adds bounded volatile mail retries and this continuation document; consult its commit's Actions for the final result.
+Latest verified implementation: `243b759` (bounded volatile mail retries and this continuation document), with all five [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43697767885) and [CodeQL](https://github.com/khordestan/anime-intelligence/actions/runs/43697767176) passing. Root `AGENTS.md` directs future sessions to read/update this context. For changes after this checkpoint, inspect Actions for their exact SHA.

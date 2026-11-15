@@ -235,3 +235,8 @@ Remaining boundaries:
 - Added `docs/PROJECT_CONTEXT.md` as the GitHub continuation entry point, linked from README. It records architecture, completed versus schema-only features, security constraints, known issues, next priorities and exact verification/resume steps. Corrected stale architecture/security wording alongside it. No ChatGPT Project file/instruction editing capability was available.
 - Local full race suite passed against a fresh disposable PostgreSQL 17 instance (restricted-role integration suite included); vet/build and whitespace checks passed. The initial reused database instance had stale process state; isolated reprovisioning resolved the environment failure. This commit's GitHub CI and CodeQL are checked after publication.
 - Durable restart-safe delivery remains pending: queue/retry state is volatile, network ambiguity can duplicate mail, and a single slow worker can fill the bounded queue. Nothing deployed; no real mail or personal data used.
+
+### Verified continuation checkpoint
+
+- Commit `243b759` passed all five CI jobs (run 43697767885), including both real PostgreSQL/browser variants and database migration/isolation checks. Both CodeQL analyses passed (run 43697767176).
+- Added root `AGENTS.md` to direct future sessions to the GitHub context and require updates alongside substantive work, while preserving implementation/test priority and the existing security boundary. Updated the context with exact verified implementation links.
