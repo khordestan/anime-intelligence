@@ -65,6 +65,7 @@ jobs:
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000002_catalog_seed.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000003_feature_taxonomy.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000004_auth_sessions.up.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000005_row_level_security.up.sql
       - name: Assert seeded data
         env:
           PGPASSWORD: anime_test_password
@@ -73,6 +74,35 @@ jobs:
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc 'SELECT count(*) FROM anime_features')" = "40"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM information_schema.tables WHERE table_name = 'auth_sessions'")" = "1"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash'")" = "1"
+      - name: Verify row-level security
+        env:
+          PGPASSWORD: anime_test_password
+        run: |
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc \"SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications') AND relrowsecurity AND relforcerowsecurity\")" = "10"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc \"SELECT count(*) FROM pg_policies WHERE policyname LIKE '%_self_access'\")" = "10"
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 <<'SQL'
+          DO $body$ BEGIN
+            CREATE ROLE anime_app NOLOGIN;
+          EXCEPTION WHEN duplicate_object THEN NULL;
+          END $body$;
+          GRANT SELECT ON users TO anime_app;
+          INSERT INTO users (id, email) VALUES
+            ('20000000-0000-4000-8000-000000000001', 'rls-one@example.test'),
+            ('20000000-0000-4000-8000-000000000002', 'rls-two@example.test');
+          SET ROLE anime_app;
+          SET app.user_id = '20000000-0000-4000-8000-000000000001';
+          DO $body$ DECLARE visible_users integer; BEGIN
+            SELECT count(*) INTO visible_users FROM users;
+            IF visible_users <> 1 THEN
+              RAISE EXCEPTION 'RLS expected one visible user, got %', visible_users;
+            END IF;
+          END $body$;
+          RESET ROLE;
+          DELETE FROM users WHERE id IN (
+            '20000000-0000-4000-8000-000000000001',
+            '20000000-0000-4000-8000-000000000002'
+          );
+          SQL
       - name: Verify authentication constraints
         env:
           PGPASSWORD: anime_test_password
@@ -90,6 +120,7 @@ jobs:
         env:
           PGPASSWORD: anime_test_password
         run: |
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000005_row_level_security.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000004_auth_sessions.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000003_feature_taxonomy.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000002_catalog_seed.down.sql
