@@ -146,3 +146,7 @@ For isolated logical restore, restricted-role re-provisioning, queue-key recover
 Use readiness for dependency-aware routing and liveness for process checks during an authorized operational rollout. Keep probes on trusted ingress and account for the one-probe concurrency limit. A probe is a momentary check, not a replacement for transaction authorization, correct RLS policies, continuous monitoring, mail-provider checks or independent security review. No deployment/proxy configuration is enabled by these endpoints.
 
 Request log field `path` is replaced by `route`, the matched ServeMux template (for example `GET /api/v1/anime/{id}`) or `unmatched`. Standard method values are retained; custom methods become `OTHER`. Duration remains numeric. URL paths/parameters/query values, request bodies, headers, cookies, credentials and user IDs are not logged by this middleware. Update any operational log queries that relied on raw paths.
+
+## Response privacy headers
+
+Both API routers apply `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` before route/CORS dispatch. This includes local mode, errors, redirects, HEAD and preflight responses as well as successful private responses. Existing per-handler no-store protections remain. Public catalog responses also opt out of caching; explicit public caching can be designed separately. These headers do not clear previously cached responses or control the dashboard's own document policy. No deployment or ingress policy is activated.

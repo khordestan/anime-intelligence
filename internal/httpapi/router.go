@@ -30,6 +30,12 @@ func NewRouter(logger *slog.Logger, data *store.Store) http.Handler {
 }
 func requestMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Both storage modes share this boundary, including errors, redirects
+		// and preflights. Account exports and bearer/proof responses must never
+		// become reusable browser or intermediary cache entries.
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
 		start := time.Now()
 		next.ServeHTTP(w, r)
 		method := r.Method
