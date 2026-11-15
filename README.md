@@ -10,7 +10,7 @@ A Go and Next.js foundation for a detailed anime catalog, personal tracking, and
 - Optional SMTP-backed password recovery and email verification use short-lived, single-use hashed challenges, explicit confirmation, and fragment-only mail links. Delivery is disabled without explicit configuration.
 - Password changes require the current password and atomically invalidate every existing session, including the caller.
 - Account-data export from a consistent snapshot and password-confirmed deletion with session/data cascades, available from the signed-in dashboard.
-- Persisted login-failure budgets with a bounded observation window and temporary account locks; responses remain generic.
+- Persisted password-failure budgets shared by login, password changes and deletion, with a bounded observation window and temporary account locks; responses remain generic.
 - Argon2id password hashes; random 256-bit bearer credentials stored only as SHA-256 digests, expiring after 24 hours.
 - PostgreSQL tracker/rating access requires verified email; unverified users retain account, recovery and data controls.
 - User-scoped queries and transaction-local forced PostgreSQL RLS; runtime rejects superuser, BYPASSRLS, and table-owner connections.

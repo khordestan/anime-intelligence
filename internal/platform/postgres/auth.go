@@ -160,7 +160,7 @@ func (d *DB) Login(ctx context.Context, email, value string) (Session, error) {
 		return Session{}, err
 	}
 	if !valid {
-		if err = recordFailedLogin(ctx, tx, u.ID); err != nil {
+		if err = recordPasswordFailure(ctx, tx, u.ID); err != nil {
 			return Session{}, err
 		}
 		// Persist the denial before returning the generic authentication error.

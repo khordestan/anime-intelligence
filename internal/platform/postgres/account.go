@@ -84,7 +84,7 @@ func (d *DB) DeleteAccount(ctx context.Context, token, value string) error {
 		hash = *encoded
 	}
 	if !password.Verify(hash, value) || encoded == nil {
-		return ErrReauthentication
+		return denyReauthentication(ctx, tx, u.ID)
 	}
 	tag, err := tx.Exec(ctx, `DELETE FROM users WHERE id=$1 AND password_hash=$2`, u.ID, hash)
 	if err != nil {
@@ -118,7 +118,7 @@ func (d *DB) ChangePassword(ctx context.Context, token, current, next string) er
 		hash = *encoded
 	}
 	if !password.Verify(hash, current) || encoded == nil {
-		return ErrReauthentication
+		return denyReauthentication(ctx, tx, u.ID)
 	}
 	replacement, err := password.Hash(next)
 	if err != nil {
@@ -134,4 +134,16 @@ func (d *DB) ChangePassword(ctx context.Context, token, current, next string) er
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// The operation already holds the exclusive account lock. Persist shared
+// failure state before returning; a rollback must never erase a charged guess.
+func denyReauthentication(ctx context.Context, tx pgx.Tx, userID string) error {
+	if err := recordPasswordFailure(ctx, tx, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return ErrReauthentication
 }

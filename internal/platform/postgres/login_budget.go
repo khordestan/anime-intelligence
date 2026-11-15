@@ -7,8 +7,9 @@ import (
 
 // The caller holds the account's exclusive lock and has rechecked the same
 // password hash and current enabled/unlocked state. The budget is shared by all
-// API instances. Active locks are never extended by further failed requests.
-func recordFailedLogin(ctx context.Context, tx pgx.Tx, userID string) error {
+// API instances for login and sensitive-action reauthentication. Active locks
+// are never extended by further failed requests.
+func recordPasswordFailure(ctx context.Context, tx pgx.Tx, userID string) error {
 	_, err := tx.Exec(ctx, `WITH budget AS (
  SELECT id,
  CASE WHEN login_failure_started_at IS NULL OR login_failure_started_at<=statement_timestamp()-interval '15 minutes'

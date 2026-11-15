@@ -220,3 +220,10 @@ Remaining boundaries:
 - Fixed unused failed-login state: failed credentialed-account logins now commit a bounded observation window/count under an exclusive account lock before returning a generic denial. Ten failures in fifteen minutes trigger a fifteen-minute temporary lock shared across instances and restarts; active locks are not extended by repeated requests.
 - Added migration 000007 and fail-closed startup detection. Success/password change/recovery clears the budget; reset issuance/redemption remains possible while locked. Session issuance rechecks the credential and current profile under the same lock.
 - Added separate-pool concurrent failure, threshold, expiry, successful-login reset, recovery, cross-account and generic-error tests, plus missing-migration rejection. CI applies and rolls back the new migration in order. No IP/client identifiers are collected; distributed ingress controls and lockout denial-of-access mitigation remain launch work.
+
+
+### Sensitive-action reauthentication budget
+
+- Shared the persisted password-failure budget with password changes and account deletion, preventing these confirmation endpoints from bypassing the cross-instance login limit.
+- Committed failed reauthentication attempts before returning the allowlisted wrong-password error. Below threshold the existing session remains valid; active locks block sensitive actions and are never extended. Successful password changes clear the budget and still revoke all old sessions.
+- Added separate-pool coverage for a window consumed across both actions, lock enforcement by login/deletion/password change, expiry, successful reset and old-session rejection.
