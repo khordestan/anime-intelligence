@@ -35,7 +35,17 @@ func main() {
 		defer db.Close()
 		var delivery *identitymail.Service
 		if sender != nil {
-			delivery = identitymail.NewService(db, sender, logger)
+			cipher, err := identitymail.NewEnvelopeCipher(os.Getenv("MAIL_OUTBOX_KEY"))
+			if err != nil {
+				logger.Error("identity outbox key configuration failed")
+				os.Exit(1)
+			}
+			outbox, err := db.IdentityOutbox(cipher)
+			if err != nil {
+				logger.Error("identity outbox initialization failed")
+				os.Exit(1)
+			}
+			delivery = identitymail.NewDurableService(outbox, sender, logger)
 			defer delivery.Close()
 		}
 		handler = httpapi.NewPostgresRouterWithIdentity(logger, db, delivery)

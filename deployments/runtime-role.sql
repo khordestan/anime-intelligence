@@ -18,3 +18,5 @@ GRANT SELECT ON user_preferences, recommendations, recommendation_feedback,
 GRANT DELETE ON users TO anime_runtime;
 
 GRANT SELECT, INSERT, UPDATE ON auth_challenges TO anime_runtime;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON identity_outbox TO anime_runtime;

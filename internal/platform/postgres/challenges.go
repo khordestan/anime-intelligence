@@ -52,6 +52,9 @@ func issueChallenge(ctx context.Context, tx pgx.Tx, userID, email, purpose strin
 // IssuePasswordReset is called only by the asynchronous delivery worker. The
 // HTTP response never depends on account existence or SMTP latency.
 func (d *DB) IssuePasswordReset(ctx context.Context, email string) (*identitymail.Message, error) {
+	return d.issuePasswordReset(ctx, email, nil)
+}
+func (d *DB) issuePasswordReset(ctx context.Context, email string, cipher *identitymail.EnvelopeCipher) (*identitymail.Message, error) {
 	email, err := normalizeEmail(email)
 	if err != nil {
 		return nil, nil
@@ -87,9 +90,18 @@ func (d *DB) IssuePasswordReset(ctx context.Context, email string) (*identitymai
 	if err != nil {
 		return nil, err
 	}
+	if cipher != nil && message != nil {
+		if err := enqueueDelivery(ctx, tx, cipher, message); err != nil {
+			return nil, err
+		}
+		message = nil
+	}
 	return message, tx.Commit(ctx)
 }
 func (d *DB) IssueEmailVerification(ctx context.Context, token string) (*identitymail.Message, error) {
+	return d.issueEmailVerification(ctx, token, nil)
+}
+func (d *DB) issueEmailVerification(ctx context.Context, token string, cipher *identitymail.EnvelopeCipher) (*identitymail.Message, error) {
 	tx, u, err := d.sessionTxWithUserLock(ctx, token, pgx.TxOptions{}, true)
 	if err != nil {
 		return nil, err
@@ -101,6 +113,12 @@ func (d *DB) IssueEmailVerification(ctx context.Context, token string) (*identit
 	message, err := issueChallenge(ctx, tx, u.ID, u.Email, identitymail.EmailVerification)
 	if err != nil {
 		return nil, err
+	}
+	if cipher != nil && message != nil {
+		if err := enqueueDelivery(ctx, tx, cipher, message); err != nil {
+			return nil, err
+		}
+		message = nil
 	}
 	return message, tx.Commit(ctx)
 }

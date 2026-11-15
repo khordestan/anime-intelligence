@@ -31,7 +31,8 @@
 - [x] Recovery/verification delivery, API and dashboard flows with verified-TLS SMTP and mail-enabled browser CI
 - [x] Mandatory verified-email policy for PostgreSQL tracker and ratings, with account/recovery access preserved
 - [x] Bounded volatile identity-delivery retries with proof-expiry/shutdown handling
-- [ ] Durable identity-delivery retries
+- [x] Encrypted durable delivery of issued identity challenges, leased claims and persisted retries
+- [ ] Durable request acceptance before challenge issuance and outbox key-ring rotation
 - [x] Persisted per-account password-failure window shared across login, password changes, deletion and API instances
 - [ ] Production ingress/distributed abuse controls and monitoring
 - [x] User data export and password-confirmed deletion (PostgreSQL API)

@@ -240,3 +240,11 @@ Remaining boundaries:
 
 - Commit `243b759` passed all five CI jobs (run 43697767885), including both real PostgreSQL/browser variants and database migration/isolation checks. Both CodeQL analyses passed (run 43697767176).
 - Added root `AGENTS.md` to direct future sessions to the GitHub context and require updates alongside substantive work, while preserving implementation/test priority and the existing security boundary. Updated the context with exact verified implementation links.
+
+## 2026-11-15 — Encrypted durable identity outbox
+
+- Added migration 000008 with a forced-RLS encrypted outbox, ownership-bound challenge foreign key, persisted retry scheduling, bounded attempts and hashed expiring leases. Runtime now requires twelve forced-RLS tables; role provisioning and CI migration/rollback assertions include the outbox.
+- Proof issuance and AES-256-GCM encrypted envelope insertion commit atomically. A separate explicit `MAIL_OUTBOX_KEY` lives outside PostgreSQL; envelope authentication binds challenge ID/version, and claims recheck live account/purpose/digest/address/expiry before sending. Mail configuration fails closed without a valid key.
+- Configured API instances poll persisted deliveries, release all database locks before SMTP, and acknowledge only the matching lease. Restart recovery does not issue another proof or consume resend quota. Five claims include crashed attempts, with persisted 30/60/120/240-second backoffs; completed/exhausted/invalid/expired ciphertext is erased, and completed metadata is purged after one day in bounded batches.
+- Added tests for encryption randomness, tampering, row substitution, wrong keys, atomic rollback, fresh-pool restart, lease exclusion/recovery, stale acknowledgements, quotas, RLS visibility, invalid proof/account states, deletion, attempt exhaustion, service restart and metadata retention. Full local PostgreSQL race suite, vet/build and diff checks passed. GitHub CI/CodeQL are verified after publication.
+- HTTP 202 still acknowledges a bounded volatile pre-issuance queue. Key-ring rotation, durable request acceptance and operational monitoring remain open; SMTP acceptance/acknowledgement ambiguity can duplicate mail. Nothing deployed; only synthetic accounts and local mail fixtures were used.

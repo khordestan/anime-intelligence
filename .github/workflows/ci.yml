@@ -99,11 +99,14 @@ jobs:
           echo "DATABASE_URL=postgres://anime_runtime:$runtime_password@127.0.0.1:5432/anime_intelligence?sslmode=disable" >> "$GITHUB_ENV"
       - name: Configure loopback-only synthetic TLS mail
         run: |
+          outbox_key=$(openssl rand -base64 32)
+          echo "::add-mask::$outbox_key"
           smtp_password=$(openssl rand -hex 32)
           mailbox_key=$(openssl rand -hex 32)
           echo "::add-mask::$smtp_password"
           echo "::add-mask::$mailbox_key"
           {
+            echo "MAIL_OUTBOX_KEY=$outbox_key"
             echo "IDENTITY_MAIL_TEST=1"
             echo "MAIL_SMTP_ADDR=127.0.0.1:8465"
             echo "MAIL_SMTP_USER=synthetic-mailer"
@@ -169,6 +172,7 @@ jobs:
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000005_row_level_security.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000006_identity_challenges.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000007_login_attempt_budget.up.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000008_identity_outbox.up.sql
       - name: Assert seeded data
         env:
           PGPASSWORD: anime_test_password
@@ -181,8 +185,8 @@ jobs:
         env:
           PGPASSWORD: anime_test_password
         run: |
-          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','auth_challenges') AND relrowsecurity AND relforcerowsecurity")" = "11"
-          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname LIKE '%_self_access'")" = "11"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','auth_challenges','identity_outbox') AND relrowsecurity AND relforcerowsecurity")" = "12"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname LIKE '%_self_access'")" = "12"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname IN ('users_login_lookup','auth_sessions_token_lookup')")" = "2"
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 <<'SQL'
           DO $body$ BEGIN
@@ -242,6 +246,7 @@ jobs:
         env:
           PGPASSWORD: anime_test_password
         run: |
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000008_identity_outbox.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000007_login_attempt_budget.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000006_identity_challenges.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000005_row_level_security.down.sql
