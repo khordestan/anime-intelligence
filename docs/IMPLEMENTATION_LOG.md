@@ -459,3 +459,9 @@ Added catalog-status using a read-only repeatable-read snapshot and separate exp
 Added PostgreSQL regression coverage for stale/never/disabled/future sources, threshold changes, latest schedule counts and restricted-role reads. No service/receiver/provider activated. Exact-commit CI pending; shell toolchains unavailable.
 
 Verified predecessor b5b07f9: all seven CI jobs 43758257305 and both CodeQL analyses 43758257358 passed, including the new-season first-release regression. Freshness diagnostics remain pending exact-commit publication/checks.
+
+## 2026-11-15 — Verified catalog/tracking/release checkpoint
+
+ac7483b passed all seven CI jobs in 43758565298 and both CodeQL analyses in 43758565307. Inspected job results and browser summaries: 12 mocked tests and two real PostgreSQL/browser tests passed, alongside the dedicated identity-browser suite, Go unit/race/vet/build/vulnerability checks, PostgreSQL 17 integration/migration/rollback, recovery and monitoring checks.
+
+Fifteen implementation/test commits from 42111df through ac7483b cover this continuation. The repository remains public and no deployment, host service, scheduled provider or real-user data import was activated. One bounded Wikidata primary-API smoke request succeeded; automated provider tests use synthetic transports. Complete source/availability coverage, scheduled freshness, cross-provider arbitration, recommendation/AI and production operations remain open. This final documentation update records the verified implementation SHA; its own automatic checks may run separately.
