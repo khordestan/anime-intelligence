@@ -106,6 +106,75 @@ paths:
               schema: { $ref: '#/components/schemas/CatalogDetails' }
         "400": { description: Invalid UUID }
         "404": { description: Anime not found }
+  /api/v1/follows:
+    get:
+      summary: List owned anime release subscriptions
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Up to 1000 owned subscriptions with track and creation time }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+  /api/v1/follows/{id}:
+    put:
+      summary: Follow an anime's confirmed releases or change its track preference
+      description: Retains the original subscription time on updates. Does not replay releases before a new subscription.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                track: { type: string, enum: [RAW, SUB, DUB, UNKNOWN, ALL], default: SUB }
+      responses:
+        "204": { description: Owned subscription saved }
+        "400": { description: Invalid identifier, track or body }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Unknown anime }
+    delete:
+      summary: Remove an owned anime release subscription
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Subscription removed; existing notices retained }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Missing subscription }
+  /api/v1/notifications:
+    get:
+      summary: Poll owned in-app release notifications
+      description: Materializes at most 100 eligible unique event-backed notices per request and returns the newest 100 owned in-app notices. No background delivery or email/push is enabled.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Owned notification items with id, title, body, createdAt and optional readAt }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+  /api/v1/notifications/{id}/read:
+    patch:
+      summary: Idempotently mark an owned notification read
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Notice is read }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Missing or foreign notice }
   /api/v1/tracker:
     get:
       security: [{ bearerAuth: [] }]

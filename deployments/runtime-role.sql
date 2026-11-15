@@ -29,3 +29,8 @@ GRANT DELETE ON user_anime, watch_progress, user_ratings TO anime_runtime;
 -- Reviewed public catalog facts only; ingestion remains administrator-only.
 GRANT SELECT ON catalog_metadata, anime_relations, airing_schedule TO anime_runtime;
 GRANT SELECT (id, provider_key) ON data_sources TO anime_runtime;
+
+-- Owner-scoped release subscriptions and in-app materialization use forced RLS.
+GRANT INSERT,UPDATE,DELETE ON user_follows TO anime_runtime;
+GRANT INSERT,UPDATE ON notifications TO anime_runtime;
+GRANT SELECT ON domain_events TO anime_runtime;

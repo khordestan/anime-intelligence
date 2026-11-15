@@ -82,6 +82,7 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 		t.Fatal(err)
 	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT (id,provider_key) ON data_sources TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
+	if _, err = owner.Exec(ctx, `GRANT INSERT,UPDATE,DELETE ON user_follows TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE ON notifications TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON domain_events TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	ownerDSN := u.String()
 	u.User = url.UserPassword(role, credential)
 	db, err := postgres.Open(ctx, u.String())

@@ -377,3 +377,11 @@ Validation: baseline 42111df CI 43746726043 and Security 43746726090 inspected: 
 Added a consistent repeatable-read details endpoint with latest structured metadata/source timestamp, genres/tags/studios/synonyms, resolved canonical season/title relations and latest episode schedule revisions by track. Responses contain only public catalog data; tags/synopses may contain spoilers. Added local-mode empty enrichment and explicit arrays. API role gains read-only catalog tables and only source id/provider-key columns. Readiness now checks migration 000011 and required read grants. Reapply runtime-role.sql before starting an updated runtime.
 
 Tests cover anonymous HTTP metadata, source timestamps, schedule-versus-release semantics, canonical relations, seeded empty enrichment and invalid/missing identifiers. OpenAPI updated. Exact-commit CI pending; local Go unavailable. No deployment.
+
+## 2026-11-15 — Owner-scoped confirmed-release subscriptions and notices
+
+Verified: ingestion 8ee67a3 passed all seven CI jobs (43751739458) and both CodeQL analyses (43751739539); catalog details ca4e3a8 passed all seven CI jobs (43751994428) and both CodeQL analyses (43751994391).
+
+Added migration 000012 with release-track preferences and unique owned event/channel notifications. Verified-account follow/list/unfollow, bounded polling materialization and idempotent read endpoints use account/session locks, explicit ownership and existing forced RLS. Notifications materialize only eligible confirmed episode events after subscription creation. No background mail/push, franchise follow or public deployment is enabled.
+
+Added importer-to-notification integration coverage, SUB/DUB/ALL filtering, replay suppression, read ownership, concurrent-session deduplication, unsubscribe isolation, export isolation and HTTP authentication/verified-email/owner-override checks. Expanded runtime grants, readiness, migration/rollback CI and recovery ledger count. Exact-commit validation pending; local Go unavailable.

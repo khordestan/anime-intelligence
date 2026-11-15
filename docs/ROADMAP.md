@@ -67,8 +67,9 @@
 - [x] Transactional offline schedule ingestion and revision history
 - [ ] Scheduled network synchronization
 - [ ] Announcement and release event detection
-- [ ] In-app notifications and notification preferences
-- [ ] Idempotency and duplicate suppression
+- [x] Owner-scoped polling in-app episode notifications and per-follow release tracks
+- [ ] Dashboard notification controls and background channels
+- [x] Durable canonical release-event and owned notification duplicate suppression
 
 ## Milestone 5 — Taste intelligence
 - [ ] Declared and inferred preference profiles
