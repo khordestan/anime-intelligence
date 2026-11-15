@@ -15,7 +15,7 @@ Implemented:
 Verified:
 - Local Go: `go test -race ./...`, `go vet ./...`, and `go build ./...` passed for the local vertical slice.
 - GitHub Actions: backend tests, race detector, vet/build and frontend typecheck/production build passed on commit `0fb6789`.
-- PostgreSQL migration validation is being added to CI; the latest run must finish before claiming database migration execution passed.
+- GitHub Actions PostgreSQL 17 service: all three up migrations, assertions for 8 anime and 40 taxonomy features, and all three down migrations passed on the CI run that includes the database job.
 
 Not yet implemented:
 - PostgreSQL runtime repository and API wiring. The running API still uses local JSON persistence.
