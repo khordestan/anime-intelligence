@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS airing_schedule;
+DROP TABLE IF EXISTS anime_relations;
+DROP TABLE IF EXISTS user_preferences;
+DROP TABLE IF EXISTS user_ratings;
+DROP TABLE IF EXISTS user_anime;
+DROP TABLE IF EXISTS anime_feature_observations;
+DROP TABLE IF EXISTS anime_features;
+DROP TABLE IF EXISTS anime_external_ids;
+DROP TABLE IF EXISTS anime;
+DROP TABLE IF EXISTS users;
