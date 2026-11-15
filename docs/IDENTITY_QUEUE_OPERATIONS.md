@@ -2,7 +2,7 @@
 
 Use `go run ./cmd/identity-status` with `DATABASE_URL` supplied out of band for the restricted runtime role. The command requires the current migrated schema (through 000010) and normal runtime grants. It rejects owner/superuser connections using the same guard as the API. It does not need SMTP settings or encryption keys, contact a mail provider, start workers, decrypt envelopes, or expose an HTTP endpoint.
 
-The command reads both queues from a single repeatable-read, read-only transaction and writes one versioned JSON object to stdout. Errors print fixed messages to stderr without connection details. Exit 0 means the snapshot was read and encoded successfully; exit 1 means missing/invalid configuration, database/query failure or output failure. Exit status is not a delivery-health verdict.
+The command reads both queues from a single repeatable-read, read-only transaction and writes one versioned JSON object to stdout by default. Use `-format=prometheus` for bounded Prometheus text exposition. Errors print fixed messages to stderr without connection details. Exit 0 means the snapshot was read and encoded successfully; exit 1 means missing/invalid configuration, database/query failure or output failure. Exit status is not a delivery-health verdict.
 
 ## Fields
 
@@ -50,3 +50,24 @@ Keep diagnostic access restricted to trusted operations. Protect the database co
 All fields are present; inapplicable fields are zero. New workers write an allowlisted outcome in the same transaction that completes work and erases its encrypted payload. Stale lease acknowledgements cannot overwrite a newer result. Wrong-key/tampered envelopes remain pending without a terminal outcome until configuration is corrected or cleanup expires them. Success on the fifth attempt is still accepted/issued, not inferred exhaustion.
 
 These are counts of retained rows, **not cumulative counters**. They decrease when one-day cleanup or account-deletion cascades remove records. Do not apply counter-rate calculations to them. Migration backfills historical completion as `LEGACY_UNKNOWN`; it never guesses from attempt counts or timestamps. During a rolling upgrade, old writers may still leave a NULL outcome, which diagnostics also reports as legacy unknown. Outcome codes include no recipient/provider reason strings, and the HTTP acceptance response remains generic.
+
+## Prometheus text output
+
+Run `go run ./cmd/identity-status -format=prometheus` with the same restricted database connection supplied out of band. JSON remains the default; `-format=json` is explicit. Unsupported formats/arguments fail with fixed usage text without echoing supplied values, and `-h` works without database configuration. No HTTP listener, scheduler, collector installation or alert routing is added.
+
+All fourteen metric families are **gauges**. Label values come only from fixed queue names (`requests`, `deliveries`) and outcome names (`issued`, `no_action`, `accepted`, `invalidated`, `expired`, `exhausted`, `legacy_unknown`). The format always emits the same 38 series, including zeros for empty queues and inapplicable outcomes. No recipient, account ID, connection URL, provider response, key or ciphertext becomes a label.
+
+| Metric | Meaning |
+| --- | --- |
+| `anime_identity_snapshot_timestamp_seconds` | Database snapshot time as Unix seconds; use it to detect stale exports |
+| `anime_identity_requests_capacity` | Shared request admission capacity |
+| `anime_identity_queue_active`, `_ready`, `_leased`, `_delayed` | Queue state counts defined above, with the `queue` label |
+| `anime_identity_queue_attempted_active`, `_awaiting_cleanup`, `_completed`, `_payload_rows` | Additional retained/state counts defined above, with the `queue` label |
+| `anime_identity_queue_outcome_rows` | Retained terminal counts with `queue` and `outcome` labels; never a cumulative counter |
+| `anime_identity_queue_oldest_active_age_seconds` | Snapshot-relative oldest active age; zero when empty or creation lies in the future |
+| `anime_identity_queue_oldest_payload_age_seconds` | Snapshot-relative oldest encrypted payload age; zero when empty or future |
+| `anime_identity_queue_latest_payload_expiry_timestamp_seconds` | Latest retained payload expiry in Unix seconds; zero when empty |
+
+For a textfile collector, write stdout to a temporary file in the destination directory and atomically rename it to the final `.prom` path only after the command exits successfully. Configure file permissions for the trusted scraper. A failed run must not replace the last complete snapshot; monitor its timestamp so old data cannot look healthy. Collector/scheduling/alert configuration is an operator responsibility and is not installed by the command.
+
+Interpret ages together with active/payload counts, since zero also represents empty queues. Counts describe the shared database, not an individual API process; avoid summing duplicate snapshots of the same database across collector hosts. Retention and account deletion reduce outcome counts, so use gauge comparisons and avoid counter functions such as `rate`/`increase` on these series. Provider failure timing, end-recipient delivery, missing-scrape detection and reviewed production alert thresholds still need additional monitoring design.
