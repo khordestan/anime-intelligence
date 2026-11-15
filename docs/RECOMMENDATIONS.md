@@ -13,3 +13,5 @@ Without supported evidence the result is empty. No real user history or fabricat
 ## Dashboard
 
 Verified PostgreSQL accounts can open Personal Match settings to edit/reset declared feature weights and inspect supported matches with feature-key evidence. Empty evidence is stated explicitly. Inputs and results stay in memory; keyed remounts, unmount guards and session/request revisions prevent late results crossing accounts. The panel explains that scores are not probabilities and shows computation limits. It never calls an LLM.
+
+Consistent preference/ranking reads retry at most three times for PostgreSQL serialization/deadlock conflicts, rechecking session/owner/verification on every attempt. Cancellation and other failures are not retried. Mutations are not part of this retry wrapper. This avoids transient failures when a concurrent session-row update invalidates a repeatable-read snapshot.

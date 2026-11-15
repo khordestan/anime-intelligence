@@ -6,11 +6,17 @@ import (
 	"strconv"
 
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
+	"github.com/khordestan/anime-intelligence/internal/platform/store"
 )
+func matchError(w http.ResponseWriter,err error){
+	if errors.Is(err,store.ErrEmailUnverified){authError(w,403,"email_verification_required");return}
+	if errors.Is(err,postgres.ErrUnauthorized){w.Header().Set("WWW-Authenticate","Bearer");authError(w,401,"unauthorized");return}
+	authError(w,500,"recommendation_operation_failed")
+}
 func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(http.ResponseWriter,*http.Request,string,postgres.User))http.HandlerFunc){
 	mux.HandleFunc("GET /api/v1/preferences",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		items,err:=db.Repository(token).FeaturePreferences(r.Context())
-		if err!=nil{releaseError(w,err);return}
+		if err!=nil{matchError(w,err);return}
 		writeJSON(w,200,map[string]any{"items":items,"limit":256})
 	}))
 	change:=func(remove bool)http.HandlerFunc{return protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
@@ -24,7 +30,7 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 		}
 		found,err:=db.Repository(token).SetFeaturePreference(r.Context(),key,weight)
 		if errors.Is(err,postgres.ErrPreference){authError(w,400,"invalid_preference");return}
-		if err!=nil{releaseError(w,err);return}
+		if err!=nil{matchError(w,err);return}
 		if !found{authError(w,404,"feature_not_found");return}
 		w.WriteHeader(204)
 	})}
@@ -34,7 +40,7 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 		limit,err:=strconv.Atoi(r.URL.Query().Get("limit"))
 		if err!=nil{limit=20}
 		page,err:=db.Repository(token).PersonalMatches(r.Context(),limit)
-		if err!=nil{releaseError(w,err);return}
+		if err!=nil{matchError(w,err);return}
 		writeJSON(w,200,page)
 	}))
 }

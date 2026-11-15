@@ -17,3 +17,5 @@ References must be credential/query/fragment-free HTTPS URLs. This syntax check 
 All supported imports share the catalog advisory lock. Repeating the same title/feature/time/value/confidence/reference is a no-op. A conflicting value at the same time fails the entire batch. New observation timestamps append history; omitted records are not deleted. Older observations can be retained without replacing a newer eligible observation in ranking. Uncoordinated administrator SQL is outside the idempotency protocol.
 
 Personal Match uses only qualifying referenced non-spoiler curated observations. A working import path does not establish broad feature coverage. Reviewed corpus creation, correction/retraction workflow, dedicated curator-role provisioning, evidence auditing and spoiler-scoped annotations remain pending.
+
+After precision validation, permitted floating-point representation noise is normalized to the database's four-decimal representation before comparison/insertion. Input records are copied rather than mutated; repeated identical snapshots retain replay identity.

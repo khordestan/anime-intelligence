@@ -58,6 +58,14 @@ func Decode(r io.Reader,now time.Time)(Snapshot,error){
 func Apply(ctx context.Context,conn *pgx.Conn,s Snapshot,now time.Time)(Result,error){
 	if s.Validate(now)!=nil{return Result{},ErrInvalid}
 	s.ObservedAt=s.ObservedAt.UTC().Truncate(time.Microsecond)
+	records:=make([]Record,len(s.Records))
+	copy(records,s.Records)
+	s.Records=records
+	for i,r:=range records{
+		value:=math.Round(*r.Value*10000)/10000
+		confidence:=math.Round(*r.Confidence*10000)/10000
+		s.Records[i].Value=&value;s.Records[i].Confidence=&confidence
+	}
 	out,err:=apply(ctx,conn,s)
 	if err!=nil{if errors.Is(err,ErrConflict){return Result{},ErrConflict};return Result{},ErrImport}
 	return out,nil

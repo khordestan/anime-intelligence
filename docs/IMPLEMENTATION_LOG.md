@@ -497,3 +497,9 @@ Imports share catalog locking, append observation history, replay identical snap
 Verified curation 9057779: CI 43773086129 and Security 43773085982 passed all seven CI jobs and both CodeQL analyses. Added migration 000014 with public source-attempt metadata only. Admission persists STARTED/minimum next-attempt time before HTTP, bounding restart/crash retries. Fixed outcomes and next-allowed times persist success, fetch/import failure and provider rate limits. Longer Retry-After values are no longer shortened to an hour; numeric overflow saturates instead of causing an early retry.
 
 Added worker restart/crash/provider-delay tests, long/HTTP-date/overflow header tests and attempt fields to read-only diagnostics. Updated catalog role grants, migration apply/rollback and restore ledger count. No private table/RLS changes, raw response/error storage, item-selection persistence, live activation or deployment. DB loss after HTTP may still prevent recording a longer cooldown; admission's minimum interval remains durable. Exact-commit validation pending.
+
+## 2026-11-16 — Recommendation snapshot retries and exact curation replay
+
+93b469c passed all seven CI jobs 43773765716 and both CodeQL analyses 43773765754. Added bounded retries only for serialization/deadlock conflicts in consistent preference/recommendation reads, with identity/verification re-resolution for every attempt and cancellation preserved. A real PostgreSQL lock-coordination test forces a concurrent session-row update, proving each read recovers from the resulting snapshot conflict.
+
+Normalized validated curation values/confidence to four-decimal storage before replay comparison, without mutating caller records. Extended database replay coverage with binary representation noise. Recommendation failures now use their own fixed error category rather than a release-operation category. No external calls, production data or deployments. Exact-commit CI pending.

@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/khordestan/anime-intelligence/internal/modules/intelligence"
 	"github.com/khordestan/anime-intelligence/internal/platform/store"
 )
@@ -31,7 +32,19 @@ func(r *Repository) preferenceTx(ctx context.Context)(pgx.Tx,User,error){
 	if !u.EmailVerified{rollback(tx);return nil,User{},store.ErrEmailUnverified}
 	return tx,u,nil
 }
+func retryMatchRead[T any](ctx context.Context,read func()(T,error))(T,error){
+	var out T;var err error
+	for range 3{
+		out,err=read()
+		var conflict *pgconn.PgError
+		if !errors.As(err,&conflict)||(conflict.Code!="40001"&&conflict.Code!="40P01")||ctx.Err()!=nil{return out,err}
+	}
+	return out,err
+}
 func(r *Repository) FeaturePreferences(ctx context.Context)([]FeaturePreference,error){
+	return retryMatchRead(ctx,func()([]FeaturePreference,error){return r.featurePreferencesSnapshot(ctx)})
+}
+func(r *Repository) featurePreferencesSnapshot(ctx context.Context)([]FeaturePreference,error){
 	tx,u,err:=r.preferenceTx(ctx)
 	if err!=nil{return nil,err}
 	defer rollback(tx)
@@ -68,6 +81,9 @@ ON CONFLICT(user_id,feature_id,origin) DO UPDATE SET preference_weight=excluded.
 	return true,tx.Commit(ctx)
 }
 func(r *Repository) PersonalMatches(ctx context.Context,limit int)(PersonalMatches,error){
+	return retryMatchRead(ctx,func()(PersonalMatches,error){return r.personalMatchesSnapshot(ctx,limit)})
+}
+func(r *Repository) personalMatchesSnapshot(ctx context.Context,limit int)(PersonalMatches,error){
 	if limit<1{limit=20};if limit>100{limit=100}
 	out:=PersonalMatches{Items:[]intelligence.Recommendation{},AlgorithmVersion:intelligence.PersonalMatchAlgorithmVersion,CandidateLimit:500,RatingLimit:1000}
 	tx,u,err:=r.preferenceTx(ctx)

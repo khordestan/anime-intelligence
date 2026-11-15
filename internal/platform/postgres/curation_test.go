@@ -14,7 +14,7 @@ func TestCuratedImportAtomicIdempotentAndRecommendationReady(t *testing.T){
 	ctx:=context.Background()
 	if _,err:=owner.Exec(ctx,`INSERT INTO anime_features(feature_key,display_name,category) VALUES('synthetic.reviewed','Synthetic reviewed feature','SYNTHETIC')`);err!=nil{t.Fatal(err)}
 	now:=time.Now().UTC().Truncate(time.Microsecond)
-	value,confidence:=0.75,1.0
+	value,confidence:=0.7500000000000001,1.0
 	s:=curation.Snapshot{Version:1,ObservedAt:now,Records:[]curation.Record{{AnimeID:"10000000-0000-4000-8000-000000000001",FeatureKey:"synthetic.reviewed",Value:&value,Confidence:&confidence,Reference:"https://example.test/synthetic-evidence"}}}
 	for i:=0;i<2;i++{
 		result,err:=curation.Apply(ctx,owner,s,now)
