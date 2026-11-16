@@ -6,7 +6,7 @@ test("unapplied catalog drafts reset at sign-in and sign-out",async({page})=>{
  const send=(body:unknown)=>route.fulfill({status:200,headers,contentType:"application/json",body:JSON.stringify(body)});
  if(route.request().method()==="OPTIONS")return route.fulfill({status:204,headers});
  if(path==="")return send({authenticationRequired:true,identityDeliveryAvailable:false});
- if(path==="/auth/login")return send({token:"synthetic-token",expiresAt:"2099-01-01T00:00:00Z",user:{id:"synthetic-account",email:"draft@example.test",displayName:"",emailVerified:false}});
+ if(path==="/auth/login")return send({token:"synthetic-token",expiresAt:new Date(Date.now()+86400000).toISOString(),user:{id:"synthetic-account",email:"draft@example.test",displayName:"",emailVerified:false}});
  if(path==="/auth/logout")return route.fulfill({status:204,headers});
  return send({items:[]});
  });
