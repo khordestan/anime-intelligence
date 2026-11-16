@@ -22,7 +22,7 @@ Enabled sources with missing policy records, no observation, future observations
 
 ## Operator follow-through
 
-Register/enable only reviewed sources. Wikidata CC0 explicit-item fetch is available for sparse TV-anime facts; Jikan source-use permissions remain unverified and AniList is excluded under current tracker/collection restrictions. No scheduler, host service or alert receiver is activated. Retention policies, provider-wide/per-title SLOs, metrics export, catalog writer-role hardening, availability verification and load tests remain work before public operation.
+Register/enable only reviewed sources. Wikidata CC0 explicit-item fetch is available for sparse facts for reviewed explicit TV/season/movie/OVA/ONA classes; Jikan source-use permissions remain unverified and AniList is excluded under current tracker/collection restrictions. No scheduler, host service or alert receiver is activated. Retention policies, provider-wide/per-title SLOs, metrics export, catalog writer-role hardening, availability verification and load tests remain work before public operation.
 
 See [feed ingestion](CATALOG_FEEDS.md), [provider registry](PROVIDERS.md), [exact episodes](EPISODE_PROGRESS.md) and [in-app alerts](RELEASE_ALERTS.md). Do not expose the API publicly.
 

@@ -54,4 +54,4 @@ Runtime API credentials receive no new catalog write grants. This command curren
 
 ## Explicit CC0 factual fetch
 
-catalog-fetch retrieves a bounded set of Wikidata anime-TV items as a neutral feed. It has no database access and activates no scheduled source. See [provider capabilities](PROVIDERS.md) for mapping, CC0 scope and request etiquette. The factual output intentionally leaves release status/availability and unsupported fields unknown; fetch observation time does not prove every upstream statement is current.
+catalog-fetch retrieves a bounded set of supported Wikidata anime-work items as a neutral feed. It has no database access and activates no scheduled source. See [provider capabilities](PROVIDERS.md) for mapping, CC0 scope and request etiquette. The factual output intentionally leaves release status/availability and unsupported fields unknown; fetch observation time does not prove every upstream statement is current.

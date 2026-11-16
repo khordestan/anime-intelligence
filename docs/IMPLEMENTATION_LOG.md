@@ -597,3 +597,9 @@ Added feed validation, converter category mapping, PostgreSQL details/coverage, 
 e179d44 passed all seven CI jobs 43826058492 and both CodeQL analyses 43826058352. Added verified-owner calendar projection over follows/franchise scope, track preferences and latest schedule revisions. Window filtering occurs after latest-revision selection, preventing obsolete reschedules from reappearing. Confirmed releases are excluded; dates remain explicitly unconfirmed. Results cap at 100 with truncation, 1–31 UTC days and a two-second statement timeout.
 
 Shared the existing bounded verified-snapshot retry helper with recommendation reads. Added PostgreSQL tests for partial revisions, exact boundaries, confirmed-release exclusion, overlapping/transitive follow deduplication, track/owner separation and result/range caps, plus HTTP validation. Added dashboard date controls/source labels, two mocked browser tests and real PostgreSQL/browser empty-state coverage. No schema/grants, alert materialization, provider activation or deployment; local toolchains unavailable and exact-commit CI pending.
+
+## 2026-11-16 — Broader explicit CC0 anime-work classes
+
+f18b60c passed all seven CI jobs 43827161580 and both CodeQL analyses 43827161582. Rechecked primary Wikidata ontology pages for anime film, original video/net animation and anime TV seasons. The bounded fixed-endpoint adapter now maps those directly asserted classes as MOVIE/OVA/ONA/TV while retaining entity identity and existing conservative factual fields.
+
+Added synthetic transport/classification tests for each new class, format specificity over broad film, recognized-type conflicts, deprecated/preferred ranks and continued unknown status/count/schedules/relations. No subclass crawl, automatic parent/season links, availability, synopsis/media, inferred movie episode totals, larger request budget or actual source activation. Local toolchains unavailable; exact-commit CI pending.

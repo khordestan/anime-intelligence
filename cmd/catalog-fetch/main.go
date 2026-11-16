@@ -14,7 +14,7 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/providers/wikidata"
 )
 func run() error {
-	ids:=flag.String("ids","","Comma-separated Wikidata anime television item IDs (maximum 20)")
+	ids:=flag.String("ids","","Comma-separated supported Wikidata anime work IDs (TV/season/movie/OVA/ONA; maximum 20)")
 	flag.Parse()
 	items:=strings.Split(*ids,",")
 	for i:=range items {items[i]=strings.TrimSpace(items[i])}

@@ -2,7 +2,7 @@
 
 The worker now supports one explicitly configured Wikidata fact-sync job. It stays idle with no network/database access when CATALOG_SYNC_IDS is empty. No host service, source or schedule is activated by the repository.
 
-Apply migration 000014 and reapply catalog writer/reader grants before updating worker or diagnostics. The API's private security boundary is unchanged.
+Apply migration 000014 and reapply catalog writer/reader grants before updating worker or diagnostics. Current API deployments separately require migration 000015 and fourteen private RLS tables. Keep worker/curator binaries current so their privilege checks also reject watch_cycles access.
 
 ## Configuration
 
@@ -25,3 +25,5 @@ The scheduler is not a durable job queue. Migration 000014 persists each admitte
 Persistent HTTP content caching, queued/per-title jobs and global quotas across different databases remain pending. If database connectivity is lost after HTTP responds, the longer provider cooldown may not be recorded; the pre-fetch interval remains durable and the in-process client retains its cooldown. Operators must respect source limits across databases/restarts and investigate source failures. No source is automatically enabled.
 
 Wikidata facts remain sparse and retain item granularity, sometimes spanning seasons. They do not supply confirmed SUB/DUB availability, studio review, synopsis or reliable release status, so this job cannot invent episode alerts. Comprehensive availability collection and public deployment remain blocked on suitable data/operational review.
+
+Explicit items may use the reviewed TV-series/TV-season/movie/OVA/ONA classes in PROVIDERS.md. A season item keeps its own identity; no season graph is inferred. Media classification changes do not imply approval for streaming availability or automatic source activation.

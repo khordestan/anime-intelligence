@@ -20,7 +20,7 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
 )
 var ErrProvider = errors.New("wikidata request or response failed")
-var ErrUnsupported = errors.New("wikidata item is not a supported anime television series")
+var ErrUnsupported = errors.New("wikidata item has no supported unambiguous anime media type")
 var ErrRateLimited = errors.New("wikidata rate limit reached")
 type RateLimitError struct{ Wait time.Duration; Until time.Time }
 func (e *RateLimitError) Error() string { return ErrRateLimited.Error() }
@@ -166,9 +166,30 @@ func releaseYear(e entity) int {
 	for n:=range years {if year==0 || n<year {year=n}}
 	return year
 }
-// Fetch accepts up to twenty explicit item IDs. Direct instance-of Q63952888 is
-// required; broader/subclass inference is intentionally unsupported. At most one
-// item request and two genre-label requests are issued; no search/crawl occurs.
+// Only explicitly asserted supported P31 classes participate. OVA/ONA are
+// more specific distribution formats than the broad anime-film class. No
+// subclass crawl, label guessing, parent-season inference or status promotion.
+func animeMediaType(e entity)(string,error){
+ types:=map[string]bool{}
+ for _,class:=range itemIDs(e,"P31"){
+  switch class{
+  case "Q63952888","Q100269041":types["TV"]=true
+  case "Q20650540":types["MOVIE"]=true
+  case "Q220898":types["OVA"]=true
+  case "Q1047299":types["ONA"]=true
+  }
+ }
+ if types["OVA"]||types["ONA"]{
+  if types["TV"]||(types["OVA"]&&types["ONA"]){return "",ErrUnsupported}
+  if types["OVA"]{return "OVA",nil};return "ONA",nil
+ }
+ if len(types)!=1{return "",ErrUnsupported}
+ for kind:=range types{return kind,nil}
+ return "",ErrUnsupported
+}
+// Fetch accepts up to twenty explicit item IDs. Direct supported anime-work
+// classes are required; broader/subclass inference is intentionally unsupported.
+// At most one item request and two genre-label requests are issued; no crawl.
 func (c *Client) Fetch(ctx context.Context,ids []string)(feed.Snapshot,error) {
 	if ctx.Err()!=nil {return feed.Snapshot{},ErrProvider}
 	if len(ids)==0 || len(ids)>20 {return feed.Snapshot{},feed.ErrInvalid}
@@ -177,11 +198,12 @@ func (c *Client) Fetch(ctx context.Context,ids []string)(feed.Snapshot,error) {
 	items,err:=c.entities(ctx,ids,"labels|aliases|claims")
 	if err!=nil {return feed.Snapshot{},err}
 	genreIDs:=map[string]bool{}
+	mediaTypes:=map[string]string{}
 	for _,id:=range ids {
 		e:=items[id]
-		supported:=false
-		for _,class:=range itemIDs(e,"P31") {if class=="Q63952888" {supported=true}}
-		if !supported {return feed.Snapshot{},ErrUnsupported}
+		kind,err:=animeMediaType(e)
+		if err!=nil{return feed.Snapshot{},err}
+		mediaTypes[id]=kind
 		for _,genre:=range itemIDs(e,"P136") {genreIDs[genre]=true}
 	}
 	if len(genreIDs)>100 {return feed.Snapshot{},ErrProvider}
@@ -198,7 +220,7 @@ func (c *Client) Fetch(ctx context.Context,ids []string)(feed.Snapshot,error) {
 	s:=feed.Snapshot{Version:1,Provider:"wikidata",ObservedAt:c.now().UTC(),Titles:[]feed.Title{}}
 	for _,id:=range ids {
 		e:=items[id]
-		t:=feed.Title{ExternalID:id,Title:label(e),NativeTitle:e.Labels["ja"].Value,MediaType:"TV",Status:"UNKNOWN",ReleaseYear:releaseYear(e),EpisodeCount:episodeCount(e)}
+		t:=feed.Title{ExternalID:id,Title:label(e),NativeTitle:e.Labels["ja"].Value,MediaType:mediaTypes[id],Status:"UNKNOWN",ReleaseYear:releaseYear(e),EpisodeCount:episodeCount(e)}
 		names:=map[string]bool{strings.ToLower(t.Title):true}
 		for _,language:=range []string{"en","ja"} {
 			for _,alias:=range e.Aliases[language] {

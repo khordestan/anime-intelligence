@@ -93,3 +93,35 @@ func TestRetryAfterPreservesLongAndOverflowingCooldowns(t *testing.T){
 	if got:=retryAfter("99999999999999999999999999999",now);got<365*24*time.Hour{t.Fatal("overflow became short retry",got)}
 	if got:=retryAfter("invalid",now);got!=time.Minute{t.Fatal("invalid-header fallback",got)}
 }
+
+func TestExplicitAnimeWorkMediaTypes(t *testing.T){
+ for _,fixture:=range []struct{classes []string;want string}{
+  {[]string{"Q63952888"},"TV"},{[]string{"Q100269041"},"TV"},
+  {[]string{"Q63952888","Q100269041"},"TV"},{[]string{"Q20650540"},"MOVIE"},
+  {[]string{"Q220898"},"OVA"},{[]string{"Q1047299"},"ONA"},
+  {[]string{"Q20650540","Q220898"},"OVA"},{[]string{"Q1047299","Q20650540"},"ONA"},
+ }{
+  calls:=0
+  client:=fixtureClient(func(r *http.Request)(*http.Response,error){
+   calls++
+   e:=item("Q1","Synthetic Work")
+   e.Claims["P31"]=nil;e.Claims["P136"]=nil;e.Claims["P1113"]=nil
+   for _,class:=range fixture.classes{e.Claims["P31"]=append(e.Claims["P31"],property("normal",map[string]string{"id":class}))}
+   return response(r,200,envelope(map[string]entity{"Q1":e})),nil
+  })
+  snapshot,err:=client.Fetch(context.Background(),[]string{"Q1"})
+  if err!=nil||calls!=1||len(snapshot.Titles)!=1{t.Fatal("explicit media fetch",fixture,err)}
+  title:=snapshot.Titles[0]
+  if title.MediaType!=fixture.want||title.Status!="UNKNOWN"||title.EpisodeCount!=nil||len(title.Episodes)!=0||len(title.Relations)!=0{t.Fatal("inferred unavailable work facts",fixture,title)}
+ }
+ for _,classes:=range [][]string{{"Q11424"},{"Q1107"},{"Q63952888","Q20650540"},{"Q63952888","Q220898"},{"Q220898","Q1047299"}}{
+  e:=item("Q1","Synthetic Ambiguous Work");e.Claims["P31"]=nil
+  for _,class:=range classes{e.Claims["P31"]=append(e.Claims["P31"],property("normal",map[string]string{"id":class}))}
+  if _,err:=animeMediaType(e);!errors.Is(err,ErrUnsupported){t.Fatal("unsupported/conflicting type guessed",classes,err)}
+ }
+ e:=item("Q1","Synthetic Rank Type")
+ e.Claims["P31"]=[]claim{property("deprecated",map[string]string{"id":"Q20650540"})}
+ if _,err:=animeMediaType(e);!errors.Is(err,ErrUnsupported){t.Fatal("deprecated class used")}
+ e.Claims["P31"]=[]claim{property("normal",map[string]string{"id":"Q63952888"}),property("preferred",map[string]string{"id":"Q20650540"})}
+ if kind,err:=animeMediaType(e);err!=nil||kind!="MOVIE"{t.Fatal("type rank not honored",kind,err)}
+}
