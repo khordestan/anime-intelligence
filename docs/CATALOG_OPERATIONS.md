@@ -14,9 +14,11 @@ Default freshness threshold is 24 hours, configurable from one minute to thirty 
 - As-of time and threshold.
 - Each source's provider key, enabled/policy-recorded flags, latest source observation, age, imported title count, never-synced/future-clock/stale flags.
 - Last/next attempt times, bounded attempt count and allowlisted worker outcome when an attempt has been admitted.
-- Total catalog titles and latest episode schedules/confirmed episodes by release track, excluding old schedule revisions.
+- Total catalog titles, observed/unobserved title counts and latest episode schedules/confirmed episode counts, excluding old schedule revisions.
+- Per-source oldest/newest title observations and stale/future title counts, plus catalog-wide totals. A title exactly at the freshness cutoff is current; future observations count as stale. Title age counts include disabled sources, independently of the enabled-source stale flag.
+- Per-source and overall metadata coverage: titles with known episode totals (including zero), nonblank synopsis and nonempty synonyms/genres/tags/studios/relations. These counts measure field presence, not correctness, licensing, resolution or comprehensive taxonomy coverage. Schedule counts do not certify streaming availability.
 
-Enabled sources with missing policy records, no observation, future observations or excessive age are stale. Disabled sources do not count as stale even if they have never synced. Future ages clamp to zero and carry a separate invalid-clock flag. An observation timestamp certifies a successful import/fetch boundary, not the truth/completeness/freshness of every upstream field. The provider-wide timestamp can also reflect a partial feed; inspect per-title observedAt when assessing a specific title.
+Enabled sources with missing policy records, no observation, future observations or excessive age are stale. Disabled sources do not count as stale even if they have never synced. Future ages clamp to zero and carry a separate invalid-clock flag. An observation timestamp certifies a successful import/fetch boundary, not the truth/completeness/freshness of every upstream field. The provider-wide timestamp can also reflect a partial feed; per-title aggregate age stays independent, so a fresh provider can still have stale titles. Unobserved starter titles are reported separately instead of being counted as current. Inspect per-title observedAt when assessing a specific title.
 
 ## Operator follow-through
 

@@ -527,3 +527,9 @@ Dashboard history navigation pauses automatic refresh until returning to the lat
 e661333 passed all seven CI jobs 43775283853 and both CodeQL analyses 43775283821, including cursor unit/database ownership tests, mocked history navigation and both real PostgreSQL browser suites. Prior implementation checkpoints 9057779, 93b469c, 9f74636, 95eac9c and 92f4b4f also passed their inspected CI/CodeQL runs recorded above. Repository metadata still reports public. No local test pass, deployment, provider activation or real-user data import is claimed.
 
 Remaining work includes comprehensive approved metadata/availability coverage, real curated evidence and editorial review, cross-provider arbitration, durable per-title source scheduling, richer tracker/rewatches, background release delivery, recommendation retrieval/evaluation/hybrid AI and production security/operations. This documentation checkpoint records the verified implementation SHA; its own automatic checks run separately.
+
+## 2026-11-16 — Per-title freshness and catalog field coverage
+
+Inspected baseline a96f067: CI 43775494240 and Security 43775494171 passed; the subsequent scheduled Security run 43805152447 also succeeded. Extended the read-only catalog-status snapshot with independent per-title age/future ranges and observed/unobserved counts. Fresh partial imports no longer conceal old title observations in diagnostics. Disabled source title ages remain visible separately from enabled-source stale status.
+
+Added source/catalog field-presence counts for known totals (including zero), synopsis, synonyms, genres, tags, studios and relations. Presence is explicitly not completeness, correctness, resolved relationships or availability. Added PostgreSQL partial-feed regression with equal-threshold, future-clock, disabled-source, sparse-field and known-zero cases. No new privileges, source activation or private-data queries. Exact-commit CI pending; local Go/Node toolchains unavailable.

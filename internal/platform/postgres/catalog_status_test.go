@@ -42,3 +42,42 @@ func TestCatalogStatusFreshnessWithoutPrivateData(t *testing.T) {
 	if err!=nil || broader.StaleSources!=2 {t.Fatal("freshness threshold did not distinguish a valid older observation",broader,err)}
 	if _,err=catalogsync.Inspect(ctx,reader,now,0);err!=catalogsync.ErrStatus {t.Fatal("invalid freshness threshold",err)}
 }
+
+func TestCatalogStatusPartialFeedsAndMetadataCoverage(t *testing.T){
+ _,owner,_,runtimeDSN:=testDB(t)
+ ctx:=context.Background()
+ now:=time.Now().UTC().Truncate(time.Microsecond)
+ if _,err:=owner.Exec(ctx,`INSERT INTO data_sources(provider_key,display_name,enabled,policy_url) VALUES('partial-status','Synthetic partial status',true,'https://example.test/policy')`);err!=nil{t.Fatal(err)}
+ zero:=0
+ rich:=feed.Title{ExternalID:"rich",Title:"Synthetic Rich Metadata",MediaType:"TV",Status:"UNKNOWN",EpisodeCount:&zero,Synopsis:"Synthetic reference synopsis",Synonyms:[]string{"Synthetic alias"},Genres:[]string{"Synthetic genre"},Tags:[]string{"Synthetic tag"},Studios:[]string{"Synthetic studio"},Relations:[]feed.Relation{{ExternalID:"old",Type:"SEQUEL"}}}
+ snapshot:=feed.Snapshot{Version:1,Provider:"partial-status",ObservedAt:now.Add(-2*time.Hour),Titles:[]feed.Title{
+ {ExternalID:"old",Title:"Synthetic Old Metadata",MediaType:"TV",Status:"UNKNOWN"},rich,
+ {ExternalID:"boundary",Title:"Synthetic Boundary Metadata",MediaType:"TV",Status:"UNKNOWN"},
+ {ExternalID:"future",Title:"Synthetic Future Metadata",MediaType:"TV",Status:"UNKNOWN"},
+ }}
+ if _,err:=catalogsync.Import(ctx,owner,snapshot,now);err!=nil{t.Fatal(err)}
+ snapshot.ObservedAt=now.Add(-30*time.Minute);snapshot.Titles=[]feed.Title{rich}
+ if _,err:=catalogsync.Import(ctx,owner,snapshot,now);err!=nil{t.Fatal(err)}
+ for external,stamp:=range map[string]time.Time{"boundary":now.Add(-time.Hour),"future":now.Add(time.Hour)}{
+  if _,err:=owner.Exec(ctx,`UPDATE catalog_metadata SET observed_at=$1 WHERE anime_id=(SELECT anime_id FROM anime_external_ids WHERE provider='partial-status' AND external_id=$2)`,stamp,external);err!=nil{t.Fatal(err)}
+ }
+ u,err:=url.Parse(runtimeDSN)
+ if err!=nil{t.Fatal(err)}
+ if _,err=owner.Exec(ctx,`GRANT SELECT ON data_sources,catalog_sync_state,catalog_fetch_state TO `+pgx.Identifier{u.User.Username()}.Sanitize());err!=nil{t.Fatal(err)}
+ reader,err:=pgx.Connect(ctx,runtimeDSN)
+ if err!=nil{t.Fatal(err)}
+ defer reader.Close(ctx)
+ status,err:=catalogsync.Inspect(ctx,reader,now,time.Hour)
+ if err!=nil||len(status.Sources)!=1{t.Fatal("partial inspection",status,err)}
+ source:=status.Sources[0]
+ if source.Stale||source.Titles!=4||source.StaleTitles!=2||source.FutureTitles!=1{t.Fatal("fresh partial provider hid old titles",source)}
+ if source.OldestTitleObservation==nil||!source.OldestTitleObservation.Equal(now.Add(-2*time.Hour))||source.NewestTitleObservation==nil||!source.NewestTitleObservation.Equal(now.Add(time.Hour)){t.Fatal("title observation range",source)}
+ if status.ObservedTitles!=4||status.UnobservedTitles!=8||status.Titles!=12||status.StaleTitles!=2||status.FutureTitles!=1{t.Fatal("catalog observation counts",status)}
+ want:=catalogsync.MetadataCoverage{EpisodeTotals:1,Synopses:1,Synonyms:1,Genres:1,Tags:1,Studios:1,Relations:1}
+ if source.Coverage!=want||status.Coverage!=want{t.Fatal("presence coverage/known zero",source.Coverage,status.Coverage)}
+ broader,err:=catalogsync.Inspect(ctx,reader,now,3*time.Hour)
+ if err!=nil||broader.StaleTitles!=1||broader.FutureTitles!=1{t.Fatal("title threshold/future distinction",broader,err)}
+ if _,err=owner.Exec(ctx,`UPDATE data_sources SET enabled=false WHERE provider_key='partial-status'`);err!=nil{t.Fatal(err)}
+ disabled,err:=catalogsync.Inspect(ctx,reader,now,time.Hour)
+ if err!=nil||disabled.StaleSources!=0||disabled.StaleTitles!=2{t.Fatal("disabled source hid metadata age",disabled,err)}
+}
