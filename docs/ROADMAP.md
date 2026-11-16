@@ -61,6 +61,8 @@
 - [ ] Catalog SLOs, metrics/alerts, field accuracy and completeness evaluation
 - [x] Validated canonical prequel/sequel graph and named bidirectional direct continuity navigation
 - [x] Bounded public transitive prequel/sequel API and dashboard browsing with source labels and cap warnings
+- [x] Combined sourced-category/format/status/year/quarter catalog filters with explicit dashboard controls and bounded result expansion
+- [ ] Available-value facets and broader catalog pagination
 - [ ] Reviewed franchise curation/retractions and finer season conventions
 
 ## Milestone 3 — Tracker completeness
