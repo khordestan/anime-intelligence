@@ -6,13 +6,13 @@ For current implementation state, security constraints and continuation steps, s
 
 ## Implemented
 
-- Sourced catalog details, genres/themes/demographics/tags/studios, canonical season relations and per-track episode schedules.
+- Sourced catalog details, genres/themes/demographics/tags/studios, canonical season relations and per-track episode schedules; [bounded linked-title browsing](docs/CATALOG_CONTINUITY.md) exposes transitive prequel/sequel connections and source labels.
 - Reviewed offline provider ingestion with external ID mapping, latest structured provenance, schedule revision history and unique release/announcement events; offline Jikan v4 conversion and bounded CC0 Wikidata factual fetching. Scheduled collection remains disabled; comprehensive availability sources still require approval.
 - Complete transactional catalog-import previews, optional selected-metadata observation archives and a restricted read-only field-change history command; historical storage remains a separate opt-in rights/retention decision. See [catalog history](docs/CATALOG_HISTORY.md).
 - Tracker create/list/update/remove, aggregate or exact episode selections (including gaps), 1–5 ratings and a dashboard episode editor.
 - Verified PostgreSQL private notes with conditional saves, completed-pass archives, explicit rewatches and guarded current-pass edits, with dashboard controls and account isolation.
 - Verified-owner followed schedule calendar with bounded date windows, track/season scope and current schedule revisions, explicitly labeled as unconfirmed.
-- Individual-season or linked-franchise follows, release-track preferences and owner-scoped in-app episode/season-announcement notifications, polled from the dashboard.
+- Individual-season or linked-franchise follows, release-track preferences and owner-scoped in-app episode/season-announcement notifications, polled from the dashboard with bounded catch-up status separate from older history.
 - Optional PostgreSQL runtime with registration, login, current account, logout, and atomic session rotation.
 - Active-session listing, individual remote revocation, and sign-out of every other session; refresh keeps a stable logical session ID.
 - Optional SMTP-backed password recovery and email verification use short-lived, single-use hashed challenges, explicit confirmation, and fragment-only mail links. Delivery is disabled without explicit SMTP and outbox-key configuration; accepted requests and issued messages use encrypted, leased PostgreSQL inbox/outbox queues with a bounded decryption keyring for planned rotation.

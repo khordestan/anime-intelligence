@@ -673,3 +673,12 @@ Latest-page polling now selects at most 101 distinct eligible events, materializ
 Added synthetic database/HTTP coverage for 101 eligible events, exact 100/1 draining, overlapping follow paths, ineligible track/old/unrelated exclusion, foreign-account isolation, history non-materialization and a newly admitted 120-event track backlog. Dashboard catch-up state is separate from history cursors, survives failed page requests, clears on a successful checked batch and resets across accounts; mocked browser coverage added.
 
 No schema/grant/source activation, new delivery channel, changed confirmation rule, personal data or deployment. Local toolchains remain absent; exact-commit CI/CodeQL pending.
+
+
+## 2026-11-16 — Verified continuity and release catch-up checkpoint
+
+8bcd38b1e52594633cc1478690669aa8080c06ca passed all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43845176573) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43845176686); dependency review skipped on push. Predecessor aaee00cfe0187ae6346d794d8d12083cbb69b6eb also passed all seven CI jobs 43844544929 and both CodeQL analyses 43844544976. Inspected exact job results and targeted database/browser logs.
+
+Coverage includes two new public graph PostgreSQL/HTTP tests (direction/provenance/known totals and exact capacity/overflow/dense/cyclic data), the bounded materialization/owner/history/track backlog test, three new mocked browser tests and an anonymous real PostgreSQL browser test. The existing backend race/vet/build/vulnerability, frontend unit/typecheck/build/audit, both full-stack suites, migration/RLS/rollback, recovery and monitoring checks remain green.
+
+Repository visibility remains public. No schema or role-grant update, real account data, credentials, live source/model activation or deployment. Local Go/Node are absent; verification occurred in GitHub Actions. Complete approved metadata/availability collection, durable per-title source scheduling, field corrections/arbitration, background channels, AI/evaluation and production security/operations remain pending. This checkpoint records the verified implementation SHA; its documentation-only automatic checks run separately.
