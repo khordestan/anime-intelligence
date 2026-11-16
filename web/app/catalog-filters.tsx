@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ApiClient } from "../lib/api";
+import CatalogLabels from "./catalog-labels";
 
 export type CatalogFilterValues = {
   mediaType: string; status: string; releaseYear: string; season: string;
@@ -9,8 +11,8 @@ export type CatalogFilterValues = {
 export const emptyCatalogFilters: CatalogFilterValues = {
   mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
 };
-export default function CatalogFilters({ values, onApply }: {
-  values: CatalogFilterValues; onApply: (values: CatalogFilterValues) => void;
+export default function CatalogFilters({ client, values, onApply }: {
+  client: ApiClient; values: CatalogFilterValues; onApply: (values: CatalogFilterValues) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(values);
@@ -34,7 +36,7 @@ export default function CatalogFilters({ values, onApply }: {
           ["season", "Catalog release quarter", ["WINTER", "SPRING", "SUMMER", "FALL"]],
         ] as const).map(([key, label, options]) => <label key={key} className="text-xs text-slate-300">{label}<select aria-label={label} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-900 p-2"><option value="">Any</option>{options.map(value => <option key={value} value={value}>{value}</option>)}</select></label>)}
         <label className="text-xs text-slate-300">Catalog release year<input aria-label="Catalog release year" type="number" min={1900} max={9999} step={1} value={draft.releaseYear} onChange={event => setDraft(current => ({ ...current, releaseYear: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>
-        {([["genre", "Source genre"], ["theme", "Source theme (may contain spoilers)"], ["demographic", "Source demographic"], ["studio", "Source studio"]] as const).map(([key, label]) => <label key={key} className="text-xs text-slate-300">{label}<input aria-label={label} maxLength={256} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>)}
+        {([["genre", "Source genre"], ["theme", "Source theme (may contain spoilers)"], ["demographic", "Source demographic"], ["studio", "Source studio"]] as const).map(([key, label]) => <div key={key}><label className="text-xs text-slate-300">{label}<input aria-label={label} maxLength={256} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label><CatalogLabels client={client} field={{genre:"genres",theme:"themes",demographic:"demographics",studio:"studios"}[key]} value={draft[key]} onSelect={value=>setDraft(current=>({...current,[key]:value}))} /></div>)}
       </div>
       {error && <p role="alert" className="text-xs text-rose-200">{error}</p>}
       <div className="flex gap-4">

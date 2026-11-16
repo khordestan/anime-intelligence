@@ -490,7 +490,7 @@ export default function Home() {
           placeholder="Search starter catalog…"
           className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-violet-400"
         />
-        <CatalogFilters values={catalogFilters} onApply={values => { catalogSearchRevision.current++; setSearchedCatalog(null); setCatalogFilters({ ...values }); }} />
+        <CatalogFilters client={client} values={catalogFilters} onApply={values => { catalogSearchRevision.current++; setSearchedCatalog(null); setCatalogFilters({ ...values }); }} />
         {(query || hasCatalogFilters) && catalogSearchBusy && <p role="status" className="mt-3 text-sm text-slate-400">Searching catalog…</p>}
         {catalogSearchError && <p role="alert" className="mt-3 text-sm text-rose-200">{catalogSearchError} <button onClick={() => setCatalogFilters(current => ({ ...current }))} className="underline">Retry catalog search</button></p>}
         {(query || hasCatalogFilters) && searchedCatalog !== null && !catalogSearchBusy && results.length === 0 && <p className="mt-3 text-sm text-slate-400">No matching anime outside your library.</p>}

@@ -86,3 +86,5 @@ Local Go/Node toolchains are unavailable; verification ran in GitHub Actions. Co
 Direct Catalog repository reads now delegate to FilterCatalog, sharing validation and read deadlines. Exact follow-up CI pending; see CATALOG_READ_VALIDATION.md.
 
 Available source-label discovery is now implemented at GET /anime/facets with strict field/prefix/limit validation, deduplication and bounded lookahead. Dashboard suggestions remain pending. See CATALOG_FACETS.md; exact follow-up CI pending.
+
+Dashboard source-label discovery now loads only on explicit request, uses the draft label as a prefix, warns before requesting themes, and fences stale responses on edits/unmount. Selecting a suggestion changes only the draft; Apply remains required. CI pending.

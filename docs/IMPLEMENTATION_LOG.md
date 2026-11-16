@@ -713,3 +713,7 @@ Public visibility rechecked. No schema/grants, private-data scope expansion, rea
 ## 2026-11-16 — Bounded source-label discovery
 
 Added public genre/theme/demographic/studio facets with case-folded deduplication, literal prefix matching, strict validation, lookahead and SQL/context deadlines. Synthetic PostgreSQL/HTTP tests cover categories, sparse fields, exact/overflow caps and literal prefixes. No grants/schema/private-data/source activation/deployment. Local toolchains unavailable; exact commit CI pending. Baseline 199d6e8 passed CI 43863761962 and Security 43863762039.
+
+## 2026-11-16 — Explicit dashboard source-label suggestions
+
+Connected source-label discovery to filter drafts with manual requests, theme spoiler warning, empty/truncated/error states and edit/unmount response fencing. Selection does not apply filters automatically. Added mocked browser coverage for explicit loading, draft-only selection, theme intent and clearing. Scoped web instructions read; packaged guides/toolchains absent, official client guide rechecked. No local test pass; exact CI pending. No provider activation, private-data changes or deployment. Baseline 8b4f9b8 passed CI 43865023549 and Security 43865023553.
