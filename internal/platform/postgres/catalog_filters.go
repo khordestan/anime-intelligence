@@ -26,7 +26,8 @@ func(r *Repository)FilterCatalog(ctx context.Context,f store.CatalogFilter,limit
  AND ($10='' OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(COALESCE(m.payload->'demographics','[]'::jsonb)) label(value) WHERE lower(btrim(value))=lower($10)))
  AND ($11='' OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(COALESCE(m.payload->'studios','[]'::jsonb)) label(value) WHERE lower(btrim(value))=lower($11)))
  ))
- ORDER BY canonical_title,id LIMIT $2 OFFSET $3`,f.Query,limit,offset,f.MediaType,f.Status,f.ReleaseYear,f.Season,f.Genre,f.Theme,f.Demographic,f.Studio)
+ AND ($12::int IS NULL OR episode_count >= $12) AND ($13::int IS NULL OR episode_count <= $13)
+ ORDER BY canonical_title,id LIMIT $2 OFFSET $3`,f.Query,limit,offset,f.MediaType,f.Status,f.ReleaseYear,f.Season,f.Genre,f.Theme,f.Demographic,f.Studio,f.MinEpisodes,f.MaxEpisodes)
  if err!=nil{return nil,err}
  out:=[]store.Anime{}
  for rows.Next(){var a store.Anime;if err=rows.Scan(&a.ID,&a.Title,&a.NativeTitle,&a.MediaType,&a.ReleaseYear,&a.Status,&a.EpisodeCount,&a.Synopsis,&a.Season,&a.CoverImageURL,&a.EpisodeCountKnown);err!=nil{rows.Close();return nil,err};out=append(out,a)}

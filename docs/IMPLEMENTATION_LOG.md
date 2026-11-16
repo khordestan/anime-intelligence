@@ -765,3 +765,7 @@ Added nine fixed missing_metadata gauges derived from canonical title counts min
 ## 2026-11-17 — Inactive catalog freshness alert rules
 
 Added optional catalog monitoring rules gated to explicit targets and healthy snapshot times. Synthetic promtool tests cover persistence/recovery, old/future data suppression, target isolation, down/missing distinction and unmarked targets. CI validates/tests the new rules; production configuration and receivers remain untouched. Baseline a7378c4 passed CI 43892390543 and Security 43892390349. Local toolchains unavailable; exact CI pending. No source/service/receiver/deployment activated.
+
+## 2026-11-17 — Episode-count range discovery
+
+Added inclusive optional minEpisodes/maxEpisodes filters (0–100000) in local/PostgreSQL search and dashboard inputs, with API duplicate/empty/integer validation and reversed-range rejection. Unknown totals cannot satisfy a range; known zero remains searchable. Added PostgreSQL sparse/zero/exact/range regressions. No monitoring work, schema/grants/source activation/deployment. Local toolchains unavailable; scoped web instructions and official client guide checked. Exact CI pending.

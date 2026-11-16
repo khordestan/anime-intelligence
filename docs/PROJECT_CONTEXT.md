@@ -110,3 +110,5 @@ Catalog-status now rejects elevated/account-capable credentials through the shar
 Catalog Prometheus diagnostics now include nine missing_metadata gauges, counting canonical titles without each selected field, including unobserved titles. Impossible presence counts above observed-title totals are rejected. These remain presence/absence measures, not accuracy/completeness claims. CI pending.
 
 Inactive catalog Prometheus freshness rules now distinguish target/snapshot failures from stale/future title observations, gated by healthy monitoring snapshots. Synthetic promtool tests cover suppression, persistence/recovery and target isolation; collection/receiver/source activation remain disabled. See CATALOG_ALERT_RULES.md. Exact CI pending.
+
+Product focus: catalog search now supports inclusive minEpisodes/maxEpisodes filters and dashboard inputs. Bounds compose with other filters; unknown totals do not match any active range, while known zero is preserved. Invalid/reversed bounds are rejected. CI pending. No monitoring activation or deployment.

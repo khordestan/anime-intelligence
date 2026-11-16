@@ -11,6 +11,8 @@ import (
 var ErrCatalogFilter = errors.New("invalid catalog filter")
 
 type CatalogFilter struct {
+ MinEpisodes *int
+ MaxEpisodes *int
  Query string
  MediaType string
  Status string
@@ -32,10 +34,12 @@ func(f CatalogFilter)Normalize()(CatalogFilter,error){
  for _,v:=range []string{f.Genre,f.Theme,f.Demographic,f.Studio}{if !utf8.ValidString(v)||strings.ContainsRune(v,0)||len(v)>256{return f,ErrCatalogFilter}}
  allowed:=func(s string,values ...string)bool{if s==""{return true};for _,v:=range values{if s==v{return true}};return false}
  if !allowed(f.MediaType,"TV","MOVIE","OVA","ONA","SPECIAL","MUSIC","UNKNOWN")||!allowed(f.Status,"UNKNOWN","ANNOUNCED","RELEASING","FINISHED","CANCELLED","HIATUS")||!allowed(f.Season,"WINTER","SPRING","SUMMER","FALL")||(f.ReleaseYear!=0&&(f.ReleaseYear<1900||f.ReleaseYear>9999)){return f,ErrCatalogFilter}
+ for _,bound:=range []*int{f.MinEpisodes,f.MaxEpisodes}{if bound!=nil&&(*bound<0||*bound>100000){return f,ErrCatalogFilter}}
+ if f.MinEpisodes!=nil&&f.MaxEpisodes!=nil&&*f.MinEpisodes>*f.MaxEpisodes{return f,ErrCatalogFilter}
  return f,nil
 }
 func(f CatalogFilter)HasMetadataFilters()bool{
- return f.MediaType!=""||f.Status!=""||f.ReleaseYear!=0||f.Season!=""||f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""
+ return f.MinEpisodes!=nil||f.MaxEpisodes!=nil||f.MediaType!=""||f.Status!=""||f.ReleaseYear!=0||f.Season!=""||f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""
 }
 // Local has no imported taxonomy. An active source-label filter has no matches.
 func(s Local)FilterCatalog(ctx context.Context,f CatalogFilter,limit,offset int)([]Anime,error){
@@ -45,6 +49,8 @@ func(s Local)FilterCatalog(ctx context.Context,f CatalogFilter,limit,offset int)
  if f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""{return out,nil}
  for _,a:=range s.Store.Catalog(f.Query,100000,0){
   if (f.MediaType!=""&&f.MediaType!=a.MediaType)||(f.Status!=""&&f.Status!=a.Status)||(f.ReleaseYear!=0&&f.ReleaseYear!=a.ReleaseYear)||(f.Season!=""&&f.Season!=a.Season){continue}
+  if (f.MinEpisodes!=nil||f.MaxEpisodes!=nil)&&!a.EpisodeCountKnown{continue}
+  if f.MinEpisodes!=nil&&a.EpisodeCount<*f.MinEpisodes{continue};if f.MaxEpisodes!=nil&&a.EpisodeCount>*f.MaxEpisodes{continue}
   out=append(out,a)
  }
  // Match the PostgreSQL deterministic title/ID ordering before pagination.

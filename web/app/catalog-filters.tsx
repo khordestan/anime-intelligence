@@ -5,11 +5,12 @@ import { ApiClient } from "../lib/api";
 import CatalogLabels from "./catalog-labels";
 
 export type CatalogFilterValues = {
+  minEpisodes: string; maxEpisodes: string;
   mediaType: string; status: string; releaseYear: string; season: string;
   genre: string; theme: string; demographic: string; studio: string;
 };
 export const emptyCatalogFilters: CatalogFilterValues = {
-  mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
+  minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
 };
 export default function CatalogFilters({ client, values, onApply }: {
   client: ApiClient; values: CatalogFilterValues; onApply: (values: CatalogFilterValues) => void;
@@ -27,10 +28,12 @@ export default function CatalogFilters({ client, values, onApply }: {
       event.preventDefault();
       const next = { ...draft, genre: draft.genre.trim(), theme: draft.theme.trim(), demographic: draft.demographic.trim(), studio: draft.studio.trim() };
       if ([next.genre, next.theme, next.demographic, next.studio].some(value => new TextEncoder().encode(value).length > 256)) { setError("Each source label must be at most 256 UTF-8 bytes."); return; }
+      if(next.minEpisodes!==""&&next.maxEpisodes!==""&&Number(next.minEpisodes)>Number(next.maxEpisodes)){setError("Minimum episodes must not exceed maximum episodes.");return;}
       setError(""); onApply(next);
     }}>
       <p className="text-xs text-slate-400">Filters combine. Source labels match whole values; missing metadata does not match. A release quarter does not confirm episode availability.</p>
       <div className="grid gap-3 sm:grid-cols-2">
+        {([["minEpisodes","Minimum episodes"],["maxEpisodes","Maximum episodes"]] as const).map(([key,label])=><label key={key} className="text-xs text-slate-300">{label}<input aria-label={label} type="number" min={0} max={100000} step={1} value={draft[key]} onChange={event=>setDraft(current=>({...current,[key]:event.target.value}))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>)}
         {([
           ["mediaType", "Catalog format", ["TV", "MOVIE", "OVA", "ONA", "SPECIAL", "MUSIC", "UNKNOWN"]],
           ["status", "Catalog release status", ["UNKNOWN", "ANNOUNCED", "RELEASING", "FINISHED", "CANCELLED", "HIATUS"]],
