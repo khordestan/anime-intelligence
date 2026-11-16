@@ -5,7 +5,6 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/platform/store"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type Handler struct{ data store.Repository }
@@ -14,7 +13,10 @@ func NewHandler(data store.Repository) *Handler { return &Handler{data: data} }
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	limit := queryInt(r, "limit", 24, 1, 100)
 	offset := queryInt(r, "offset", 0, 0, 100000)
-	items, err := h.data.Catalog(r.Context(), strings.TrimSpace(r.URL.Query().Get("q")), limit, offset)
+	filter,err:=catalogFilter(r)
+ if err!=nil{writeError(w,400,"invalid_catalog_filter","Check catalog filter values");return}
+ var items []store.Anime
+ if data,ok:=h.data.(store.FilteredCatalog);ok{items,err=data.FilterCatalog(r.Context(),filter,limit,offset)}else if filter.HasMetadataFilters(){writeError(w,503,"catalog_unavailable","Catalog filtering is unavailable");return}else{items,err=h.data.Catalog(r.Context(),filter.Query,limit,offset)}
 	if err != nil {
 		writeError(w, 500, "catalog_read_failed", "Could not read catalog")
 		return

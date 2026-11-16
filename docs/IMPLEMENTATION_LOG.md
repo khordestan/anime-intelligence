@@ -682,3 +682,12 @@ No schema/grant/source activation, new delivery channel, changed confirmation ru
 Coverage includes two new public graph PostgreSQL/HTTP tests (direction/provenance/known totals and exact capacity/overflow/dense/cyclic data), the bounded materialization/owner/history/track backlog test, three new mocked browser tests and an anonymous real PostgreSQL browser test. The existing backend race/vet/build/vulnerability, frontend unit/typecheck/build/audit, both full-stack suites, migration/RLS/rollback, recovery and monitoring checks remain green.
 
 Repository visibility remains public. No schema or role-grant update, real account data, credentials, live source/model activation or deployment. Local Go/Node are absent; verification occurred in GitHub Actions. Complete approved metadata/availability collection, durable per-title source scheduling, field corrections/arbitration, background channels, AI/evaluation and production security/operations remain pending. This checkpoint records the verified implementation SHA; its documentation-only automatic checks run separately.
+
+
+## 2026-11-16 — Combined public catalog metadata filters
+
+Baseline d255709 passed all seven CI jobs 43845684186 and both CodeQL analyses 43845684107. Rechecked current source, roadmap, recent commits and Actions results.
+
+Added optional combined filters for source genre/theme/demographic/studio and scalar format/status/year/quarter. Exact case-insensitive labels and literal title/native/alias search combine before deterministic ordering/pagination; absent metadata cannot satisfy a filter and legacy tags do not imply themes. Strict bounded UTF-8/query/enum/duplicate validation and fixed errors apply. Public filtered PostgreSQL reads have statement/overall deadlines; JSON mode only uses its known starter facts. No schema/grants, provider/model activation, private-data reads or deployment.
+
+Synthetic local/HTTP/PostgreSQL coverage checks combined filters, sparse/category semantics, aliases, literal SQL/wildcard-looking values, filter-before-pagination, bounds, cancellation and anonymous access. Local Go/Node remain unavailable; exact-commit CI/CodeQL pending.
