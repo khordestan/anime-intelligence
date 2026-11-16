@@ -41,3 +41,6 @@ GRANT INSERT,UPDATE,DELETE ON user_preferences TO anime_runtime;
 
 -- Completed-pass snapshots are append-only through the API; parent deletion cascades.
 GRANT SELECT,INSERT ON watch_cycles TO anime_runtime;
+
+-- Exact public title identities only; external_url and audit payloads stay unreadable.
+GRANT SELECT(anime_id,provider,external_id) ON anime_external_ids TO anime_runtime;

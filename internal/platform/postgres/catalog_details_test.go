@@ -34,15 +34,23 @@ func TestCatalogDetailsPublicAndConsistent(t *testing.T) {
 	h.ServeHTTP(w,httptest.NewRequest("GET","/api/v1/anime/"+id+"/details",nil))
 	var out store.CatalogDetails
 	if w.Code!=200 || json.Unmarshal(w.Body.Bytes(),&out)!=nil {t.Fatalf("detail response: %d %s",w.Code,w.Body.String())}
-	if out.Anime.ID!=id || out.Provider!="details-fixture" || out.ObservedAt==nil || !out.ObservedAt.Equal(now) || len(out.Genres)!=1 || len(out.Synonyms)!=1 || len(out.Tags)!=1 || len(out.Themes)!=1 || out.Themes[0]!="Synthetic theme" || len(out.Demographics)!=1 || out.Demographics[0]!="Synthetic demographic" || len(out.Studios)!=1 || len(out.Relations)!=1 || out.Relations[0].AnimeID!=target || out.Relations[0].Title!="Synthetic Details Two" || out.Relations[0].Status!="ANNOUNCED" || out.Relations[0].MediaType!="TV" || len(out.Episodes)!=1 || out.Episodes[0].Revision!=1 || out.Episodes[0].ReleasedAt!=nil {t.Fatalf("incomplete details: %+v",out)}
+	if len(out.ExternalIDs)!=1 || out.ExternalIDs[0].Provider!="details-fixture" || out.ExternalIDs[0].ExternalID!="one" || out.Anime.ID!=id || out.Provider!="details-fixture" || out.ObservedAt==nil || !out.ObservedAt.Equal(now) || len(out.Genres)!=1 || len(out.Synonyms)!=1 || len(out.Tags)!=1 || len(out.Themes)!=1 || out.Themes[0]!="Synthetic theme" || len(out.Demographics)!=1 || out.Demographics[0]!="Synthetic demographic" || len(out.Studios)!=1 || len(out.Relations)!=1 || out.Relations[0].AnimeID!=target || out.Relations[0].Title!="Synthetic Details Two" || out.Relations[0].Status!="ANNOUNCED" || out.Relations[0].MediaType!="TV" || len(out.Episodes)!=1 || out.Episodes[0].Revision!=1 || out.Episodes[0].ReleasedAt!=nil {t.Fatalf("incomplete details: %+v",out)}
 	reverse,found,reverseErr:=db.Repository("").CatalogDetails(ctx,target)
 	if reverseErr!=nil||!found||len(reverse.Relations)!=1||reverse.Relations[0].AnimeID!=id||reverse.Relations[0].Type!="PREQUEL"||reverse.Relations[0].Title!="Synthetic Details One"{t.Fatal("one-sided season relation lost reverse navigation",reverse,reverseErr)}
+	lookup:=httptest.NewRecorder()
+ h.ServeHTTP(lookup,httptest.NewRequest("GET","/api/v1/anime/lookup?provider=details-fixture&externalId=one",nil))
+ var canonical store.Anime
+ if lookup.Code!=200||json.Unmarshal(lookup.Body.Bytes(),&canonical)!=nil||canonical.ID!=id{t.Fatal("exact identity route",lookup.Code,lookup.Body.String())}
+ for query,want:=range map[string]int{"?provider=details-fixture&externalId=missing":404,"?provider=details-fixture":400,"?provider=bad/provider&externalId=one":400,"?provider=details-fixture&provider=other&externalId=one":400}{
+  response:=httptest.NewRecorder();h.ServeHTTP(response,httptest.NewRequest("GET","/api/v1/anime/lookup"+query,nil));if response.Code!=want{t.Fatal("lookup validation",query,response.Code)}
+ }
+ if lookup.Header().Get("Cache-Control")!="no-store"{t.Fatal("lookup cache boundary")}
 	if w.Header().Get("Cache-Control")!="no-store" {t.Fatal("catalog response cache boundary lost")}
 	for path,want:=range map[string]int{"/api/v1/anime/not-a-uuid/details":400,"/api/v1/anime/00000000-0000-4000-8000-000000000000/details":404} {
 		w:=httptest.NewRecorder();h.ServeHTTP(w,httptest.NewRequest("GET",path,nil));if w.Code!=want {t.Fatal(path,w.Code)}
 	}
 	out,ok,err:=db.Repository("").CatalogDetails(ctx,"10000000-0000-4000-8000-000000000001")
-	if err!=nil || !ok || out.Provider!="" || out.Genres==nil || out.Themes==nil || out.Demographics==nil || out.Episodes==nil || out.Relations==nil {t.Fatal("seed details should have empty arrays",err)}
+	if err!=nil || !ok || out.Provider!="" || out.ExternalIDs==nil || len(out.ExternalIDs)!=0 || out.Genres==nil || out.Themes==nil || out.Demographics==nil || out.Episodes==nil || out.Relations==nil {t.Fatal("seed details should have empty arrays",err)}
 }
 
 func TestCatalogContinuityDetailsDeduplicateReciprocalRelations(t *testing.T){

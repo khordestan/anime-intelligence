@@ -23,7 +23,7 @@ test("catalog search reaches imported aliases and details hide spoilers until re
     }
     if (path === "/anime/" + id + "/details") return respond({
       anime: { id, title: "Beyond First Page", nativeTitle: "Synthetic Native Title", synopsis: "Synthetic spoiler synopsis", episodeCountKnown: false },
-      provider: "synthetic", observedAt: "2026-01-01T00:00:00Z", synonyms: ["Hidden Alias"], genres: ["Adventure"], studios: ["Synthetic Studio"], tags: ["Synthetic spoiler tag"], themes: ["Synthetic spoiler theme"], demographics: ["Synthetic audience"], relations: [{ animeId: sequel, type: "SEQUEL", title: "Synthetic Linked Season", mediaType: "TV", status: "ANNOUNCED" }],
+      externalIds: [{ provider: "synthetic", externalId: "work-99" }, { provider: "synthetic-secondary", externalId: "linked-99" }], provider: "synthetic", observedAt: "2026-01-01T00:00:00Z", synonyms: ["Hidden Alias"], genres: ["Adventure"], studios: ["Synthetic Studio"], tags: ["Synthetic spoiler tag"], themes: ["Synthetic spoiler theme"], demographics: ["Synthetic audience"], relations: [{ animeId: sequel, type: "SEQUEL", title: "Synthetic Linked Season", mediaType: "TV", status: "ANNOUNCED" }],
       episodes: [
         { number: 1, track: "SUB", scheduledAt: "2030-01-01T00:00:00Z", revision: 1 },
         { number: 2, track: "RAW", releasedAt: "2026-01-01T00:00:00Z", revision: 2 },
@@ -46,6 +46,7 @@ test("catalog search reaches imported aliases and details hide spoilers until re
   await expect(panel.getByText("Studios: Synthetic Studio", { exact: true })).toBeVisible();
   await expect(panel.getByText(/Episode total unknown/)).toBeVisible();
   await expect(panel.getByText(/Source: synthetic/)).toBeVisible();
+  await expect(panel.getByText("Provider IDs: synthetic: work-99 · synthetic-secondary: linked-99", { exact: true })).toBeVisible();
   await expect(panel.getByText(/Episode 1 · SUB · Scheduled/)).toBeVisible();
   await expect(panel.getByText(/Episode 2 · RAW · Confirmed/)).toBeVisible();
   await expect(page.getByText("Synthetic spoiler synopsis", { exact: true })).toHaveCount(0);

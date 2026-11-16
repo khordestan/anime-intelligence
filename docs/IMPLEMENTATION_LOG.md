@@ -615,3 +615,9 @@ The execution environment/toolchains are unavailable locally; no local pass clai
 Baseline 7e634dd passed all seven CI jobs 43828427356 and both CodeQL analyses 43828427554. Added bounded strict review files, a default-rollback catalog-map CLI and separate restricted mapper role. The shared catalog lock serializes exact links and source_records review audits with existing importers. Existing mappings cannot be changed in either unique direction; all batch effects roll back on conflict or missing target. Normalized per-link hashes make audit replay idempotent.
 
 Added decoder/validation tests and PostgreSQL preview/replay/conflict/atomicity/audit tests. End-to-end import reuses a mapped canonical ID; a second provider link still cannot transfer metadata authority. Role tests reject private reads/grants, identity rewrites, source enabling, audit payload reads and metadata/deletion rights. No schema/private-data/source activation/deployment changes; local toolchains unavailable and exact-commit CI pending.
+
+## 2026-11-16 — Public exact-ID lookup and identity display
+
+ce3b460 passed all seven CI jobs 43836212263 and both CodeQL analyses 43836212323. Added exact case-sensitive GET /anime/lookup and public provider/externalId arrays in the existing consistent catalog-details snapshot. The dashboard renders these as text; metadata authority remains separate. External URLs, source review payloads/references and private records stay excluded.
+
+Added narrow runtime column reads with readiness/grant fixtures and tests covering lookup validation, route precedence, canonical reuse, cross-provider authority retention, missing/local identities, URL-read denial and browser ID display. No migration or public catalog write route. Scoped web instructions read; packaged guides/toolchains unavailable, official use-client guide rechecked and existing component pattern reused. Exact-commit CI pending; no source activation or deployment.

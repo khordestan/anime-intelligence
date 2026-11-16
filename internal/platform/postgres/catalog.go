@@ -38,6 +38,10 @@ func (r *Repository) CatalogDetails(ctx context.Context,id string) (store.Catalo
 		if metadata.Demographics!=nil {out.Demographics=metadata.Demographics}
 		if metadata.Studios!=nil {out.Studios=metadata.Studios}
 	}
+	identities,err:=tx.Query(ctx,`SELECT provider,external_id FROM anime_external_ids WHERE anime_id=$1 ORDER BY provider,external_id`,id)
+ if err!=nil{return out,false,err}
+ for identities.Next(){var identity store.CatalogExternalID;if err=identities.Scan(&identity.Provider,&identity.ExternalID);err!=nil{identities.Close();return out,false,err};out.ExternalIDs=append(out.ExternalIDs,identity)}
+ identities.Close();if err=identities.Err();err!=nil{return out,false,err}
 	rows,err:=tx.Query(ctx,`WITH linked(anime_id,relation_type) AS (
 SELECT target_anime_id,relation_type FROM anime_relations WHERE source_anime_id=$1
 UNION

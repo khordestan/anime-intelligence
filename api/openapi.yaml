@@ -74,6 +74,27 @@ paths:
                   limit: { type: integer }
                   offset: { type: integer }
                   count: { type: integer }
+  /api/v1/anime/lookup:
+    get:
+      summary: Resolve an exact public provider identity
+      description: Case-sensitive provider and externalId lookup, with no title matching, private account data, network fetch or authority transfer.
+      parameters:
+        - in: query
+          name: provider
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_.-]+$' }
+        - in: query
+          name: externalId
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_.-]+$' }
+      responses:
+        "200":
+          description: Canonical public title
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Anime' }
+        "400": { description: Missing, duplicated or invalid identity }
+        "404": { description: Unknown exact identity }
   /api/v1/anime/{id}:
     get:
       summary: Get anime by ID
@@ -726,9 +747,18 @@ components:
   schemas:
     CatalogDetails:
       type: object
-      required: [anime, synonyms, genres, themes, demographics, tags, studios, relations, episodes]
+      required: [anime, externalIds, synonyms, genres, themes, demographics, tags, studios, relations, episodes]
       properties:
         anime: { $ref: '#/components/schemas/Anime' }
+        externalIds:
+          type: array
+          description: Exact public title identities, not metadata authority or raw review evidence.
+          items:
+            type: object
+            required: [provider, externalId]
+            properties:
+              provider: { type: string }
+              externalId: { type: string }
         provider: { type: string }
         observedAt: { type: string, format: date-time }
         synonyms: { type: array, items: { type: string } }

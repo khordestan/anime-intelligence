@@ -49,7 +49,13 @@ func TestReviewedIdentityLinksAreAtomicAuditedAndDoNotMerge(t *testing.T){
  if _,err=catalogidentity.Apply(ctx,owner,other,now,true);err!=nil{t.Fatal("cross-provider reviewed link",err)}
  snapshot.Provider="identity-other";snapshot.Titles[0].Title="Synthetic Forbidden Takeover"
  if _,err=catalogsync.Import(ctx,owner,snapshot,now);!errors.Is(err,catalogsync.ErrConflict){t.Fatal("identity link transferred metadata authority",err)}
+ resolved,found,err:=db.Repository("").GetAnimeByExternalID(ctx,"identity-other","work-1")
+ if err!=nil||!found||resolved.ID!=one{t.Fatal("reviewed exact identity lookup",resolved,err)}
+ if _,found,err:=db.Repository("").GetAnimeByExternalID(ctx,"identity-other","WORK-1");err!=nil||found{t.Fatal("external identity case was guessed",err)}
+ details,found,err:=db.Repository("").CatalogDetails(ctx,one)
+ if err!=nil||!found||len(details.ExternalIDs)!=2||details.ExternalIDs[0].Provider!="identity-fixture"||details.ExternalIDs[1].Provider!="identity-other"||details.Provider!="identity-fixture"{t.Fatal("public ID links or authority display",details,err)}
  raw,err:=pgx.Connect(ctx,runtimeDSN);if err!=nil{t.Fatal(err)};defer raw.Close(ctx)
+ if _,err=raw.Exec(ctx,`SELECT external_url FROM anime_external_ids`);err==nil{t.Fatal("external URL grant broadened")}
  if _,err=catalogidentity.Apply(ctx,raw,s,now,true);!errors.Is(err,catalogidentity.ErrApply){t.Fatal("API role mapped identities",err)}
 }
 func TestDedicatedIdentityMapperHasNoPrivateOrRewriteAccess(t *testing.T){
