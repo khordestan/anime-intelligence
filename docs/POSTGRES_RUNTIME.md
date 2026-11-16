@@ -170,3 +170,7 @@ The opt-in catalog worker and catalog-status diagnostics require migration 00001
 ## Completed viewing passes (migration 000015)
 
 Apply migration 000015 and reapply runtime-role.sql before the updated API. Startup requires watch-cycle columns and SELECT/INSERT on watch_cycles with forced RLS. Completed-pass history is included in owner export and cascades with tracker/account deletion. See [rewatches](REWATCHES.md) for conditional start and bounded history semantics. No worker/source/deployment is activated.
+
+## Public identity lookup grants
+
+Reapply deployments/runtime-role.sql before this API upgrade for SELECT(anime_id,provider,external_id) on anime_external_ids. Startup/readiness verifies the narrow grant. Public details and GET /api/v1/anime/lookup expose exact title identities only, without external URLs or audit payloads. No migration is needed. Use the separately provisioned catalog-mapper role and CATALOG_MAPPING_DATABASE_URL for reviewed links; see [canonical identity review](CATALOG_IDENTITIES.md).

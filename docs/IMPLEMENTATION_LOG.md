@@ -627,3 +627,9 @@ Added narrow runtime column reads with readiness/grant fixtures and tests coveri
 cf3b325 passed all seven CI jobs 43837173422 and both CodeQL analyses 43837173610. Review found the common writer/curator/mapper guard relied on fixed private table names, which could miss future tables, other schemas, owner-backed views and executable security-definer routines. It now permits relation privileges only on the reviewed non-RLS public catalog table contract and rejects indirect user-schema access. The check reads privilege metadata only.
 
 Extended restricted mapper tests with a future forced-RLS table, a private view, another schema and PUBLIC-executable SECURITY DEFINER function; each is rejected while granted, and accepted again after unsafe execution/data privileges are revoked. Existing writer/curator suites remain required. No actual database privileges, private-data queries, schema migrations or deployment changed; exact-commit CI pending, local toolchains unavailable.
+
+## 2026-11-16 — Verified canonical identity integration checkpoint
+
+fa7f575 passed all seven CI jobs 43838337320 and both CodeQL analyses 43838337446. Predecessor ce3b460 passed CI 43836212263/Security 43836212323; cf3b325 passed CI 43837173422/Security 43837173610. Inspected the exact job results, including database identity review/audit/role regressions, both real-browser suites, frontend, backend, monitoring and recovery. Public repository state rechecked.
+
+This introduces no schema migration or active source/deployment. Existing API installations need refreshed narrow runtime identity read grants. Local toolchains unavailable; no local pass claimed. Field arbitration, canonical merges/retractions, comprehensive licensed data/availability and production security remain separate work. This document records the verified implementation SHA; its own automatic CI runs separately.

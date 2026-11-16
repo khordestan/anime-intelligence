@@ -52,7 +52,8 @@
 - [x] Bounded explicit-item Wikidata CC0 factual fetch adapter
 - [ ] Comprehensive approved metadata and confirmed-availability adapters
 - [ ] Raw source snapshots where licensing permits
-- [ ] Canonical entity resolution and field-level provenance
+- [x] Reviewed exact provider identity links with audit/replay protection and public lookup/display
+- [ ] Canonical entity merges, correction/retraction and field-level source arbitration
 - [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
 - [ ] Real evidence corpus and broader reviewed scope coverage
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics
