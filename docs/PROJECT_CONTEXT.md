@@ -108,3 +108,5 @@ Catalog Inspect now has a two-second statement timeout, bounded rollback cleanup
 Catalog-status now rejects elevated/account-capable credentials through the shared catalog privilege guard before inspection, pins its search path and bounds connection/cleanup. Use the dedicated catalog diagnostics reader role. CI pending.
 
 Catalog Prometheus diagnostics now include nine missing_metadata gauges, counting canonical titles without each selected field, including unobserved titles. Impossible presence counts above observed-title totals are rejected. These remain presence/absence measures, not accuracy/completeness claims. CI pending.
+
+Inactive catalog Prometheus freshness rules now distinguish target/snapshot failures from stale/future title observations, gated by healthy monitoring snapshots. Synthetic promtool tests cover suppression, persistence/recovery and target isolation; collection/receiver/source activation remain disabled. See CATALOG_ALERT_RULES.md. Exact CI pending.

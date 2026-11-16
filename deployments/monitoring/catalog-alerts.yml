@@ -1,0 +1,49 @@
+groups:
+  - name: anime-catalog
+    interval: 30s
+    rules:
+      - record: anime_catalog:snapshot_fresh_timestamp_seconds
+        expr: >-
+          (anime_catalog_snapshot_timestamp_seconds{anime_catalog_monitor="true"} >= time() - 180)
+          and (anime_catalog_snapshot_timestamp_seconds{anime_catalog_monitor="true"} <= time() + 60)
+          and on(job, instance) (up{anime_catalog_monitor="true"} == 1)
+      - alert: AnimeCatalogMonitorTargetDown
+        expr: up{anime_catalog_monitor="true"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Catalog monitoring target is unreachable'}
+      - alert: AnimeCatalogSnapshotMissing
+        expr: >-
+          (up{anime_catalog_monitor="true"} == 1)
+          unless on(job, instance) anime_catalog_snapshot_timestamp_seconds{anime_catalog_monitor="true"}
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Catalog snapshot is missing on a reachable target'}
+      - alert: AnimeCatalogSnapshotStale
+        expr: >-
+          (time() - anime_catalog_snapshot_timestamp_seconds{anime_catalog_monitor="true"} > 180)
+          and on(job, instance) (up{anime_catalog_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Catalog snapshot is no longer refreshing'}
+      - alert: AnimeCatalogSnapshotClockAhead
+        expr: >-
+          (anime_catalog_snapshot_timestamp_seconds{anime_catalog_monitor="true"} - time() > 60)
+          and on(job, instance) (up{anime_catalog_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Catalog snapshot database clock is ahead of monitoring time'}
+      - alert: AnimeCatalogTitlesStale
+        expr: >-
+          (anime_catalog_stale_titles{anime_catalog_monitor="true"} > 0)
+          and on(job, instance) anime_catalog:snapshot_fresh_timestamp_seconds
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Catalog title observations are stale'}
+      - alert: AnimeCatalogTitlesClockAhead
+        expr: >-
+          (anime_catalog_future_titles{anime_catalog_monitor="true"} > 0)
+          and on(job, instance) anime_catalog:snapshot_fresh_timestamp_seconds
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Catalog title observations have future timestamps'}

@@ -761,3 +761,7 @@ Applied the common fail-closed catalog privilege guard before diagnostic queries
 ## 2026-11-16 — Explicit catalog metadata deficit gauges
 
 Added nine fixed missing_metadata gauges derived from canonical title counts minus field presence, including unobserved titles. Reject impossible coverage above observed-title totals before any output. Tests cover partial observations, unknown fields, empty catalogs and invalid coverage; existing monitoring fixture parses the expanded renderer output. No schema/grants/source activation/collector/deployment. Local toolchains unavailable; exact CI pending.
+
+## 2026-11-17 — Inactive catalog freshness alert rules
+
+Added optional catalog monitoring rules gated to explicit targets and healthy snapshot times. Synthetic promtool tests cover persistence/recovery, old/future data suppression, target isolation, down/missing distinction and unmarked targets. CI validates/tests the new rules; production configuration and receivers remain untouched. Baseline a7378c4 passed CI 43892390543 and Security 43892390349. Local toolchains unavailable; exact CI pending. No source/service/receiver/deployment activated.

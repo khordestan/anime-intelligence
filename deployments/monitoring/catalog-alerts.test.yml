@@ -1,0 +1,157 @@
+rule_files:
+- catalog-alerts.yml
+evaluation_interval: 30s
+tests:
+- name: fresh-title-staleness-persistence-and-recovery
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_catalog_snapshot_timestamp_seconds{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 0+60x20
+  - series: 'anime_catalog_stale_titles{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 2+0x6 0+0x13
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: AnimeCatalogTitlesStale
+    exp_alerts: []
+  - eval_time: 6m
+    alertname: AnimeCatalogTitlesStale
+    exp_alerts:
+    - exp_labels:
+        job: anime-catalog
+        instance: fixture:9100
+        anime_catalog_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Catalog title observations are stale
+  - eval_time: 8m
+    alertname: AnimeCatalogTitlesStale
+    exp_alerts: []
+- name: stale-snapshot-suppresses-title-alerts
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_catalog_snapshot_timestamp_seconds{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 0+0x20
+  - series: 'anime_catalog_stale_titles{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 2+0x20
+  - series: 'anime_catalog_future_titles{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 6m
+    alertname: AnimeCatalogSnapshotStale
+    exp_alerts:
+    - exp_labels:
+        job: anime-catalog
+        instance: fixture:9100
+        anime_catalog_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Catalog snapshot is no longer refreshing
+  - eval_time: 8m
+    alertname: AnimeCatalogTitlesStale
+    exp_alerts: []
+  - eval_time: 8m
+    alertname: AnimeCatalogTitlesClockAhead
+    exp_alerts: []
+- name: future-snapshot-suppresses-title-alerts
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_catalog_snapshot_timestamp_seconds{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1000+60x20
+  - series: 'anime_catalog_stale_titles{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 2+0x20
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: AnimeCatalogSnapshotClockAhead
+    exp_alerts:
+    - exp_labels:
+        job: anime-catalog
+        instance: fixture:9100
+        anime_catalog_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Catalog snapshot database clock is ahead of monitoring time
+  - eval_time: 8m
+    alertname: AnimeCatalogTitlesStale
+    exp_alerts: []
+- name: missing-one-target-despite-another-healthy
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'up{job="anime-catalog",instance="other:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_catalog_snapshot_timestamp_seconds{job="anime-catalog",instance="other:9100",anime_catalog_monitor="true"}'
+    values: 0+60x20
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: AnimeCatalogSnapshotMissing
+    exp_alerts:
+    - exp_labels:
+        job: anime-catalog
+        instance: fixture:9100
+        anime_catalog_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Catalog snapshot is missing on a reachable target
+- name: down-is-not-missing
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 0+0x20
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: AnimeCatalogMonitorTargetDown
+    exp_alerts:
+    - exp_labels:
+        job: anime-catalog
+        instance: fixture:9100
+        anime_catalog_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Catalog monitoring target is unreachable
+  - eval_time: 3m
+    alertname: AnimeCatalogSnapshotMissing
+    exp_alerts: []
+- name: future-title-under-healthy-snapshot
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_catalog_snapshot_timestamp_seconds{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 0+60x20
+  - series: 'anime_catalog_future_titles{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: AnimeCatalogTitlesClockAhead
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: AnimeCatalogTitlesClockAhead
+    exp_alerts:
+    - exp_labels:
+        job: anime-catalog
+        instance: fixture:9100
+        anime_catalog_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Catalog title observations have future timestamps
+- name: unmarked-target-outside-scope
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="false"}'
+    values: 0+0x20
+  - series: 'anime_catalog_stale_titles{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="false"}'
+    values: 10+0x20
+  alert_rule_test:
+  - eval_time: 8m
+    alertname: AnimeCatalogMonitorTargetDown
+    exp_alerts: []
+  - eval_time: 8m
+    alertname: AnimeCatalogTitlesStale
+    exp_alerts: []
