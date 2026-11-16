@@ -1,11 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const anime = "10000000-0000-4000-8000-000000000001";
-async function mockReleases(page: Page, holdFirst = false, history = false) {
+async function mockReleases(page: Page, holdFirst = false, history = false, backlog = false) {
   let issued = 0;
   let release = () => {};
   let blocked = false;
   let historyFailed = false;
+  let latestChecks = 0;
   const calls: { path: string; method: string; token: string; body: unknown }[] = [];
   const follows = new Map<string, { animeId: string; title: string; track: string; scope?: string }[]>();
   const notices = new Map<string, { id: string; title: string; body: string; createdAt: string; readAt?: string }[]>();
@@ -49,7 +50,8 @@ async function mockReleases(page: Page, holdFirst = false, history = false) {
         blocked = true;
         await new Promise<void>(resolve => { release = resolve; });
       }
-      try { return await respond({ items, nextCursor: history ? "older-page" : "" }); } catch { return; }
+      latestChecks++;
+      try { return await respond({ items, nextCursor: history ? "older-page" : "", materialization: { created: backlog && latestChecks === 1 ? 100 : 0, hasMore: backlog && latestChecks === 1 } }); } catch { return; }
     }
     if (path === "/notifications/notice-one/read") {
       for (const notice of notices.get(token) ?? []) notice.readAt = new Date().toISOString();
@@ -124,4 +126,29 @@ test("older release history retries and returns to latest alerts", async ({ page
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(panel).toHaveCount(0);
   expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
+});
+
+
+test("release catch-up is separate from history and clears after the next checked batch", async ({ page }) => {
+  await mockReleases(page, false, true, true);
+  await page.goto("/");
+  await login(page, "backlog-browser@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  const pending = panel.getByText("More release alerts are waiting. Refresh alerts to continue catching up; each check adds up to 100 notifications.", { exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  await expect(pending).toBeVisible();
+  await panel.getByRole("button", { name: "Older notifications", exact: true }).click();
+  await expect(panel.getByText("Could not refresh release alerts. Try again.", { exact: true })).toBeVisible();
+  await expect(pending).toBeVisible();
+  await panel.getByRole("button", { name: "Older notifications", exact: true }).click();
+  await expect(panel.getByText("Older synthetic release", { exact: true })).toBeVisible();
+  await expect(pending).toHaveCount(0);
+  await panel.getByRole("button", { name: "Back to latest alerts", exact: true }).click();
+  await expect(panel.getByText("Private synthetic release for account one", { exact: true })).toBeVisible();
+  await expect(pending).toHaveCount(0);
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await login(page, "backlog-other@example.test");
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  await expect(panel.getByText("No release notifications yet.", { exact: true })).toBeVisible();
+  await expect(pending).toHaveCount(0);
 });

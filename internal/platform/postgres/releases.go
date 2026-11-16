@@ -84,7 +84,12 @@ func (r *Repository) UnfollowScope(ctx context.Context,id,scope string) (bool,er
 	return tag.RowsAffected()>0,tx.Commit(ctx)
 }
 
+type NotificationMaterialization struct {
+ Created int `json:"created"`
+ HasMore bool `json:"hasMore"`
+}
 type NotificationPage struct {
+ Materialization *NotificationMaterialization `json:"materialization,omitempty"`
 	Items []Notification `json:"items"`
 	NextCursor string `json:"nextCursor,omitempty"`
 }
@@ -124,7 +129,8 @@ func (r *Repository) NotificationHistory(ctx context.Context,cursor string) (Not
 	if _,err=tx.Exec(ctx,`SET LOCAL statement_timeout='2s'`);err!=nil {return out,err}
 	if cursor=="" {
 	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return out,err}
-	_,err=tx.Exec(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track,created_at) AS (
+	status:=NotificationMaterialization{}
+ err=tx.QueryRow(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track,created_at) AS (
 SELECT anime_id,anime_id,release_track,created_at FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
 UNION
 SELECT f.origin,CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track,f.created_at
@@ -134,20 +140,27 @@ AND (r.source_anime_id=f.anime_id OR r.target_anime_id=f.anime_id)
 SELECT anime_id,release_track,created_at,'ANIME' FROM user_follows WHERE user_id=$1 AND follow_scope='ANIME'
 UNION
 SELECT anime_id,release_track,created_at,'FRANCHISE' FROM franchise
-)
-INSERT INTO notifications(user_id,event_id,channel,title,body,created_at)
-SELECT DISTINCT $1,e.id,'IN_APP',
-CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced' ELSE 'New episode released' END,
+), eligible AS MATERIALIZED (
+SELECT DISTINCT e.id AS event_id,
+CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced' ELSE 'New episode released' END AS notice_title,
 CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN a.canonical_title || ' · A new linked season has been announced.'
-ELSE a.canonical_title || ' · Episode ' || COALESCE(e.payload->>'number','?') || ' (' || COALESCE(e.payload->>'track','UNKNOWN') || ')' END,
-e.occurred_at
+ELSE a.canonical_title || ' · Episode ' || COALESCE(e.payload->>'number','?') || ' (' || COALESCE(e.payload->>'track','UNKNOWN') || ')' END AS notice_body,
+e.occurred_at AS created_at
 FROM domain_events e JOIN targets f ON f.anime_id=e.aggregate_id JOIN anime a ON a.id=e.aggregate_id
 WHERE e.aggregate_type='ANIME' AND e.occurred_at>=f.created_at
 AND ((e.event_type='EPISODE_RELEASED' AND (f.release_track='ALL' OR f.release_track=e.payload->>'track'))
 OR (e.event_type='SEASON_ANNOUNCED' AND f.scope='FRANCHISE'))
 AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.user_id=$1 AND n.event_id=e.id AND n.channel='IN_APP')
-ORDER BY e.occurred_at,e.id LIMIT 100
-ON CONFLICT(user_id,event_id,channel) WHERE event_id IS NOT NULL DO NOTHING`,u.ID)
+ORDER BY e.occurred_at,e.id LIMIT 101
+), inserted AS (
+INSERT INTO notifications(user_id,event_id,channel,title,body,created_at)
+SELECT $1::uuid,event_id,'IN_APP',notice_title,notice_body,created_at FROM eligible
+ORDER BY created_at,event_id LIMIT 100
+ON CONFLICT(user_id,event_id,channel) WHERE event_id IS NOT NULL DO NOTHING
+RETURNING id
+)
+SELECT (SELECT count(*) FROM inserted),(SELECT count(*) FROM eligible)>100`,u.ID).Scan(&status.Created,&status.HasMore)
+ if err==nil{out.Materialization=&status}
 	if err!=nil {return out,err}
 	}
 	rows,err:=tx.Query(ctx,`SELECT id::text,title,body,read_at,created_at FROM notifications

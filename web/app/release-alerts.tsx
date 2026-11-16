@@ -17,6 +17,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [cursor, setCursor] = useState("");
   const [nextCursor, setNextCursor] = useState("");
+  const [catchingUp, setCatchingUp] = useState(false);
   const [preferences, setPreferences] = useState<Record<string, string>>({});
   const [scopes, setScopes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -31,12 +32,13 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const read = useCallback(async (current: number, pageCursor = "") => {
     const [f, n] = await Promise.all([
       client.request<{ items: Follow[] }>("/follows"),
-      client.request<{ items: Notice[]; nextCursor?: string }>("/notifications" + (pageCursor ? "?cursor=" + encodeURIComponent(pageCursor) : "")),
+      client.request<{ items: Notice[]; nextCursor?: string; materialization?: { created: number; hasMore: boolean } }>("/notifications" + (pageCursor ? "?cursor=" + encodeURIComponent(pageCursor) : "")),
     ]);
     if (!alive.current || current !== revision.current) return;
     setFollows(f.items);
     setNotices(n.items);
     setCursor(pageCursor); setNextCursor(n.nextCursor ?? "");
+    setCatchingUp(!pageCursor && n.materialization?.hasMore === true);
   }, [client]);
   const refresh = useCallback(async (pageCursor = "") => {
     if (inFlight.current) return;
@@ -103,6 +105,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
         <p className="mt-2 text-sm text-slate-400">Checks every minute while this panel is open on the latest page. Episode notices require confirmed releases; linked-season follows also include new announcements. Scheduled times can change.</p>
         <button disabled={busy} onClick={() => void refresh()} className="mt-3 text-sm underline disabled:opacity-50">{cursor ? "Back to latest alerts" : "Refresh alerts"}</button>
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
+        {!cursor && catchingUp && <p className="mt-2 text-sm text-amber-200">More release alerts are waiting. Refresh alerts to continue catching up; each check adds up to 100 notifications.</p>}
         <h3 className="mt-5 font-medium">Followed releases</h3>
         {titles.size === 0 && <p className="mt-2 text-sm text-slate-400">Add an anime to your library to follow its releases.</p>}
         <ul className="mt-3 space-y-3">

@@ -662,3 +662,14 @@ Added GET /anime/{id}/continuity with a public-only repeatable-read snapshot, bo
 Added synthetic PostgreSQL/HTTP tests for incoming/transitive links, reciprocity/provenance, unrelated relation exclusion, cancellation/validation, exact capacity versus overflow, dense graphs and defensive cyclic-data termination. Dashboard explicitly loads the view, warns on partial components, shows source labels and browses to related details with close/navigation request fencing. New mocked browser tests cover navigation, limits, errors/retry and late closed results; a real PostgreSQL/browser test covers anonymous access.
 
 Scoped web instructions read; packaged Next docs and Go/Node toolchains are absent locally. Rechecked the official use-client guide and followed existing client-component patterns. No local test pass claimed; exact-commit CI/CodeQL validation pending. No source/model activation, personal fixtures or deployment.
+
+
+- Verified aaee00cfe0187ae6346d794d8d12083cbb69b6eb: all seven CI jobs succeeded in [43844544929](https://github.com/khordestan/anime-intelligence/actions/runs/43844544929), including exact-capacity/dense-graph tests, both new mocked browsing tests and the anonymous real PostgreSQL browser test. Both CodeQL analyses succeeded in [43844544976](https://github.com/khordestan/anime-intelligence/actions/runs/43844544976); dependency review skipped on push.
+
+## 2026-11-16 — Owner-scoped release catch-up visibility
+
+Latest-page polling now selects at most 101 distinct eligible events, materializes at most 100, and reports created/hasMore from the same statement/transaction. The existing verified-owner context, account/advisory lock ordering, track/subscription filters and uniqueness boundary remain in effect. History pages omit status and cannot drain the pending backlog.
+
+Added synthetic database/HTTP coverage for 101 eligible events, exact 100/1 draining, overlapping follow paths, ineligible track/old/unrelated exclusion, foreign-account isolation, history non-materialization and a newly admitted 120-event track backlog. Dashboard catch-up state is separate from history cursors, survives failed page requests, clears on a successful checked batch and resets across accounts; mocked browser coverage added.
+
+No schema/grant/source activation, new delivery channel, changed confirmation rule, personal data or deployment. Local toolchains remain absent; exact-commit CI/CodeQL pending.

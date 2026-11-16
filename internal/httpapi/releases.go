@@ -50,7 +50,9 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 	mux.HandleFunc("GET /api/v1/notifications",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		page,err:=db.Repository(token).NotificationHistory(r.Context(),r.URL.Query().Get("cursor"))
 		if err!=nil {releaseError(w,err);return}
-		writeJSON(w,200,map[string]any{"items":page.Items,"count":len(page.Items),"limit":100,"nextCursor":page.NextCursor})
+		response:=map[string]any{"items":page.Items,"count":len(page.Items),"limit":100,"nextCursor":page.NextCursor}
+		if page.Materialization!=nil{response["materialization"]=page.Materialization}
+		writeJSON(w,200,response)
 	}))
 	mux.HandleFunc("PATCH /api/v1/notifications/{id}/read",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")

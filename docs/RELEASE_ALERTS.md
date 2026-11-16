@@ -7,7 +7,7 @@ Migration 000012 adds per-follow track preferences and durable per-user/event/ch
 - PUT /api/v1/follows/{animeId} with {"track":"SUB"} subscribes; RAW, DUB, UNKNOWN and ALL are also supported.
 - GET /api/v1/follows returns up to 1000 owned subscriptions.
 - DELETE /api/v1/follows/{animeId} removes only the caller's subscription.
-- GET /api/v1/notifications materializes up to 100 eligible events and returns the newest 100 owned in-app notices with nextCursor when older materialized notices exist. GET /api/v1/notifications?cursor=... returns the next history page without materializing new events. Invalid cursors return 400; cursors select a time/ID boundary and never an account. Every page rechecks the authenticated verified owner.
+- GET /api/v1/notifications returns a materialization object with created (notices inserted by this poll, 0–100) and hasMore (another eligible event was observed beyond that batch). It materializes up to 100 eligible events and returns the newest 100 owned in-app notices with nextCursor when older materialized notices exist. GET /api/v1/notifications?cursor=... returns the next history page without materializing new events and omits materialization because it does not check the backlog. Invalid cursors return 400; cursors select a time/ID boundary and never an account. Every page rechecks the authenticated verified owner.
 - PATCH /api/v1/notifications/{id}/read marks an owned notice read idempotently. Foreign and missing IDs both return 404.
 
 Only administrator-imported EPISODE_RELEASED events can become automatic notices. Elapsed schedules are not events. Track preferences must match, or be ALL. Subscriptions start at their creation time; earlier releases do not replay. Updating a track retains that time, allowing newly selected tracks since the original follow. Removing/recreating a follow begins a new subscription. Removing a follow does not delete existing notices.
@@ -20,7 +20,7 @@ Verified accounts can open Manage release alerts, subscribe library titles, sele
 
 ## Remaining work
 
-Follow pagination, unmaterialized event backlog visibility, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
+Follow pagination, backlog age/metrics, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
 
 ## Linked-season follows
 
@@ -33,3 +33,12 @@ Polling deduplicates events reachable through multiple follows/paths. Per-accoun
 Graph corrections can change membership; historical notices remain. Announcement text reflects source claims, not guaranteed production or release dates. Explicit franchise curation, cancellations/retractions and measured large-graph performance remain pending.
 
 See [followed schedule calendar](RELEASE_CALENDAR.md) for a separate owner-scoped view of upcoming unconfirmed schedules. Calendar reads never create or confirm release events.
+
+
+## Catching up after a large event batch
+
+The latest-page query selects at most 101 distinct eligible events in occurrence-time/ID order and inserts at most 100. Insertion and materialization status share that single statement under the existing owner/advisory locks and transaction. The extra candidate sets hasMore; overlapping follow paths cannot inflate it because candidates are distinct events. Existing notices, nonmatching tracks, unrelated titles and pre-subscription events are excluded before the cap.
+
+hasMore describes eligibility at this poll's query snapshot, not an exact backlog count or a promise about later arrivals. created counts successful new inserts, not unread/returned notices. nextCursor continues to mean older already materialized history; it is independent of pending events. History pages omit materialization and never drain the backlog. All status is owner scoped and verified-email protected.
+
+The dashboard displays a catch-up notice on the latest page when hasMore is true. Manual Refresh alerts or the existing one-minute polling continues with another bounded batch. It does not loop immediately or create a background delivery channel. Successful polls replace the status; failed refreshes preserve the previous page/status for retry. History hides the catch-up notice and account changes reset it.
