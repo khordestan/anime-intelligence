@@ -741,3 +741,7 @@ Review found that unchanged applied-filter props could leave child draft text mo
 ## 2026-11-16 — Validate retained catalog history facts
 
 History decoding now checks canonical UUID syntax and runs neutral-feed validation at the retained observation time, rejecting corrupt status/count/release/relation facts without emitting raw values. Updated valid synthetic envelope fixtures and added invalid-ID/status/title/future-release/self-link cases. No schema/grants/source activation/deployment. Baseline f856a827 CI and Security green; local toolchains unavailable, exact CI pending.
+
+## 2026-11-16 — Aggregate catalog Prometheus diagnostics
+
+Added opt-in catalog-status -format=prometheus with fixed aggregate freshness/coverage/schedule gauges, snapshot timestamp, validation and no dynamic/private/provider labels. JSON default retained. Added unit contract/privacy/invalid-snapshot tests and a synthetic real-renderer promtool check to monitoring CI. No schema/grants/source activation/collector/receiver/deployment. Local toolchains absent; exact CI pending. Baseline a369580 passed CI 43882243818 and Security 43882243978.

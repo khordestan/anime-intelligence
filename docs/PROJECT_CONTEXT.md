@@ -100,3 +100,5 @@ Dashboard catalog searches now follow next/previous offset hints while preservin
 Catalog filter forms are now keyed to the active account/public identity, clearing unapplied drafts and unmounting label requests on sign-in/sign-out/account switches. Browser regression coverage added; exact CI pending.
 
 Catalog history now validates retained canonical UUIDs and neutral title facts before summarizing observations, using the original observation time for release validation. Corrupt facts fail with the fixed history error; no raw values are returned. Exact CI pending.
+
+Catalog-status now offers optional aggregate Prometheus output with fixed metric names and no dynamic labels, provider values or account data. JSON remains default. Monitoring CI parses synthetic renderer output with promtool; no collection/alert receiver is activated. See CATALOG_METRICS.md. Exact CI pending.

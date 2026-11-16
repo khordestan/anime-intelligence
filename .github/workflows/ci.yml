@@ -332,3 +332,4 @@ jobs:
         run: |
           set -o pipefail
           go run ./scripts/render-monitoring-fixture.go | "$RUNNER_TEMP/anime-promtool/promtool" check metrics
+          go run ./scripts/render-catalog-monitoring-fixture.go | "$RUNNER_TEMP/anime-promtool/promtool" check metrics
