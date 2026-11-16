@@ -151,8 +151,8 @@ TEST_POSTGRES_RECOVERY=1 go test -race -count=1 -timeout=3m \
 CI's `recovery` job uses PostgreSQL 17 for both clients and server. It verifies:
 
 - Migration ledger/checksums, restricted startup/readiness, production runtime
-  grants, all eight nonempty export resources and direct forced-RLS isolation
-  on all thirteen private tables after restore.
+  grants, all nine nonempty export resources and direct forced-RLS isolation
+  on all fourteen private tables after restore.
 - Snapshot password/session fidelity, pre-backup session revocation, and the
   historical resurrection hazard after a later password change/account deletion.
 - Missing-key preservation, compatible-key inbox/mail resumption and single-use

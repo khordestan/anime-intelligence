@@ -42,14 +42,14 @@ func (r *Repository) GetAnime(ctx context.Context, id string) (store.Anime, bool
 	return a, err == nil, err
 }
 
-const entrySelect = `SELECT ua.id::text,ua.anime_id::text,a.canonical_title,ua.watch_status,COALESCE(wp.episodes_watched,0),COALESCE(a.episode_count,0),COALESCE(ur.score,0),ua.updated_at,wp.watched_episode_numbers IS NOT NULL
+const entrySelect = `SELECT ua.id::text,ua.anime_id::text,a.canonical_title,ua.watch_status,COALESCE(wp.episodes_watched,0),COALESCE(a.episode_count,0),COALESCE(ur.score,0),ua.updated_at,wp.watched_episode_numbers IS NOT NULL,ua.watch_cycle
  FROM user_anime ua JOIN anime a ON a.id=ua.anime_id
  LEFT JOIN watch_progress wp ON wp.user_id=ua.user_id AND wp.anime_id=ua.anime_id
  LEFT JOIN user_ratings ur ON ur.user_id=ua.user_id AND ur.anime_id=ua.anime_id AND ur.scope='SERIES' AND ur.season_key IS NULL`
 
 func scanEntry(row pgx.Row) (store.Entry, error) {
 	var e store.Entry
-	err := row.Scan(&e.ID, &e.AnimeID, &e.Title, &e.WatchStatus, &e.EpisodesWatched, &e.TotalEpisodes, &e.Rating, &e.UpdatedAt, &e.ExactProgress)
+	err := row.Scan(&e.ID, &e.AnimeID, &e.Title, &e.WatchStatus, &e.EpisodesWatched, &e.TotalEpisodes, &e.Rating, &e.UpdatedAt, &e.ExactProgress,&e.WatchCycle)
 	return e, err
 }
 func (r *Repository) Library(ctx context.Context) ([]store.Entry, error) {

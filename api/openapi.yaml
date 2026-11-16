@@ -106,6 +106,46 @@ paths:
               schema: { $ref: '#/components/schemas/CatalogDetails' }
         "400": { description: Invalid UUID }
         "404": { description: Anime not found }
+  /api/v1/tracker/{id}/rewatches:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Read owned completed viewing passes
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: before
+          schema: { type: integer, minimum: 1, maximum: 1000 }
+      responses:
+        "200": { description: currentCycle and up to 100 snapshots with cycle/count/total/numbers/mode/rating/archivedAt plus nextBefore (zero at end) }
+        "400": { description: Invalid history boundary }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Tracker not found for caller }
+    post:
+      summary: Archive a completed pass and explicitly start a rewatch
+      description: Atomically archives current count or exact progress and rating then resets progress to count zero/WATCHING. Series rating and follows remain. Expected cycle prevents a retry from resetting another pass. JSON demo mode is unsupported.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedCycle]
+              properties:
+                expectedCycle: { type: integer, minimum: 1, maximum: 1000 }
+      responses:
+        "200": { description: Updated tracker entry including watchCycle }
+        "400": { description: Invalid request }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Tracker not found for caller }
+        "409": { description: Expected cycle changed, current pass is incomplete or limit reached }
   /api/v1/tracker/{id}/episodes:
     parameters:
       - in: path

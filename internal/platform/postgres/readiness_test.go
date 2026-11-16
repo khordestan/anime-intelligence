@@ -52,6 +52,10 @@ func TestReadinessRechecksLiveRoleSchemaAndDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertProbe("/readyz", 200)
+	if _, err := owner.Exec(ctx, `ALTER TABLE watch_cycles NO FORCE ROW LEVEL SECURITY`); err != nil {t.Fatal(err)}
+	assertProbe("/readyz",503)
+	if _, err := owner.Exec(ctx, `ALTER TABLE watch_cycles FORCE ROW LEVEL SECURITY`); err != nil {t.Fatal(err)}
+	assertProbe("/readyz",200)
 	u, _ := url.Parse(dsn)
 	role := pgx.Identifier{u.User.Username()}.Sanitize()
 	if _, err := owner.Exec(ctx, `ALTER ROLE `+role+` BYPASSRLS`); err != nil {

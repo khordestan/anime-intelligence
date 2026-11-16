@@ -45,7 +45,7 @@ func (d *DB) exportAccountSnapshot(ctx context.Context, token string) (AccountEx
 		return AccountExport{}, err
 	}
 	for _, table := range []struct{ key, name string }{
-		{"tracker", "user_anime"}, {"ratings", "user_ratings"}, {"progress", "watch_progress"},
+		{"tracker", "user_anime"}, {"watchCycles", "watch_cycles"}, {"ratings", "user_ratings"}, {"progress", "watch_progress"},
 		{"preferences", "user_preferences"}, {"recommendations", "recommendations"},
 		{"feedback", "recommendation_feedback"}, {"follows", "user_follows"}, {"notifications", "notifications"},
 	} {

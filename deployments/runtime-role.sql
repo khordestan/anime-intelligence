@@ -38,3 +38,6 @@ GRANT SELECT ON domain_events TO anime_runtime;
 -- Evidence-backed recommendations and owned declared preferences.
 GRANT SELECT ON anime_features,anime_feature_observations TO anime_runtime;
 GRANT INSERT,UPDATE,DELETE ON user_preferences TO anime_runtime;
+
+-- Completed-pass snapshots are append-only through the API; parent deletion cascades.
+GRANT SELECT,INSERT ON watch_cycles TO anime_runtime;

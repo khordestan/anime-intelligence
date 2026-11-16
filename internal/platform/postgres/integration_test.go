@@ -84,6 +84,7 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT SELECT (id,provider_key) ON data_sources TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _, err = owner.Exec(ctx, `GRANT INSERT,UPDATE,DELETE ON user_follows TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE ON notifications TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON domain_events TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _, err = owner.Exec(ctx, `GRANT SELECT ON anime_features,anime_feature_observations TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE,DELETE ON user_preferences TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
+	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT ON watch_cycles TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	ownerDSN := u.String()
 	u.User = url.UserPassword(role, credential)
 	db, err := postgres.Open(ctx, u.String())
@@ -461,6 +462,8 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 		sql  string
 		args []any
 	}{
+		{`INSERT INTO watch_cycles(user_id,anime_id,cycle_number,episodes_watched,total_episodes) VALUES($1,$3,1,12,12),($2,$3,1,12,12)`, []any{one.User.ID,two.User.ID,anime}},
+		{`UPDATE user_anime SET watch_cycle=2 WHERE user_id=$1 OR user_id=$2`, []any{one.User.ID,two.User.ID}},
 		{`INSERT INTO user_preferences(user_id,feature_id,preference_weight,origin)
     SELECT accounts.uid,f.id,0.5,'DECLARED' FROM (VALUES($1::uuid),($2::uuid)) accounts(uid)
     CROSS JOIN (SELECT id FROM anime_features ORDER BY feature_key LIMIT 1) f`, []any{one.User.ID, two.User.ID}},
@@ -483,7 +486,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 8 {
+	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 9 {
 		t.Fatal("export contract failed")
 	}
 	encoded, err := json.Marshal(exported)
@@ -495,7 +498,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("export leaked another account or credential field")
 		}
 	}
-	for _, key := range []string{"tracker", "ratings", "progress", "preferences", "recommendations", "feedback", "follows", "notifications"} {
+	for _, key := range []string{"tracker", "watchCycles", "ratings", "progress", "preferences", "recommendations", "feedback", "follows", "notifications"} {
 		var rows []map[string]any
 		if err = json.Unmarshal(exported.Data[key], &rows); err != nil || len(rows) != 1 {
 			t.Fatalf("export %s: %v", key, err)
@@ -518,7 +521,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("deleted account session accepted", err)
 		}
 	}
-	for _, table := range []string{"users", "auth_sessions", "user_anime", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "user_follows", "notifications"} {
+	for _, table := range []string{"users", "auth_sessions", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "user_follows", "notifications"} {
 		field := "user_id"
 		if table == "users" {
 			field = "id"

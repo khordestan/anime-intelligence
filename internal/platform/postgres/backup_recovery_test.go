@@ -72,6 +72,9 @@ func TestBackupRestoreRecovery(t *testing.T) {
 		}
 	}
 	for _, query := range []string{
+        `INSERT INTO watch_cycles(user_id,anime_id,cycle_number,episodes_watched,total_episodes)
+          SELECT a.uid,'10000000-0000-4000-8000-000000000001',1,12,12 FROM (VALUES($1::uuid),($2::uuid)) a(uid)`,
+        `UPDATE user_anime SET watch_cycle=2 WHERE user_id=$1 OR user_id=$2`,
 		`INSERT INTO user_preferences(user_id,feature_id,preference_weight,origin)
           SELECT a.uid,f.id,0.5,'DECLARED' FROM (VALUES($1::uuid),($2::uuid)) a(uid)
           CROSS JOIN (SELECT id FROM anime_features ORDER BY feature_key LIMIT 1) f`,
@@ -93,7 +96,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(before.Data) != 8 {
+	if len(before.Data) != 9 {
 		t.Fatal("incomplete recovery export fixture")
 	}
 	for _, rows := range before.Data {
@@ -385,7 +388,7 @@ func restoreSyntheticArchive(t *testing.T, ctx context.Context, archive, ownerDS
 	}
 	t.Cleanup(func() { _ = owner.Close(context.Background()) })
 	var count int
-	if err = owner.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&count); err != nil || count != 14 {
+	if err = owner.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&count); err != nil || count != 15 {
 		t.Fatal("migration ledger not restored", err)
 	}
 	if err = migrations.Apply(ctx, owner); err != nil {
@@ -432,7 +435,7 @@ func assertRestoredIsolation(t *testing.T, ctx context.Context, db *postgres.DB,
 		t.Fatal("connect restored unscoped role")
 	}
 	defer raw.Close(ctx)
-	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "user_follows", "notifications"} {
+	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "user_follows", "notifications"} {
 		var n int
 		if err = raw.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("restored unscoped RLS failed for %s", table)

@@ -22,7 +22,7 @@ OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='public' AND c.relkind='r' AND pg_has_role(current_user,c.relowner,'USAGE'))
 OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='public' AND c.relname IN
-('users','auth_sessions','auth_challenges','identity_outbox','identity_requests','user_anime','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications')
+('users','auth_sessions','auth_challenges','identity_outbox','identity_requests','user_anime','watch_cycles','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications')
 AND (has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT')
 OR has_any_column_privilege(current_user,c.oid,'UPDATE') OR has_table_privilege(current_user,c.oid,'DELETE')
 OR has_table_privilege(current_user,c.oid,'TRUNCATE')))
