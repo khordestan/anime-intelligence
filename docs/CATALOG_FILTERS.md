@@ -31,3 +31,16 @@ Open Catalog filters in Add anime, select scalar fields or enter source labels, 
 Filtered searches do not display unfiltered starter fallbacks while pending or failed. A local retry action repeats the current search, and response revisions discard older filter/query results. Account changes and successful tracker mutations reset applied filters alongside the existing query reset. Values and results are never persisted in browser storage.
 
 Eight matching suggestions appear initially; Show more catalog matches expands the returned results eight at a time, up to the current 100-result request. At that cap the dashboard explicitly asks for a narrower search. Broader catalog pagination/facets remain future work; there is no inferred taxonomy or hidden spoiler-bearing suggestion list.
+
+
+## Year ranges, episode ranges and ordering
+
+Use minYear/maxYear (1900–9999) and minEpisodes/maxEpisodes (0–100000) for inclusive optional bounds. For example:
+
+GET /api/v1/anime?minYear=1990&maxYear=2005&minEpisodes=12&maxEpisodes=26&sort=NEWEST
+
+Unknown years/counts do not satisfy active ranges. Known episode count zero is distinct from unknown. Reversed ranges, empty/repeated bounds and non-integer values return 400. Exact releaseYear remains an additional AND filter.
+
+sort accepts TITLE (default), NEWEST or OLDEST. Year ordering puts unknown years last and breaks ties by canonical title/ID before pagination. Keep all filters and sort when following offset hints; ingestion can still shift offset pages.
+
+The dashboard provides Earliest/Latest release year, Minimum/Maximum episodes and Catalog sort order in its explicit Apply form. Clearing filters clears those values too.
