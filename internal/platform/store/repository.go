@@ -22,8 +22,8 @@ type Repository interface {
 
 type Local struct{ *Store }
 
-func (s Local) Catalog(_ context.Context, q string, l, o int) ([]Anime, error) {
-	return s.Store.Catalog(q, l, o), nil
+func (s Local) Catalog(ctx context.Context, q string, l, o int) ([]Anime, error) {
+ return s.FilterCatalog(ctx,CatalogFilter{Query:q},l,o)
 }
 func (s Local) GetAnime(_ context.Context, id string) (Anime, bool, error) {
 	a, ok := s.Store.GetAnime(id)

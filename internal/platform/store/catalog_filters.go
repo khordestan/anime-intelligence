@@ -38,8 +38,9 @@ func(f CatalogFilter)HasMetadataFilters()bool{
  return f.MediaType!=""||f.Status!=""||f.ReleaseYear!=0||f.Season!=""||f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""
 }
 // Local has no imported taxonomy. An active source-label filter has no matches.
-func(s Local)FilterCatalog(_ context.Context,f CatalogFilter,limit,offset int)([]Anime,error){
+func(s Local)FilterCatalog(ctx context.Context,f CatalogFilter,limit,offset int)([]Anime,error){
  f,err:=f.Normalize();if err!=nil||limit<1||limit>100||offset<0||offset>100000{return nil,ErrCatalogFilter}
+ if err:=ctx.Err();err!=nil{return nil,err}
  out:=[]Anime{}
  if f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""{return out,nil}
  for _,a:=range s.Store.Catalog(f.Query,100000,0){

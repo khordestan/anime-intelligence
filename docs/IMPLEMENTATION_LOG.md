@@ -721,3 +721,7 @@ Connected source-label discovery to filter drafts with manual requests, theme sp
 ## 2026-11-16 — Distinguish discovery-prefix and filter-value bounds
 
 Added local 128-byte UTF-8 discovery-prefix validation with a specific message and stale-request invalidation; complete filter values still permit 256 bytes. Extended browser coverage with a multi-byte 129-byte prefix and zero-network assertion, followed by valid recovery. Baseline ee618735 passed CI 43866035260 and Security 43866035145. Local toolchains absent, official client guide rechecked; exact follow-up CI pending. No schema/grants/source activation/deployment.
+
+## 2026-11-16 — Local catalog read-boundary parity
+
+Direct Local.Catalog previously bypassed filtering validation and could pass negative offsets into slice operations. It now delegates to FilterCatalog, matching PostgreSQL repository bounds; local filters also honor cancellation before sparse early returns. Added direct invalid-limit/offset, cancellation, sparse cancellation and ordinary-search regressions. No schema/grants/source activation/private-data/deployment changes. Local toolchains unavailable; exact CI pending.
