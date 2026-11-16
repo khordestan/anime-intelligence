@@ -114,3 +114,5 @@ Inactive catalog Prometheus freshness rules now distinguish target/snapshot fail
 Product focus: catalog search now supports inclusive minEpisodes/maxEpisodes filters and dashboard inputs. Bounds compose with other filters; unknown totals do not match any active range, while known zero is preserved. Invalid/reversed bounds are rejected. CI pending. No monitoring activation or deployment.
 
 Catalog API/dashboard now support sort=TITLE/NEWEST/OLDEST. Unknown release years stay last; title/ID tie-breakers remain deterministic before pagination. Offset pages can still shift during ingestion. Exact CI pending. Product work only.
+
+Catalog API/dashboard now offer inclusive minYear/maxYear bounds (1900–9999) with reversed-range validation, unknown-year exclusion and composition with existing filters/sorts. Exact releaseYear remains an additional AND constraint. Regression/browser coverage added; exact CI pending. No monitoring or deployment.

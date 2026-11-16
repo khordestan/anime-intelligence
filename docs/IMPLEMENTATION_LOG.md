@@ -773,3 +773,7 @@ Added inclusive optional minEpisodes/maxEpisodes filters (0–100000) in local/P
 ## 2026-11-17 — Catalog release-year ordering
 
 Added TITLE/NEWEST/OLDEST sorting to public catalog API and dashboard controls. Year sorting keeps unknown years last and title/UUID tie-breakers stable, before pagination. Uses fixed parameterized SQL expressions; invalid sort values are rejected. Added PostgreSQL newest/oldest/tie/unknown/pagination tests. Scoped web instructions and official client guide checked; local toolchains absent, exact CI pending. Product feature only; no monitoring/schema/grants/source activation/deployment.
+
+## 2026-11-17 — Catalog release-year ranges
+
+Added minYear/maxYear to local/PostgreSQL search, strict API parsing and dashboard inputs. Inclusive bounds exclude unknown years and compose before sorting/pagination; exact-year filters still combine with AND. Added PostgreSQL boundary/unknown/exact/reversed cases and expanded combined dashboard request coverage. Local toolchains unavailable; scoped web instructions and official client guide checked, exact CI pending. Product work only, no monitoring/schema/grants/source activation/deployment.
