@@ -651,3 +651,14 @@ Added PostgreSQL tests for no-change defaults, complete preview rollback, origin
 
 - Verified `a8a6ff0340cfea1c08a913e5479689a0faca2e1e`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43842253400) succeeded, including the PostgreSQL archive/preview atomicity and cursor/diff/reader isolation tests. Both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43842253442) succeeded; dependency review skipped on push.
 - Local Go/Node executables remain unavailable; these are exact-commit GitHub Actions results, not local test claims. Public repository visibility was rechecked. No deployment, live source activation, personal data or credentials were introduced.
+
+
+## 2026-11-16 — Bounded public continuity browsing
+
+Baseline 9031a08 passed all seven CI jobs in [43842801409](https://github.com/khordestan/anime-intelligence/actions/runs/43842801409) and both CodeQL analyses in [43842801414](https://github.com/khordestan/anime-intelligence/actions/runs/43842801414). Rechecked current source, roadmap, recent commits and workflow results.
+
+Added GET /anime/{id}/continuity with a public-only repeatable-read snapshot, bounded breadth-first expansion, deterministic fifty-title capacity/overflow detection, normalized reciprocal links and sorted provider labels. Nodes preserve known-zero/unknown totals and selected metadata observation times without synopsis/private data. SQL/overall deadlines bound reads; local mode does not invent edges. No migration/grant/follow/alert behavior changes.
+
+Added synthetic PostgreSQL/HTTP tests for incoming/transitive links, reciprocity/provenance, unrelated relation exclusion, cancellation/validation, exact capacity versus overflow, dense graphs and defensive cyclic-data termination. Dashboard explicitly loads the view, warns on partial components, shows source labels and browses to related details with close/navigation request fencing. New mocked browser tests cover navigation, limits, errors/retry and late closed results; a real PostgreSQL/browser test covers anonymous access.
+
+Scoped web instructions read; packaged Next docs and Go/Node toolchains are absent locally. Rechecked the official use-client guide and followed existing client-component patterns. No local test pass claimed; exact-commit CI/CodeQL validation pending. No source/model activation, personal fixtures or deployment.

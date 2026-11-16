@@ -37,6 +37,7 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 	mux.HandleFunc("GET /api/v1/anime/lookup", c.Lookup)
 	mux.HandleFunc("GET /api/v1/anime/{id}", c.Get)
 	mux.HandleFunc("GET /api/v1/anime/{id}/details", c.Details)
+	mux.HandleFunc("GET /api/v1/anime/{id}/continuity", c.Continuity)
 	gate := newAuthGate()
 	credential := func(register bool) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

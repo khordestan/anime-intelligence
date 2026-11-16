@@ -380,3 +380,24 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
   await expect(page.getByRole("group", { name: "Episode selection Solo Leveling", exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
 });
+
+
+test("real public linked-title view works without signing in", async ({ page, request }) => {
+  const id = "10000000-0000-4000-8000-000000000001";
+  const response = await request.get(API + "/anime/" + id + "/continuity");
+  expect(response.status()).toBe(200);
+  const graph = await response.json();
+  expect(graph.rootId).toBe(id);
+  expect(graph.nodes).toHaveLength(1);
+  expect(graph.edges).toEqual([]);
+  expect(graph.truncated).toBe(false);
+  expect(JSON.stringify(graph)).not.toContain("synopsis");
+  await page.goto("/");
+  await page.getByPlaceholder("Search starter catalog…").fill("Solo Leveling");
+  await page.getByRole("button", { name: "View catalog details Solo Leveling", exact: true }).click();
+  const details = page.getByRole("region", { name: "Catalog details Solo Leveling", exact: true });
+  await details.getByRole("button", { name: "Browse linked titles", exact: true }).click();
+  const linked = page.getByRole("region", { name: "Linked titles for Solo Leveling", exact: true });
+  await expect(linked.getByText("No linked prequels or sequels are available.", { exact: true })).toBeVisible();
+  await expect(linked.getByRole("button", { name: "View linked title: Solo Leveling", exact: true })).toBeVisible();
+});

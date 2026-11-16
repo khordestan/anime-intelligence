@@ -60,7 +60,8 @@
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics
 - [ ] Catalog SLOs, metrics/alerts, field accuracy and completeness evaluation
 - [x] Validated canonical prequel/sequel graph and named bidirectional direct continuity navigation
-- [ ] Reviewed franchise curation/retractions, finer season conventions and graph browsing
+- [x] Bounded public transitive prequel/sequel API and dashboard browsing with source labels and cap warnings
+- [ ] Reviewed franchise curation/retractions and finer season conventions
 
 ## Milestone 3 — Tracker completeness
 - [x] Transactional owner-scoped tracker removal API with ratings/progress cleanup
