@@ -31,3 +31,5 @@ After a provider's initial baseline, a newly observed ANNOUNCED title (or UNKNOW
 Polling deduplicates events reachable through multiple follows/paths. Per-account advisory locks serialize subscription changes/materialization after account/session locks. A two-second database statement timeout bounds polling query work. An account may follow up to 1000 titles; existing track/scope preferences can still change at that limit. Notification times reflect event occurrence.
 
 Graph corrections can change membership; historical notices remain. Announcement text reflects source claims, not guaranteed production or release dates. Explicit franchise curation, cancellations/retractions and measured large-graph performance remain pending.
+
+See [followed schedule calendar](RELEASE_CALENDAR.md) for a separate owner-scoped view of upcoming unconfirmed schedules. Calendar reads never create or confirm release events.

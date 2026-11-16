@@ -362,6 +362,12 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
   await noteEditor.getByLabel("Notes Solo Leveling", { exact: true }).fill("Synthetic real-browser note");
   await noteEditor.getByRole("button", { name: "Save notes", exact: true }).click();
   await expect(noteEditor).toHaveCount(0);
+  const calendarPanel = page.getByRole("region", { name: "Followed release calendar", exact: true });
+  await calendarPanel.getByRole("button", { name: "Upcoming followed schedules", exact: true }).click();
+  await expect(calendarPanel.getByText(/No unconfirmed schedules in this window/)).toBeVisible();
+  const calendarResponse = await request.get(API + "/calendar", { headers: headers(sessions[0].token) });
+  expect(calendarResponse.status()).toBe(200);
+  expect((await calendarResponse.json()).items).toEqual([]);
   const notesPath = API + "/tracker/" + saved.items[0].id + "/notes";
   const privateNotes = await request.get(notesPath, { headers: headers(sessions[0].token) });
   expect((await privateNotes.json()).notes).toBe("Synthetic real-browser note");

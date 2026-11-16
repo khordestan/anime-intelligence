@@ -79,6 +79,7 @@
 - [x] Durable post-baseline season-announcement and confirmed episode-release detection
 - [x] Owner-scoped polling in-app episode notifications and per-follow release tracks
 - [x] Dashboard notification controls
+- [x] Followed schedule calendar with latest revisions, track/scope filters and explicit unconfirmed labels
 - [ ] Background delivery channels
 - [x] Durable canonical release-event and owned notification duplicate suppression
 

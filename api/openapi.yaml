@@ -273,6 +273,24 @@ paths:
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
         "404": { description: Missing subscription }
+  /api/v1/calendar:
+    get:
+      summary: Read unconfirmed schedules for the verified owner's follows
+      description: Applies direct/franchise season scope and track preferences. Latest revision wins before date filtering; confirmed releases are excluded. Predictions do not establish availability. Results cap at 100 and truncated indicates a narrower window is needed.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: from
+          description: UTC start date, inclusive; defaults to today.
+          schema: { type: string, format: date }
+        - in: query
+          name: days
+          schema: { type: integer, minimum: 1, maximum: 31, default: 14 }
+      responses:
+        "200": { description: from/to window (end exclusive), items with animeId/title/number/track/scheduledAt/revision and optional provider/verifiedAt, limit and truncated }
+        "400": { description: Invalid UTC date/window }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/notifications:
     get:
       summary: Poll owned in-app release notifications

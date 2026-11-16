@@ -35,15 +35,15 @@ type PersonalMatches struct {
 	CandidateLimit int `json:"candidateLimit"`
 	RatingLimit int `json:"ratingLimit"`
 }
-// preferenceTx uses a consistent snapshot for evidence and the owner's inputs,
+// verifiedSnapshotTx uses a consistent snapshot for public facts and the owner's inputs,
 // preserving account-before-session locking and transaction-local forced RLS.
-func(r *Repository) preferenceTx(ctx context.Context)(pgx.Tx,User,error){
+func(r *Repository) verifiedSnapshotTx(ctx context.Context)(pgx.Tx,User,error){
 	tx,u,err:=r.db.sessionTxOptions(ctx,r.token,pgx.TxOptions{IsoLevel:pgx.RepeatableRead})
 	if err!=nil{return nil,User{},err}
 	if !u.EmailVerified{rollback(tx);return nil,User{},store.ErrEmailUnverified}
 	return tx,u,nil
 }
-func retryMatchRead[T any](ctx context.Context,read func()(T,error))(T,error){
+func retrySnapshotRead[T any](ctx context.Context,read func()(T,error))(T,error){
 	var out T;var err error
 	for range 3{
 		out,err=read()
@@ -53,10 +53,10 @@ func retryMatchRead[T any](ctx context.Context,read func()(T,error))(T,error){
 	return out,err
 }
 func(r *Repository) FeaturePreferences(ctx context.Context)([]FeaturePreference,error){
-	return retryMatchRead(ctx,func()([]FeaturePreference,error){return r.featurePreferencesSnapshot(ctx)})
+	return retrySnapshotRead(ctx,func()([]FeaturePreference,error){return r.featurePreferencesSnapshot(ctx)})
 }
 func(r *Repository) featurePreferencesSnapshot(ctx context.Context)([]FeaturePreference,error){
-	tx,u,err:=r.preferenceTx(ctx)
+	tx,u,err:=r.verifiedSnapshotTx(ctx)
 	if err!=nil{return nil,err}
 	defer rollback(tx)
 	rows,err:=tx.Query(ctx,`SELECT f.feature_key,f.display_name,f.category,p.preference_weight::float8
@@ -92,12 +92,12 @@ ON CONFLICT(user_id,feature_id,origin) DO UPDATE SET preference_weight=excluded.
 	return true,tx.Commit(ctx)
 }
 func(r *Repository) PersonalMatches(ctx context.Context,limit int)(PersonalMatches,error){
-	return retryMatchRead(ctx,func()(PersonalMatches,error){return r.personalMatchesSnapshot(ctx,limit)})
+	return retrySnapshotRead(ctx,func()(PersonalMatches,error){return r.personalMatchesSnapshot(ctx,limit)})
 }
 func(r *Repository) personalMatchesSnapshot(ctx context.Context,limit int)(PersonalMatches,error){
 	if limit<1{limit=20};if limit>100{limit=100}
 	out:=PersonalMatches{Items:[]intelligence.Recommendation{},Profile:[]FeatureTaste{},AlgorithmVersion:intelligence.PersonalMatchAlgorithmVersion,CandidateLimit:500,RatingLimit:1000}
-	tx,u,err:=r.preferenceTx(ctx)
+	tx,u,err:=r.verifiedSnapshotTx(ctx)
 	if err!=nil{return out,err}
 	defer rollback(tx)
 	rows,err:=tx.Query(ctx,`SELECT f.feature_key,p.preference_weight::float8,p.confidence::float8 FROM user_preferences p

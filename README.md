@@ -10,6 +10,7 @@ For current implementation state, security constraints and continuation steps, s
 - Reviewed offline provider ingestion with external ID mapping, latest structured provenance, schedule revision history and unique release/announcement events; offline Jikan v4 conversion and bounded CC0 Wikidata factual fetching. Scheduled collection remains disabled; comprehensive availability sources still require approval.
 - Tracker create/list/update/remove, aggregate or exact episode selections (including gaps), 1–5 ratings and a dashboard episode editor.
 - Verified PostgreSQL private notes with conditional saves, completed-pass archives, explicit rewatches and guarded current-pass edits, with dashboard controls and account isolation.
+- Verified-owner followed schedule calendar with bounded date windows, track/season scope and current schedule revisions, explicitly labeled as unconfirmed.
 - Individual-season or linked-franchise follows, release-track preferences and owner-scoped in-app episode/season-announcement notifications, polled from the dashboard.
 - Optional PostgreSQL runtime with registration, login, current account, logout, and atomic session rotation.
 - Active-session listing, individual remote revocation, and sign-out of every other session; refresh keeps a stable logical session ID.

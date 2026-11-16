@@ -591,3 +591,9 @@ Added PostgreSQL/HTTP ownership, Unicode, conflict, export/clear/removal and rew
 The neutral feed, offline Jikan converter, public details/API and coverage diagnostics now preserve themes and demographics separately instead of only flattening them into generic tags. Prior combined Jikan tags remain compatible; fields are label-presence facts, never inferred personal attributes, automatic style features or confirmed availability.
 
 Added feed validation, converter category mapping, PostgreSQL details/coverage, local empty-array and mocked spoiler-display coverage. The dashboard shows demographics as sourced metadata, gates themes with synopsis/tags and avoids duplicate generic labels. Old snapshots/sparse providers retain empty categories. No schema/grant or source activation, no external AI/deployment; exact-commit CI pending and local toolchains unavailable.
+
+## 2026-11-16 — Owner-scoped followed schedule calendar
+
+e179d44 passed all seven CI jobs 43826058492 and both CodeQL analyses 43826058352. Added verified-owner calendar projection over follows/franchise scope, track preferences and latest schedule revisions. Window filtering occurs after latest-revision selection, preventing obsolete reschedules from reappearing. Confirmed releases are excluded; dates remain explicitly unconfirmed. Results cap at 100 with truncation, 1–31 UTC days and a two-second statement timeout.
+
+Shared the existing bounded verified-snapshot retry helper with recommendation reads. Added PostgreSQL tests for partial revisions, exact boundaries, confirmed-release exclusion, overlapping/transitive follow deduplication, track/owner separation and result/range caps, plus HTTP validation. Added dashboard date controls/source labels, two mocked browser tests and real PostgreSQL/browser empty-state coverage. No schema/grants, alert materialization, provider activation or deployment; local toolchains unavailable and exact-commit CI pending.
