@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionManager from "./session-manager";
 import ReleaseAlerts from "./release-alerts";
 import EpisodeEditor from "./episode-editor";
+import RewatchManager from "./rewatch-manager";
 import CatalogDetails from "./catalog-details";
 import PersonalMatches from "./personal-matches";
 import PasswordManager from "./password-manager";
@@ -32,6 +33,7 @@ type Entry = {
   watchStatus: string;
   episodesWatched: number;
   exactProgress?: boolean;
+  watchCycle?: number;
   totalEpisodes?: number;
   rating?: number;
 };
@@ -275,7 +277,7 @@ export default function Home() {
     });
   }
   async function patch(e: Entry, body: object) {
-    await mutate("/tracker/" + e.id, "PATCH", body);
+    await mutate("/tracker/" + e.id, "PATCH", { ...body, ...(mode === "postgres" && e.watchCycle ? { expectedCycle: e.watchCycle } : {}) });
   }
   async function rate(e: Entry, score: number) {
     await mutate("/ratings/" + e.animeId, "PUT", { score });
@@ -542,12 +544,13 @@ export default function Home() {
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {filtered.map((e) => (
               <article
-                key={e.id}
+                key={`${session?.user.id ?? "local"}:${e.id}:${e.watchCycle ?? 1}`}
                 className="rounded-2xl border border-white/10 bg-white/[.03] p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-semibold">{e.title}</h3>
+                    {mode === "postgres" && <p className="mt-1 text-xs text-slate-500">Viewing pass {e.watchCycle ?? 1}</p>}
                     <p className="mt-1 text-xs text-slate-500">
                       {e.episodesWatched}
                       {e.totalEpisodes ? "/" + e.totalEpisodes : ""} episodes
@@ -602,13 +605,16 @@ export default function Home() {
                 {mode === "postgres" && session?.user.emailVerified && (
                   <EpisodeEditor key={`episodes:${session.user.id}:${e.id}`} client={client} id={e.id} title={e.title} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
                 )}
+                {mode === "postgres" && session?.user.emailVerified && (
+                  <RewatchManager client={client} id={e.id} title={e.title} completed={e.watchStatus === "COMPLETED"} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
+                )}
                 {e.exactProgress && <p className="mt-2 text-xs text-slate-400">Exact episodes tracked; use the episode editor to change your selection.</p>}
                 <div className="mt-4 border-t border-white/10 pt-3">
                   {removal === e.id ? (
                     <div role="group" aria-label={"Remove " + e.title}>
                       <p className="text-sm text-slate-300">
                         Remove {e.title} from your library? This also deletes its
-                        ratings and progress. Adding it again starts fresh.
+                        ratings, progress and archived viewing passes. Adding it again starts fresh.
                       </p>
                       <div className="mt-3 flex gap-3">
                         <button disabled={busy || !canEdit}

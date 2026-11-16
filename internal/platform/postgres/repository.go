@@ -105,12 +105,24 @@ func (r *Repository) Add(ctx context.Context, animeID, status string, episodes i
 	return e, tx.Commit(ctx)
 }
 func (r *Repository) Update(ctx context.Context, id string, status *string, episodes *int) (store.Entry, bool, error) {
+ return r.updateCycle(ctx,id,status,episodes,0)
+}
+func (r *Repository) UpdateCycle(ctx context.Context,id string,status *string,episodes *int,expected int)(store.Entry,bool,error){
+ if expected<1||expected>1000{return store.Entry{},false,store.ErrWatchCycleInvalid}
+ return r.updateCycle(ctx,id,status,episodes,expected)
+}
+func (r *Repository) updateCycle(ctx context.Context,id string,status *string,episodes *int,expected int)(store.Entry,bool,error){
 	tx, u, err := r.db.productTx(ctx, r.token)
 	if err != nil {
 		return store.Entry{}, false, err
 	}
 	defer rollback(tx)
 	var animeID string
+ var cycle int
+ err=tx.QueryRow(ctx,`SELECT watch_cycle FROM user_anime WHERE id=$1 AND user_id=$2 FOR UPDATE`,id,u.ID).Scan(&cycle)
+ if errors.Is(err,pgx.ErrNoRows){return store.Entry{},false,nil}
+ if err!=nil{return store.Entry{},false,err}
+ if expected!=0&&expected!=cycle{return store.Entry{},true,store.ErrWatchCycleConflict}
 	err = tx.QueryRow(ctx, `UPDATE user_anime SET watch_status=COALESCE($3,watch_status),updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING anime_id::text`, id, u.ID, status).Scan(&animeID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return store.Entry{}, false, nil

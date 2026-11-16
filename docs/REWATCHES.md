@@ -17,3 +17,9 @@ Apply migration 000015 and reapply deployments/runtime-role.sql before updating 
 The transaction rechecks account/session/verified state, locks the owned tracker row, archives the pass, resets progress and increments its cycle atomically. It follows account -> session -> tracker -> related data lock ordering. Two sessions using the same expected cycle cannot start two passes. Failures roll back the archive and reset together.
 
 History is private, included in account export under watchCycles and removed by tracker/account deletion. No public catalog or source worker can access it. JSON demo mode stays single-pass; no rewatch routes are exposed there.
+
+## Dashboard and edits across passes
+
+Verified PostgreSQL library cards show the current pass and viewing history. Starting a rewatch requires a separate confirmation that explains the archive/reset and retained rating/follows. A pass change remounts the card, clearing prior episode drafts and confirmation state. Late responses are fenced by component/request/account revisions; history stays only in memory.
+
+Tracker PATCH and exact-episode PUT accept optional expectedCycle (1–1000). The current dashboard supplies it from the library/progress response. A mismatch returns 409 without changing the new pass; foreign IDs still return 404. Episode reads include watchCycle and lock the tracker before reading progress. Legacy clients that omit the field retain unconditional edit behavior; they must opt in to prevent stale edits across a rewatch transition. Series rating edits remain title-wide.

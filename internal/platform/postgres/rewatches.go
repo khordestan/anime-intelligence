@@ -9,8 +9,8 @@ import (
  "github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 
-var ErrRewatchRequest=errors.New("invalid rewatch request")
-var ErrRewatchState=errors.New("rewatch state changed or not completed")
+var ErrRewatchRequest=store.ErrWatchCycleInvalid
+var ErrRewatchState=store.ErrWatchCycleConflict
 type WatchCycle struct {
  Cycle int `json:"cycle"`
  Count int `json:"count"`

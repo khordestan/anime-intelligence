@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 import { parseEpisodeNumbers } from "../lib/episodes";
 
-type Progress = { mode: "COUNT" | "EXACT"; count: number; numbers: number[] | null; total: number | null };
+type Progress = { watchCycle?: number; mode: "COUNT" | "EXACT"; count: number; numbers: number[] | null; total: number | null };
 export default function EpisodeEditor({ client, id, title, disabled, onSaved, onError }: {
   client: ApiClient; id: string; title: string; disabled: boolean;
   onSaved: () => Promise<void>; onError: (error: unknown) => void;
@@ -41,7 +41,7 @@ export default function EpisodeEditor({ client, id, title, disabled, onSaved, on
     const current = ++revision.current;
     setBusy(true); setError("");
     try {
-      await client.request("/tracker/" + id + "/episodes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ numbers }) });
+      await client.request("/tracker/" + id + "/episodes", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ numbers, ...(progress?.watchCycle ? { expectedCycle: progress.watchCycle } : {}) }) });
       if (!alive.current || current !== revision.current) return;
       await onSaved();
       if (alive.current && current === revision.current) setOpen(false);

@@ -89,6 +89,13 @@ func TestRewatchRoutesRequireVerifiedOwnerAndConditionalCycle(t *testing.T){
  for _,query:=range []string{"?before=0","?before=no","?before=1&before=2","?before=1001"}{
   if w:=call("GET",path+query,s.Token,"");w.Code!=400{t.Fatal("invalid history boundary",w.Code)}
  }
+ for _,body:=range []string{`{"episodesWatched":9,"expectedCycle":1}`,`{"watchStatus":"COMPLETED","expectedCycle":1}`}{
+  if w:=call("PATCH","/api/v1/tracker/"+entry.ID,s.Token,body);w.Code!=409{t.Fatal("stale pass changed tracker",w.Code,w.Body.String())}
+ }
+ if w:=call("PUT","/api/v1/tracker/"+entry.ID+"/episodes",s.Token,`{"numbers":[1,4],"expectedCycle":1}`);w.Code!=409{t.Fatal("stale exact edit changed rewatch",w.Code,w.Body.String())}
+ if w:=call("GET","/api/v1/tracker/"+entry.ID+"/episodes",s.Token,"");w.Code!=200||!strings.Contains(w.Body.String(),`"count":0`)||!strings.Contains(w.Body.String(),`"watchCycle":2`){t.Fatal("stale edit mutated new pass",w.Body.String())}
+ if w:=call("PATCH","/api/v1/tracker/"+entry.ID,s.Token,`{"episodesWatched":2,"expectedCycle":2}`);w.Code!=200{t.Fatal("current conditional update rejected",w.Code,w.Body.String())}
+ if w:=call("PUT","/api/v1/tracker/"+entry.ID+"/episodes",s.Token,`{"numbers":[1,4],"expectedCycle":2}`);w.Code!=200{t.Fatal("current exact update rejected",w.Code,w.Body.String())}
  if w:=call("GET",path,s.Token,"");w.Code!=200||!strings.Contains(w.Body.String(),`"currentCycle":2`)||w.Header().Get("Cache-Control")!="no-store"{t.Fatal("history contract",w.Code,w.Body.String())}
 }
 

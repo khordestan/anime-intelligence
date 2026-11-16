@@ -335,6 +335,28 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
   expect((await foreignPreferences.json()).items.every((p: { weight: number | null }) => p.weight === null)).toBe(true);
 
   await expect(panel.getByRole("button", { name: "Follow releases Solo Leveling", exact: true })).toBeVisible();
+  await article.getByLabel("Rating Solo Leveling", { exact: true }).selectOption("5");
+  await expect(article.getByLabel("Rating Solo Leveling", { exact: true })).toHaveValue("5");
+  await article.getByRole("combobox").first().selectOption("COMPLETED");
+  await article.getByRole("button", { name: "Viewing history Solo Leveling", exact: true }).click();
+  const passes = article.getByRole("region", { name: "Viewing history Solo Leveling", exact: true });
+  await passes.getByRole("button", { name: "Start rewatch", exact: true }).click();
+  await passes.getByRole("button", { name: "Confirm start rewatch", exact: true }).click();
+  await expect(article.getByText("Viewing pass 2", { exact: true })).toBeVisible();
+  await expect(article).toContainText("0/12 episodes watched");
+  await expect(article.getByRole("button", { name: "+1 episode", exact: true })).toBeEnabled();
+  await article.getByRole("button", { name: "Viewing history Solo Leveling", exact: true }).click();
+  await expect(passes.getByText("Exact watched episodes: 1, 3", { exact: true })).toBeVisible();
+  const historyPath = API + "/tracker/" + saved.items[0].id + "/rewatches";
+  expect((await request.get(historyPath, { headers: headers(sessions[1].token) })).status()).toBe(404);
+  expect((await request.post(historyPath, { headers: headers(sessions[1].token), data: { expectedCycle: 2 } })).status()).toBe(404);
+  expect((await request.post(historyPath, { headers: headers(sessions[0].token), data: { expectedCycle: 1 } })).status()).toBe(409);
+  expect((await request.put(path, { headers: headers(sessions[0].token), data: { numbers: [12], expectedCycle: 1 } })).status()).toBe(409);
+  const passHistory = await request.get(historyPath, { headers: headers(sessions[0].token) });
+  const passData = await passHistory.json();
+  expect(passData.currentCycle).toBe(2);
+  expect(passData.items[0].numbers).toEqual([1,3]);
+  expect(passData.items[0].rating).toBe(5);
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(panel).toHaveCount(0);

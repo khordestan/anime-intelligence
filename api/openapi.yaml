@@ -156,7 +156,7 @@ paths:
       summary: Read owned exact or aggregate episode progress
       security: [{ bearerAuth: [] }]
       responses:
-        "200": { description: Progress with animeId, COUNT/EXACT mode, count, nullable numbers and nullable total }
+        "200": { description: Progress with animeId, watchCycle, COUNT/EXACT mode, count, nullable numbers and nullable total }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
         "404": { description: Missing or foreign tracker entry }
@@ -173,6 +173,7 @@ paths:
               additionalProperties: false
               required: [numbers]
               properties:
+                expectedCycle: { type: integer, minimum: 1, maximum: 1000, description: Optional pass guard; stale values return 409. }
                 numbers:
                   type: array
                   maxItems: 10000
@@ -180,6 +181,7 @@ paths:
                   items: { type: integer, minimum: 1, maximum: 100000 }
       responses:
         "200": { description: Saved ordered exact progress }
+        "409": { description: Viewing pass changed; no progress was overwritten }
         "400": { description: Invalid body or episode selection }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
@@ -364,6 +366,7 @@ paths:
     patch:
       security: [{ bearerAuth: [] }]
       summary: Update tracking progress or status
+      description: Optional expectedCycle enables a PostgreSQL pass guard; stale edits return 409. Omission keeps legacy unconditional behavior.
       parameters:
         - in: path
           name: id
@@ -376,10 +379,12 @@ paths:
             schema:
               type: object
               properties:
+                expectedCycle: { type: integer, minimum: 1, maximum: 1000 }
                 watchStatus: { type: string, enum: [PLANNING, WATCHING, COMPLETED, ON_HOLD, DROPPED] }
                 episodesWatched: { type: integer, minimum: 0 }
       responses:
         "200": { description: Updated entry }
+        "409": { description: Viewing pass changed; no update applied }
         "401": { description: Missing or invalid session in PostgreSQL mode }
         "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
   /api/v1/ratings/{id}:

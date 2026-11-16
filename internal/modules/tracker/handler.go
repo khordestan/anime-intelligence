@@ -20,6 +20,7 @@ type createRequest struct {
 	EpisodesWatched int    `json:"episodesWatched"`
 }
 type updateRequest struct {
+	ExpectedCycle *int `json:"expectedCycle"`
 	WatchStatus     *string `json:"watchStatus"`
 	EpisodesWatched *int    `json:"episodesWatched"`
 }
@@ -98,11 +99,19 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, "invalid_progress", "episodesWatched must be between 0 and 10000")
 		return
 	}
-	e, ok, err := h.data.Update(r.Context(), id, q.WatchStatus, q.EpisodesWatched)
+	var e store.Entry
+ var ok bool
+ var err error
+ if q.ExpectedCycle!=nil{
+  conditional,supported:=h.data.(store.CycleUpdater)
+  if !supported||*q.ExpectedCycle<1||*q.ExpectedCycle>1000{writeError(w,400,"invalid_watch_cycle","Use a valid viewing pass in PostgreSQL mode");return}
+  e,ok,err=conditional.UpdateCycle(r.Context(),id,q.WatchStatus,q.EpisodesWatched,*q.ExpectedCycle)
+ }else{e,ok,err=h.data.Update(r.Context(),id,q.WatchStatus,q.EpisodesWatched)}
 	if err != nil {
 		if authorizationError(w, err) {
 			return
 		}
+		if errors.Is(err,store.ErrWatchCycleConflict){writeError(w,409,"rewatch_state_changed","Viewing pass changed; refresh your library");return}
 		writeError(w, 500, "tracker_update_failed", "Could not update library entry")
 		return
 	}

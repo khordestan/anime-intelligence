@@ -20,12 +20,16 @@ func registerEpisodeRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 	mux.HandleFunc("PUT /api/v1/tracker/{id}/episodes",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")
 		if !validSessionID(id) {authError(w,400,"invalid_tracker_id");return}
-		var body struct {Numbers []int32 `json:"numbers"`}
+		var body struct {Numbers []int32 `json:"numbers"`;ExpectedCycle *int `json:"expectedCycle"`}
 		d:=json.NewDecoder(http.MaxBytesReader(w,r.Body,128<<10))
 		d.DisallowUnknownFields()
 		var extra any
 		if d.Decode(&body)!=nil || d.Decode(&extra)!=io.EOF {authError(w,400,"invalid_json");return}
-		progress,found,err:=db.Repository(token).SetEpisodeProgress(r.Context(),id,body.Numbers)
+		var progress postgres.EpisodeProgress
+ var found bool
+ var err error
+ if body.ExpectedCycle==nil{progress,found,err=db.Repository(token).SetEpisodeProgress(r.Context(),id,body.Numbers)}else{progress,found,err=db.Repository(token).SetEpisodeProgressCycle(r.Context(),id,body.Numbers,*body.ExpectedCycle)}
+ if errors.Is(err,postgres.ErrRewatchState)||errors.Is(err,postgres.ErrRewatchRequest){rewatchError(w,err);return}
 		if errors.Is(err,postgres.ErrEpisodes) {authError(w,400,"invalid_episode_selection");return}
 		if err!=nil {releaseError(w,err);return}
 		if !found {authError(w,404,"tracker_not_found");return}
