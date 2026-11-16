@@ -102,3 +102,5 @@ Catalog filter forms are now keyed to the active account/public identity, cleari
 Catalog history now validates retained canonical UUIDs and neutral title facts before summarizing observations, using the original observation time for release validation. Corrupt facts fail with the fixed history error; no raw values are returned. Exact Covered by the verified checkpoint above.
 
 Catalog-status now offers optional aggregate Prometheus output with fixed metric names and no dynamic labels, provider values or account data. JSON remains default. Monitoring CI parses synthetic renderer output with promtool; no collection/alert receiver is activated. See CATALOG_METRICS.md. Exact Covered by the verified checkpoint above.
+
+Catalog Inspect now has a two-second statement timeout, bounded rollback cleanup and invalid-clock rejection. CI pending.

@@ -57,7 +57,7 @@ type Status struct {
 // Inspect reads only public catalog tables in one read-only snapshot. No users,
 // sessions, follows, watch progress or notifications are queried.
 func Inspect(ctx context.Context,conn *pgx.Conn,now time.Time,staleAfter time.Duration)(Status,error) {
-	if staleAfter<time.Minute || staleAfter>30*24*time.Hour {return Status{},ErrStatus}
+	if now.IsZero() || now.Unix()<0 || staleAfter<time.Minute || staleAfter>30*24*time.Hour {return Status{},ErrStatus}
 	out,err:=inspect(ctx,conn,now.UTC(),staleAfter)
 	if err!=nil {return Status{},ErrStatus}
 	return out,nil
@@ -66,7 +66,8 @@ func inspect(ctx context.Context,conn *pgx.Conn,now time.Time,staleAfter time.Du
 	out:=Status{AsOf:now,StaleAfterSeconds:int64(staleAfter.Seconds()),Sources:[]SourceStatus{}}
 	tx,err:=conn.BeginTx(ctx,pgx.TxOptions{IsoLevel:pgx.RepeatableRead,AccessMode:pgx.ReadOnly})
 	if err!=nil {return out,err}
-	defer tx.Rollback(context.Background())
+	defer func(){cleanup,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel();_=tx.Rollback(cleanup)}()
+ if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return out,err}
 	rows,err:=tx.Query(ctx,`WITH metadata AS (
 SELECT source_id,count(*) AS titles,
 count(*) FILTER(WHERE observed_at<$2 OR observed_at>$1) AS stale,

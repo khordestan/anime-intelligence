@@ -749,3 +749,7 @@ Added opt-in catalog-status -format=prometheus with fixed aggregate freshness/co
 ## 2026-11-16 — Verified catalog telemetry checkpoint
 
 0b000bd4e4f5b6ffd8c951be4fbb5686d3c65169 passed all seven CI jobs in https://github.com/khordestan/anime-intelligence/actions/runs/43889783641 and both CodeQL analyses in https://github.com/khordestan/anime-intelligence/actions/runs/43889783434 (dependency review skipped on push). This includes real-renderer promtool parsing, backend race/vet/build/vulnerability, migrations/RLS/recovery and browser suites. Updated stale context pending notes; all included catalog behavior is covered by this exact checkpoint. Local toolchains unavailable; no local pass claimed. No source/model/collector/receiver or deployment activated. Documentation-only follow-up checks run separately.
+
+## 2026-11-16 — Catalog diagnostic query bounds
+
+Bound Inspect SQL statements to two seconds and rollback cleanup to five seconds; reject zero/pre-epoch clocks. Existing PostgreSQL diagnostic coverage verifies normal reads. No migration/grants/source activation/deployment. Local toolchains unavailable; exact CI pending.
