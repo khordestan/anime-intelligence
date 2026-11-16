@@ -5,12 +5,13 @@ import { ApiClient } from "../lib/api";
 import CatalogLabels from "./catalog-labels";
 
 export type CatalogFilterValues = {
+  sort: string;
   minEpisodes: string; maxEpisodes: string;
   mediaType: string; status: string; releaseYear: string; season: string;
   genre: string; theme: string; demographic: string; studio: string;
 };
 export const emptyCatalogFilters: CatalogFilterValues = {
-  minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
+  sort:"", minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
 };
 export default function CatalogFilters({ client, values, onApply }: {
   client: ApiClient; values: CatalogFilterValues; onApply: (values: CatalogFilterValues) => void;
@@ -35,6 +36,7 @@ export default function CatalogFilters({ client, values, onApply }: {
       <div className="grid gap-3 sm:grid-cols-2">
         {([["minEpisodes","Minimum episodes"],["maxEpisodes","Maximum episodes"]] as const).map(([key,label])=><label key={key} className="text-xs text-slate-300">{label}<input aria-label={label} type="number" min={0} max={100000} step={1} value={draft[key]} onChange={event=>setDraft(current=>({...current,[key]:event.target.value}))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>)}
         {([
+          ["sort", "Catalog sort order", ["TITLE", "NEWEST", "OLDEST"]],
           ["mediaType", "Catalog format", ["TV", "MOVIE", "OVA", "ONA", "SPECIAL", "MUSIC", "UNKNOWN"]],
           ["status", "Catalog release status", ["UNKNOWN", "ANNOUNCED", "RELEASING", "FINISHED", "CANCELLED", "HIATUS"]],
           ["season", "Catalog release quarter", ["WINTER", "SPRING", "SUMMER", "FALL"]],

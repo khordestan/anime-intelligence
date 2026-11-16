@@ -769,3 +769,7 @@ Added optional catalog monitoring rules gated to explicit targets and healthy sn
 ## 2026-11-17 — Episode-count range discovery
 
 Added inclusive optional minEpisodes/maxEpisodes filters (0–100000) in local/PostgreSQL search and dashboard inputs, with API duplicate/empty/integer validation and reversed-range rejection. Unknown totals cannot satisfy a range; known zero remains searchable. Added PostgreSQL sparse/zero/exact/range regressions. No monitoring work, schema/grants/source activation/deployment. Local toolchains unavailable; scoped web instructions and official client guide checked. Exact CI pending.
+
+## 2026-11-17 — Catalog release-year ordering
+
+Added TITLE/NEWEST/OLDEST sorting to public catalog API and dashboard controls. Year sorting keeps unknown years last and title/UUID tie-breakers stable, before pagination. Uses fixed parameterized SQL expressions; invalid sort values are rejected. Added PostgreSQL newest/oldest/tie/unknown/pagination tests. Scoped web instructions and official client guide checked; local toolchains absent, exact CI pending. Product feature only; no monitoring/schema/grants/source activation/deployment.
