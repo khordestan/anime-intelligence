@@ -104,3 +104,5 @@ Catalog history now validates retained canonical UUIDs and neutral title facts b
 Catalog-status now offers optional aggregate Prometheus output with fixed metric names and no dynamic labels, provider values or account data. JSON remains default. Monitoring CI parses synthetic renderer output with promtool; no collection/alert receiver is activated. See CATALOG_METRICS.md. Exact Covered by the verified checkpoint above.
 
 Catalog Inspect now has a two-second statement timeout, bounded rollback cleanup and invalid-clock rejection. CI pending.
+
+Catalog-status now rejects elevated/account-capable credentials through the shared catalog privilege guard before inspection, pins its search path and bounds connection/cleanup. Use the dedicated catalog diagnostics reader role. CI pending.
