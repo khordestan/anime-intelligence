@@ -533,3 +533,11 @@ Remaining work includes comprehensive approved metadata/availability coverage, r
 Inspected baseline a96f067: CI 43775494240 and Security 43775494171 passed; the subsequent scheduled Security run 43805152447 also succeeded. Extended the read-only catalog-status snapshot with independent per-title age/future ranges and observed/unobserved counts. Fresh partial imports no longer conceal old title observations in diagnostics. Disabled source title ages remain visible separately from enabled-source stale status.
 
 Added source/catalog field-presence counts for known totals (including zero), synopsis, synonyms, genres, tags, studios and relations. Presence is explicitly not completeness, correctness, resolved relationships or availability. Added PostgreSQL partial-feed regression with equal-threshold, future-clock, disabled-source, sparse-field and known-zero cases. No new privileges, source activation or private-data queries. Exact-commit CI pending; local Go/Node toolchains unavailable.
+
+## 2026-11-16 — Named bidirectional season continuity navigation
+
+0fcc968 passed all seven CI jobs 43818782348 and both CodeQL analyses 43818782357.
+
+Catalog details now resolve linked canonical title/media/status and derive only inverse PREQUEL/SEQUEL links. Single-sided provider assertions are navigable from either title; reciprocal assertions deduplicate. SIDE_STORY and other directed relations retain their explicit direction instead of acquiring invented chronology. This read-time public snapshot changes no stored provenance or private account data.
+
+Extended public PostgreSQL/API tests for single-sided reversal, reciprocal deduplication, named linked media and directed non-continuity preservation. The dashboard labels links with title/type/status; a mocked-browser test follows a sequel then its prequel and verifies spoiler reveal resets. Read scoped web instructions; packaged Next guides are unavailable in the empty workspace, so rechecked the official use-client documentation and reused the existing component pattern without new framework APIs/dependencies. Exact-commit CI pending; local toolchains unavailable.

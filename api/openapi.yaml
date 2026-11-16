@@ -92,7 +92,7 @@ paths:
   /api/v1/anime/{id}/details:
     get:
       summary: Public catalog enrichment, continuity relations and current episode schedules
-      description: Returns explicit source/time provenance when imported. Schedules are predictions; only releasedAt confirms availability. Synopsis and tags may contain spoilers. No private tracking data is included.
+      description: Returns explicit source/time provenance when imported. Schedules are predictions; only releasedAt confirms availability. Synopsis and tags may contain spoilers. Relations include canonical linked title, media type and status. PREQUEL/SEQUEL links are navigable from either end with duplicate reciprocal assertions suppressed; other types remain directed. No private tracking data is included.
       parameters:
         - in: path
           name: id
@@ -640,10 +640,13 @@ components:
           type: array
           items:
             type: object
-            required: [animeId, type]
+            required: [animeId, type, title, mediaType, status]
             properties:
               animeId: { type: string, format: uuid }
               type: { type: string }
+              title: { type: string }
+              mediaType: { type: string }
+              status: { type: string }
         episodes:
           type: array
           items:

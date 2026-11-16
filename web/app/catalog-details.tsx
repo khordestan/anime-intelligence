@@ -6,7 +6,7 @@ import { ApiClient } from "../lib/api";
 type Details = {
   anime: { id: string; title: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
   provider?: string; observedAt?: string; genres: string[]; tags: string[]; studios: string[]; synonyms: string[];
-  relations: { animeId: string; type: string }[];
+  relations: { animeId: string; type: string; title?: string; mediaType?: string; status?: string }[];
   episodes: { number: number; track: string; scheduledAt?: string; releasedAt?: string; revision: number }[];
 };
 export default function CatalogDetails({ client, id, title, onError }: {
@@ -48,7 +48,7 @@ export default function CatalogDetails({ client, id, title, onError }: {
           <button onClick={() => setSpoilers(!spoilers)} className="text-xs text-amber-200 underline">{spoilers ? "Hide synopsis and tags" : "Show synopsis and tags (may contain spoilers)"}</button>
           {spoilers && <div><p className="text-xs text-slate-300">{details.anime.synopsis || "No synopsis available."}</p><p className="mt-2 text-xs text-slate-400">Tags: {details.tags.join(", ") || "Not available"}</p></div>}
           {!!details.relations.length && <div className="flex flex-wrap gap-3">
-            {details.relations.map(relation => <button key={relation.type + relation.animeId} disabled={busy} onClick={() => void load(relation.animeId)} className="text-xs text-violet-200 underline">View {relation.type.toLowerCase().replaceAll("_", " ")} details</button>)}
+            {details.relations.map(relation => <button key={relation.type + relation.animeId} disabled={busy} onClick={() => void load(relation.animeId)} className="text-xs text-violet-200 underline">View {relation.type.toLowerCase().replaceAll("_", " ")}{relation.title ? `: ${relation.title}` : " details"}{relation.mediaType ? ` · ${relation.mediaType}` : ""}{relation.status ? ` · ${relation.status}` : ""}</button>)}
           </div>}
           <h5 className="pt-2 text-xs font-semibold">Episode schedule</h5>
           {!details.episodes.length && <p className="text-xs text-slate-400">No episode schedule is available.</p>}

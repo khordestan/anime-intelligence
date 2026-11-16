@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test("catalog search reaches imported aliases and details hide spoilers until requested", async ({ page }) => {
   const id = "10000000-0000-4000-8000-000000000099";
+  const sequel = "10000000-0000-4000-8000-000000000098";
   let searched = false;
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
@@ -22,11 +23,16 @@ test("catalog search reaches imported aliases and details hide spoilers until re
     }
     if (path === "/anime/" + id + "/details") return respond({
       anime: { id, title: "Beyond First Page", nativeTitle: "Synthetic Native Title", synopsis: "Synthetic spoiler synopsis", episodeCountKnown: false },
-      provider: "synthetic", observedAt: "2026-01-01T00:00:00Z", synonyms: ["Hidden Alias"], genres: ["Adventure"], studios: ["Synthetic Studio"], tags: ["Synthetic spoiler tag"], relations: [],
+      provider: "synthetic", observedAt: "2026-01-01T00:00:00Z", synonyms: ["Hidden Alias"], genres: ["Adventure"], studios: ["Synthetic Studio"], tags: ["Synthetic spoiler tag"], relations: [{ animeId: sequel, type: "SEQUEL", title: "Synthetic Linked Season", mediaType: "TV", status: "ANNOUNCED" }],
       episodes: [
         { number: 1, track: "SUB", scheduledAt: "2030-01-01T00:00:00Z", revision: 1 },
         { number: 2, track: "RAW", releasedAt: "2026-01-01T00:00:00Z", revision: 2 },
       ],
+    });
+    if (path === "/anime/" + sequel + "/details") return respond({
+      anime: { id: sequel, title: "Synthetic Linked Season", episodeCountKnown: false },
+      provider: "synthetic", genres: [], studios: [], tags: [], synonyms: [], episodes: [],
+      relations: [{ animeId: id, type: "PREQUEL", title: "Beyond First Page", mediaType: "TV", status: "FINISHED" }],
     });
     return route.fulfill({ status: 404, headers, contentType: "application/json", body: "{}" });
   });
@@ -48,4 +54,9 @@ test("catalog search reaches imported aliases and details hide spoilers until re
   await expect(panel.getByText("Tags: Synthetic spoiler tag", { exact: true })).toBeVisible();
   await panel.getByRole("button", { name: "Hide synopsis and tags", exact: true }).click();
   await expect(page.getByText("Synthetic spoiler synopsis", { exact: true })).toHaveCount(0);
+  await panel.getByRole("button", { name: "View sequel: Synthetic Linked Season · TV · ANNOUNCED", exact: true }).click();
+  await expect(panel.getByRole("heading", { name: "Synthetic Linked Season", exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "View prequel: Beyond First Page · TV · FINISHED", exact: true }).click();
+  await expect(panel.getByRole("heading", { name: "Beyond First Page", exact: true })).toBeVisible();
+  await expect(panel.getByText("Synthetic spoiler synopsis", { exact: true })).toHaveCount(0);
 });

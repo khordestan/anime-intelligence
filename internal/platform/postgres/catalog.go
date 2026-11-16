@@ -34,11 +34,18 @@ func (r *Repository) CatalogDetails(ctx context.Context,id string) (store.Catalo
 		if metadata.Tags!=nil {out.Tags=metadata.Tags}
 		if metadata.Studios!=nil {out.Studios=metadata.Studios}
 	}
-	rows,err:=tx.Query(ctx,`SELECT target_anime_id::text,relation_type FROM anime_relations WHERE source_anime_id=$1 ORDER BY relation_type,target_anime_id`,id)
+	rows,err:=tx.Query(ctx,`WITH linked(anime_id,relation_type) AS (
+SELECT target_anime_id,relation_type FROM anime_relations WHERE source_anime_id=$1
+UNION
+SELECT source_anime_id,CASE relation_type WHEN 'PREQUEL' THEN 'SEQUEL' ELSE 'PREQUEL' END
+FROM anime_relations WHERE target_anime_id=$1 AND relation_type IN ('PREQUEL','SEQUEL')
+)
+SELECT a.id::text,l.relation_type,a.canonical_title,a.media_type,a.status
+FROM linked l JOIN anime a ON a.id=l.anime_id ORDER BY l.relation_type,a.canonical_title,a.id`,id)
 	if err!=nil {return out,false,err}
 	for rows.Next() {
 		var relation store.CatalogRelation
-		if err=rows.Scan(&relation.AnimeID,&relation.Type);err!=nil {rows.Close();return out,false,err}
+		if err=rows.Scan(&relation.AnimeID,&relation.Type,&relation.Title,&relation.MediaType,&relation.Status);err!=nil {rows.Close();return out,false,err}
 		out.Relations=append(out.Relations,relation)
 	}
 	rows.Close()

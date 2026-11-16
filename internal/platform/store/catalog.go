@@ -18,6 +18,9 @@ type CatalogDetails struct {
 	Episodes []CatalogEpisode `json:"episodes"`
 }
 type CatalogRelation struct {
+	Title string `json:"title"`
+	MediaType string `json:"mediaType"`
+	Status string `json:"status"`
 	AnimeID string `json:"animeId"`
 	Type string `json:"type"`
 }
