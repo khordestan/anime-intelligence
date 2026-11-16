@@ -8,7 +8,7 @@ The first release is a modular monolith. The API and worker are separate process
 - `internal/platform/postgres` implements catalog, tracker, release subscriptions/notifications, credentials, and session persistence. Every private repository operation resolves a verified bearer token and runs inside a transaction with local RLS context.
 - Next.js consumes the versioned REST API.
 - The worker is a lifecycle placeholder; no background jobs are registered. Identity mail runs in the API through an encrypted PostgreSQL request inbox (committed before HTTP 202) and an encrypted mail outbox, with leased issuance/delivery workers.
-- PostgreSQL migrations through `000013_exact_episode_progress` define the canonical data model, auth/session primitives, and forced row-level security policies. The API selects PostgreSQL when `DATABASE_URL` is configured and establishes transaction-scoped identity from server-verified session digests.
+- PostgreSQL migrations through `000015_watch_cycles` define the canonical data model, auth/session primitives, and forced row-level security policies. The API selects PostgreSQL when `DATABASE_URL` is configured and establishes transaction-scoped identity from server-verified session digests.
 
 ## Target architecture
 - Go REST API with explicit modules: identity, catalog, tracker, preferences, recommendations, notifications.
@@ -36,3 +36,9 @@ The current JSON store is single-process and single-user. It is not safe for pub
 Offline provider conversion feeds the validated neutral snapshot contract. An explicitly approved administrator source import serializes catalog writes, resolves exact provider IDs and atomically records latest structured provenance, continuity relations, schedule revisions, canonical event keys and source high-water marks. Title-level prior observations determine release backfills; unrelated partial-feed updates cannot hide a title's eligible release. No name-based entity merging or live network source is enabled.
 
 Public catalog details use a repeatable-read snapshot. Private progress distinguishes aggregate counts from exact episode sets on the existing forced-RLS table. Verified owners follow individual titles or transitive prequel/sequel components. Polling materializes only the current user's eligible events; a unique event/channel key suppresses duplicates, and existing RLS/export/deletion boundaries apply. Account → session → per-account advisory lock ordering serializes subscription changes and polling. PostgreSQL statement timeout bounds graph query work. This is in-app polling, not asynchronous mail/push.
+
+## Viewing passes, notes and followed schedules
+
+Completed-pass history is a fourteenth forced-RLS private table. Conditional rewatch starts archive current count/exact progress and rating, then reset/increment the owned tracker pass atomically. Runtime has SELECT/INSERT only on archives, which cascade with tracker/account deletion and participate in export/recovery. Current dashboard progress/status edits carry expectedCycle; legacy omission retains unconditional semantics.
+
+Private notes use existing tracker storage and optimistic timestamp checks under the tracker lock. They remain across viewing passes and do not enter model/taste features. Catalog JSON retains themes and demographics as separate provider labels. The followed calendar reads one verified-owner snapshot, expands only canonical continuity, selects latest schedule revisions before date filtering and bounds work/results. It does not materialize notifications or infer availability.

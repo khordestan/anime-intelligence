@@ -10,8 +10,10 @@ All operations require a verified authenticated account. Owner predicates, force
 
 Changing only watch status preserves exact selections. Explicit aggregate Add/Update switches back to COUNT and erases the exact set; it never guesses episode identities. The library exposes exactProgress so clients can avoid accidentally replacing exact tracking through a count shortcut. Private export includes the set; tracker/account deletion removes it.
 
-Franchise seasons are separate canonical titles linked by relations, so each has its own entry and progress. Cour/season-number conventions, rewatches, specials with nonnumeric labels and per-language viewing histories remain pending. No local JSON exact-progress API is implemented.
+Franchise seasons are separate canonical titles linked by relations, so each has its own entry and progress. Completed-pass archives and explicit rewatches are available in PostgreSQL; see [rewatches](REWATCHES.md). Cour/season-number conventions, specials with nonnumeric labels and per-language viewing histories remain pending. No local JSON exact-progress API is implemented.
 
 ## Dashboard
 
 Verified PostgreSQL accounts can use Edit watched episodes on a library title. Count mode starts with an empty editor and explains that episode identities are unknown. Saving explicitly replaces the count with comma-separated exact numbers. Gaps are preserved; empty input clears progress. Exact-mode cards disable +1 episode so the shortcut cannot silently erase selections. Status/rating controls continue to work. The editor resets with account/entry changes and fences late responses.
+
+Episode reads include watchCycle. Exact PUT and tracker PATCH accept optional expectedCycle and the current dashboard supplies it; stale values return 409 without overwriting the new pass. Legacy clients omitting the field retain unconditional behavior. A rewatch archives the original exact set or aggregate count and starts a new count-mode pass at zero; it never guesses episode identities.
