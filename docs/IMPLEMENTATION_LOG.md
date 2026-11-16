@@ -725,3 +725,7 @@ Added local 128-byte UTF-8 discovery-prefix validation with a specific message a
 ## 2026-11-16 — Local catalog read-boundary parity
 
 Direct Local.Catalog previously bypassed filtering validation and could pass negative offsets into slice operations. It now delegates to FilterCatalog, matching PostgreSQL repository bounds; local filters also honor cancellation before sparse early returns. Added direct invalid-limit/offset, cancellation, sparse cancellation and ordinary-search regressions. No schema/grants/source activation/private-data/deployment changes. Local toolchains unavailable; exact CI pending.
+
+## 2026-11-16 — Bounded catalog offset navigation hints
+
+Added optional nextOffset/previousOffset response fields without an extra count query. Full-page hints are explicitly not existence guarantees or stable snapshots; prior offsets clamp to zero and successors stay within the existing cap. Synthetic HTTP coverage covers full/short/empty-filtered pages and boundary behavior. No schema/grants/private-data/source activation/deployment changes. Local toolchains unavailable; exact CI pending. Baseline d8b1811 passed all CI 43870396211 and Security 43870396248 jobs.

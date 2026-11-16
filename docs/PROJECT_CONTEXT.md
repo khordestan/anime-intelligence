@@ -92,3 +92,5 @@ Dashboard source-label discovery now loads only on explicit request, uses the dr
 Dashboard label discovery rejects prefixes over 128 UTF-8 bytes locally with a specific message, while complete filter values retain the separate 256-byte limit. Browser coverage verifies multi-byte overflow sends no discovery request. Exact follow-up CI pending.
 
 Direct local Catalog reads now share FilterCatalog validation, ordering and bounds with public filtered reads; local filtered reads honor cancelled contexts even when a sparse label would otherwise return early. No local-mode authentication is implied. Follow-up CI pending.
+
+Catalog list responses now offer optional nextOffset/previousOffset hints within existing bounds, preserving filters and existing response fields. Full-page nextOffset may lead to an empty page; concurrent ingestion can shift offsets. See CATALOG_PAGINATION.md. CI pending.

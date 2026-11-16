@@ -21,7 +21,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "catalog_read_failed", "Could not read catalog")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items, "limit": limit, "offset": offset, "count": len(items)})
+	response:=map[string]any{"items":items,"limit":limit,"offset":offset,"count":len(items)}
+ // A full page may have a successor; avoid an extra count/query and do not
+ // claim stable snapshot pagination across independent requests.
+ if len(items)==limit&&offset+limit<=100000{response["nextOffset"]=offset+limit}
+ if offset>0{previous:=offset-limit;if previous<0{previous=0};response["previousOffset"]=previous}
+ writeJSON(w,200,response)
 }
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
