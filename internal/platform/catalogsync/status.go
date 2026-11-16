@@ -15,6 +15,8 @@ type MetadataCoverage struct {
 	Synonyms int `json:"synonyms"`
 	Genres int `json:"genres"`
 	Tags int `json:"tags"`
+	Themes int `json:"themes"`
+	Demographics int `json:"demographics"`
 	Studios int `json:"studios"`
 	Relations int `json:"relations"`
 }
@@ -76,14 +78,16 @@ count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'synonyms')='array' THEN j
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'genres')='array' THEN jsonb_array_length(payload->'genres')>0 ELSE false END) AS genres,
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'tags')='array' THEN jsonb_array_length(payload->'tags')>0 ELSE false END) AS tags,
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'studios')='array' THEN jsonb_array_length(payload->'studios')>0 ELSE false END) AS studios,
-count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'relations')='array' THEN jsonb_array_length(payload->'relations')>0 ELSE false END) AS relations
+count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'relations')='array' THEN jsonb_array_length(payload->'relations')>0 ELSE false END) AS relations,
+count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'themes')='array' THEN jsonb_array_length(payload->'themes')>0 ELSE false END) AS themes,
+count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'demographics')='array' THEN jsonb_array_length(payload->'demographics')>0 ELSE false END) AS demographics
 FROM catalog_metadata GROUP BY source_id
 )
 SELECT s.provider_key,s.enabled,COALESCE(s.policy_url,'')<>'',st.observed_at,
 COALESCE(m.titles,0),f.last_attempt_at,f.next_attempt_at,f.outcome,f.attempts,
 COALESCE(m.stale,0),COALESCE(m.future,0),m.oldest,m.newest,
 COALESCE(m.totals,0),COALESCE(m.synopses,0),COALESCE(m.synonyms,0),
-COALESCE(m.genres,0),COALESCE(m.tags,0),COALESCE(m.studios,0),COALESCE(m.relations,0)
+COALESCE(m.genres,0),COALESCE(m.tags,0),COALESCE(m.studios,0),COALESCE(m.relations,0),COALESCE(m.themes,0),COALESCE(m.demographics,0)
 FROM data_sources s LEFT JOIN catalog_sync_state st ON st.source_id=s.id
 LEFT JOIN catalog_fetch_state f ON f.source_id=s.id LEFT JOIN metadata m ON m.source_id=s.id
 ORDER BY s.provider_key`,now,now.Add(-staleAfter))
@@ -93,7 +97,7 @@ ORDER BY s.provider_key`,now,now.Add(-staleAfter))
 		if err=rows.Scan(&source.Provider,&source.Enabled,&source.PolicyRecorded,&source.ObservedAt,&source.Titles,&source.LastAttemptAt,&source.NextAttemptAt,&source.Outcome,&source.Attempts,
 &source.StaleTitles,&source.FutureTitles,&source.OldestTitleObservation,&source.NewestTitleObservation,
 &source.Coverage.EpisodeTotals,&source.Coverage.Synopses,&source.Coverage.Synonyms,
-&source.Coverage.Genres,&source.Coverage.Tags,&source.Coverage.Studios,&source.Coverage.Relations);err!=nil {rows.Close();return out,err}
+&source.Coverage.Genres,&source.Coverage.Tags,&source.Coverage.Studios,&source.Coverage.Relations,&source.Coverage.Themes,&source.Coverage.Demographics);err!=nil {rows.Close();return out,err}
 		source.NeverSynced=source.ObservedAt==nil
 		if source.ObservedAt!=nil {
 			age:=now.Sub(*source.ObservedAt)
@@ -112,6 +116,8 @@ ORDER BY s.provider_key`,now,now.Add(-staleAfter))
 		out.Coverage.Synonyms+=source.Coverage.Synonyms
 		out.Coverage.Genres+=source.Coverage.Genres
 		out.Coverage.Tags+=source.Coverage.Tags
+		out.Coverage.Themes+=source.Coverage.Themes
+		out.Coverage.Demographics+=source.Coverage.Demographics
 		out.Coverage.Studios+=source.Coverage.Studios
 		out.Coverage.Relations+=source.Coverage.Relations
 		out.Sources=append(out.Sources,source)

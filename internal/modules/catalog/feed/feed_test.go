@@ -34,6 +34,8 @@ func TestValidation(t *testing.T) {
 		"blank title":func(s *Snapshot){s.Titles[0].Title=" "},
 		"duplicate title":func(s *Snapshot){s.Titles=append(s.Titles,s.Titles[0])},
 		"duplicate labels":func(s *Snapshot){s.Titles[0].Genres=[]string{"Action"," action "}},
+		"duplicate themes":func(s *Snapshot){s.Titles[0].Themes=[]string{"Space"," space "}},
+		"blank demographic":func(s *Snapshot){s.Titles[0].Demographics=[]string{" "}},
 		"unknown media":func(s *Snapshot){s.Titles[0].MediaType="GAME"},
 		"unknown status":func(s *Snapshot){s.Titles[0].Status="MAYBE"},
 		"year":func(s *Snapshot){s.Titles[0].ReleaseYear=-1},

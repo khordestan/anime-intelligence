@@ -86,7 +86,7 @@ func DecodeFull(r io.Reader,observed,now time.Time) (feed.Snapshot,error) {
 	for _,alias:=range unique(aliases){if !strings.EqualFold(alias,canonical)&&!strings.EqualFold(alias,native){namesForSearch=append(namesForSearch,alias)}}
 	t:=feed.Title{ExternalID:strconv.Itoa(d.ID),Title:canonical,NativeTitle:native,Synopsis:d.Synopsis,
 		MediaType:"UNKNOWN",Status:"UNKNOWN",ReleaseYear:d.Year,EpisodeCount:d.Episodes,
-		Synonyms:namesForSearch,Genres:names(d.Genres,d.ExplicitGenres),Tags:names(d.Themes,d.Demographics),Studios:names(d.Studios)}
+		Synonyms:namesForSearch,Genres:names(d.Genres,d.ExplicitGenres),Tags:names(d.Themes,d.Demographics),Themes:names(d.Themes),Demographics:names(d.Demographics),Studios:names(d.Studios)}
 	switch d.Type {
 	case "TV","MOVIE","OVA","ONA","SPECIAL","MUSIC":t.MediaType=d.Type
 	case "Movie":t.MediaType="MOVIE"

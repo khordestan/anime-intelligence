@@ -708,13 +708,15 @@ components:
   schemas:
     CatalogDetails:
       type: object
-      required: [anime, synonyms, genres, tags, studios, relations, episodes]
+      required: [anime, synonyms, genres, themes, demographics, tags, studios, relations, episodes]
       properties:
         anime: { $ref: '#/components/schemas/Anime' }
         provider: { type: string }
         observedAt: { type: string, format: date-time }
         synonyms: { type: array, items: { type: string } }
         genres: { type: array, items: { type: string } }
+        themes: { type: array, items: { type: string }, description: Sourced themes; may contain spoilers. }
+        demographics: { type: array, items: { type: string }, description: Provider title category labels; never inferred user attributes. }
         tags: { type: array, items: { type: string } }
         studios: { type: array, items: { type: string } }
         relations:

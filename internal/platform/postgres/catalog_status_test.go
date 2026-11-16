@@ -49,7 +49,7 @@ func TestCatalogStatusPartialFeedsAndMetadataCoverage(t *testing.T){
  now:=time.Now().UTC().Truncate(time.Microsecond)
  if _,err:=owner.Exec(ctx,`INSERT INTO data_sources(provider_key,display_name,enabled,policy_url) VALUES('partial-status','Synthetic partial status',true,'https://example.test/policy')`);err!=nil{t.Fatal(err)}
  zero:=0
- rich:=feed.Title{ExternalID:"rich",Title:"Synthetic Rich Metadata",MediaType:"TV",Status:"UNKNOWN",EpisodeCount:&zero,Synopsis:"Synthetic reference synopsis",Synonyms:[]string{"Synthetic alias"},Genres:[]string{"Synthetic genre"},Tags:[]string{"Synthetic tag"},Studios:[]string{"Synthetic studio"},Relations:[]feed.Relation{{ExternalID:"old",Type:"SEQUEL"}}}
+ rich:=feed.Title{ExternalID:"rich",Title:"Synthetic Rich Metadata",MediaType:"TV",Status:"UNKNOWN",EpisodeCount:&zero,Synopsis:"Synthetic reference synopsis",Synonyms:[]string{"Synthetic alias"},Genres:[]string{"Synthetic genre"},Tags:[]string{"Synthetic tag"},Themes:[]string{"Synthetic theme"},Demographics:[]string{"Synthetic demographic"},Studios:[]string{"Synthetic studio"},Relations:[]feed.Relation{{ExternalID:"old",Type:"SEQUEL"}}}
  snapshot:=feed.Snapshot{Version:1,Provider:"partial-status",ObservedAt:now.Add(-2*time.Hour),Titles:[]feed.Title{
  {ExternalID:"old",Title:"Synthetic Old Metadata",MediaType:"TV",Status:"UNKNOWN"},rich,
  {ExternalID:"boundary",Title:"Synthetic Boundary Metadata",MediaType:"TV",Status:"UNKNOWN"},
@@ -73,7 +73,7 @@ func TestCatalogStatusPartialFeedsAndMetadataCoverage(t *testing.T){
  if source.Stale||source.Titles!=4||source.StaleTitles!=2||source.FutureTitles!=1{t.Fatal("fresh partial provider hid old titles",source)}
  if source.OldestTitleObservation==nil||!source.OldestTitleObservation.Equal(now.Add(-2*time.Hour))||source.NewestTitleObservation==nil||!source.NewestTitleObservation.Equal(now.Add(time.Hour)){t.Fatal("title observation range",source)}
  if status.ObservedTitles!=4||status.UnobservedTitles!=8||status.Titles!=12||status.StaleTitles!=2||status.FutureTitles!=1{t.Fatal("catalog observation counts",status)}
- want:=catalogsync.MetadataCoverage{EpisodeTotals:1,Synopses:1,Synonyms:1,Genres:1,Tags:1,Studios:1,Relations:1}
+ want:=catalogsync.MetadataCoverage{EpisodeTotals:1,Synopses:1,Synonyms:1,Genres:1,Tags:1,Themes:1,Demographics:1,Studios:1,Relations:1}
  if source.Coverage!=want||status.Coverage!=want{t.Fatal("presence coverage/known zero",source.Coverage,status.Coverage)}
  broader,err:=catalogsync.Inspect(ctx,reader,now,3*time.Hour)
  if err!=nil||broader.StaleTitles!=1||broader.FutureTitles!=1{t.Fatal("title threshold/future distinction",broader,err)}

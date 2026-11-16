@@ -13,6 +13,8 @@ type CatalogDetails struct {
 	Synonyms []string `json:"synonyms"`
 	Genres []string `json:"genres"`
 	Tags []string `json:"tags"`
+	Themes []string `json:"themes"`
+	Demographics []string `json:"demographics"`
 	Studios []string `json:"studios"`
 	Relations []CatalogRelation `json:"relations"`
 	Episodes []CatalogEpisode `json:"episodes"`
@@ -36,7 +38,7 @@ type DetailedCatalog interface {
 	CatalogDetails(context.Context,string) (CatalogDetails,bool,error)
 }
 func EmptyCatalogDetails(a Anime) CatalogDetails {
-	return CatalogDetails{Anime:a,Synonyms:[]string{},Genres:[]string{},Tags:[]string{},Studios:[]string{},Relations:[]CatalogRelation{},Episodes:[]CatalogEpisode{}}
+	return CatalogDetails{Anime:a,Synonyms:[]string{},Genres:[]string{},Tags:[]string{},Themes:[]string{},Demographics:[]string{},Studios:[]string{},Relations:[]CatalogRelation{},Episodes:[]CatalogEpisode{}}
 }
 func (s Local) CatalogDetails(_ context.Context,id string) (CatalogDetails,bool,error) {
 	a,ok:=s.Store.GetAnime(id)

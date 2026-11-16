@@ -14,7 +14,7 @@ func TestFullMetadataMapping(t *testing.T) {
 	s,err:=DecodeFull(strings.NewReader(syntheticFull),now,now)
 	if err!=nil || s.Provider!="jikan" || len(s.Titles)!=1 {t.Fatal("full conversion",err)}
 	a:=s.Titles[0]
-	if a.ExternalID!="1001" || a.Title!="Synthetic Provider Sky" || a.NativeTitle!="Synthetic Native" || a.MediaType!="TV" || a.Status!="RELEASING" || a.Season!="WINTER" || a.EpisodeCount!=nil || len(a.Synonyms)!=2 || len(a.Genres)!=1 || len(a.Tags)!=2 || len(a.Studios)!=1 || len(a.Relations)!=1 || a.Relations[0].ExternalID!="1002" {t.Fatalf("mapped metadata: %+v",a)}
+	if a.ExternalID!="1001" || a.Title!="Synthetic Provider Sky" || a.NativeTitle!="Synthetic Native" || a.MediaType!="TV" || a.Status!="RELEASING" || a.Season!="WINTER" || a.EpisodeCount!=nil || len(a.Synonyms)!=2 || len(a.Genres)!=1 || len(a.Tags)!=2 || len(a.Themes)!=1 || a.Themes[0]!="Space" || len(a.Demographics)!=1 || a.Demographics[0]!="Youth" || len(a.Studios)!=1 || len(a.Relations)!=1 || a.Relations[0].ExternalID!="1002" {t.Fatalf("mapped metadata: %+v",a)}
 	encoded,_:=json.Marshal(s)
 	if strings.Contains(string(encoded),"ignored_provider_field") || strings.Contains(string(encoded),"not-forwarded") {t.Fatal("arbitrary provider fields escaped boundary")}
 	for _,input:=range []string{"null","{}",`{"data":null}`,syntheticFull+" {}",strings.Replace(syntheticFull,"\"mal_id\":1001","\"mal_id\":0",1),strings.Repeat(" ",feed.MaxBytes+1)} {

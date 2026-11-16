@@ -26,12 +26,16 @@ func (r *Repository) CatalogDetails(ctx context.Context,id string) (store.Catalo
 			Synonyms []string `json:"synonyms"`
 			Genres []string `json:"genres"`
 			Tags []string `json:"tags"`
+			Themes []string `json:"themes"`
+			Demographics []string `json:"demographics"`
 			Studios []string `json:"studios"`
 		}
 		if err=json.Unmarshal(payload,&metadata);err!=nil {return out,false,err}
 		if metadata.Synonyms!=nil {out.Synonyms=metadata.Synonyms}
 		if metadata.Genres!=nil {out.Genres=metadata.Genres}
 		if metadata.Tags!=nil {out.Tags=metadata.Tags}
+		if metadata.Themes!=nil {out.Themes=metadata.Themes}
+		if metadata.Demographics!=nil {out.Demographics=metadata.Demographics}
 		if metadata.Studios!=nil {out.Studios=metadata.Studios}
 	}
 	rows,err:=tx.Query(ctx,`WITH linked(anime_id,relation_type) AS (

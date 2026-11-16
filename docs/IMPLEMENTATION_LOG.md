@@ -583,3 +583,11 @@ Added HTTP regressions for stale/current count/status/exact edits, two mocked br
 17637cb passed all seven CI jobs 43824995507 and both CodeQL analyses 43824995477. Added GET/PUT private notes on existing user_anime storage. Verified-owner predicates/RLS and tracker locks apply; required timestamp comparison rejects stale saves, including across rewatches. Notes are bounded to 2000 Unicode code points, strict JSON/plain text, included in existing export and deletion cascades, and retained across rewatches. No schema/grant changes.
 
 Added PostgreSQL/HTTP ownership, Unicode, conflict, export/clear/removal and rewatch retention tests; dashboard explicit edit/save/cancel/discard-reload with error draft preservation; two mock-browser privacy/conflict tests and real PostgreSQL browser save/foreign-read coverage. No browser persistence, external-model input, personal fixture data or deployment. Existing client-component instructions/patterns apply; local toolchains unavailable, exact-commit CI pending.
+
+## 2026-11-16 — Preserve provider theme and demographic categories
+
+0137585 passed all seven CI jobs 43825658289 and both CodeQL analyses 43825658280.
+
+The neutral feed, offline Jikan converter, public details/API and coverage diagnostics now preserve themes and demographics separately instead of only flattening them into generic tags. Prior combined Jikan tags remain compatible; fields are label-presence facts, never inferred personal attributes, automatic style features or confirmed availability.
+
+Added feed validation, converter category mapping, PostgreSQL details/coverage, local empty-array and mocked spoiler-display coverage. The dashboard shows demographics as sourced metadata, gates themes with synopsis/tags and avoids duplicate generic labels. Old snapshots/sparse providers retain empty categories. No schema/grant or source activation, no external AI/deployment; exact-commit CI pending and local toolchains unavailable.

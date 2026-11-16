@@ -35,6 +35,8 @@ type Title struct {
 	EpisodeCount *int `json:"episodeCount,omitempty"`
 	Genres []string `json:"genres,omitempty"`
 	Tags []string `json:"tags,omitempty"`
+	Themes []string `json:"themes,omitempty"`
+	Demographics []string `json:"demographics,omitempty"`
 	Studios []string `json:"studios,omitempty"`
 	Relations []Relation `json:"relations,omitempty"`
 	Episodes []Episode `json:"episodes,omitempty"`
@@ -99,7 +101,7 @@ func (s Snapshot) Validate(now time.Time) error {
 		if t.ReleaseYear != 0 && (t.ReleaseYear < 1900 || t.ReleaseYear > 9999) { return ErrInvalid }
 		if t.Season != "" && !oneOf(t.Season,"WINTER","SPRING","SUMMER","FALL") { return ErrInvalid }
 		if t.EpisodeCount != nil && (*t.EpisodeCount < 0 || *t.EpisodeCount > 100000) { return ErrInvalid }
-		if !labels(t.Synonyms) || !labels(t.Genres) || !labels(t.Tags) || !labels(t.Studios) || len(t.Episodes) > 100000 || len(t.Relations) > 1000 { return ErrInvalid }
+		if !labels(t.Synonyms) || !labels(t.Genres) || !labels(t.Tags) || !labels(t.Themes) || !labels(t.Demographics) || !labels(t.Studios) || len(t.Episodes) > 100000 || len(t.Relations) > 1000 { return ErrInvalid }
 		relations := map[string]bool{}
 		for _, r := range t.Relations {
 			key := r.Type + ":" + r.ExternalID

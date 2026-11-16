@@ -5,7 +5,7 @@ import { ApiClient } from "../lib/api";
 
 type Details = {
   anime: { id: string; title: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
-  provider?: string; observedAt?: string; genres: string[]; tags: string[]; studios: string[]; synonyms: string[];
+  provider?: string; observedAt?: string; genres: string[]; tags: string[]; themes?: string[]; demographics?: string[]; studios: string[]; synonyms: string[];
   relations: { animeId: string; type: string; title?: string; mediaType?: string; status?: string }[];
   episodes: { number: number; track: string; scheduledAt?: string; releasedAt?: string; revision: number }[];
 };
@@ -31,6 +31,8 @@ export default function CatalogDetails({ client, id, title, onError }: {
       if (alive.current && current === revision.current) { setError("Could not load catalog details. Try again."); onError(err); }
     } finally { if (alive.current && current === revision.current) setBusy(false); }
   }
+  const categorized = new Set([...(details?.themes ?? []), ...(details?.demographics ?? [])].map(value => value.toLowerCase()));
+  const otherTags = details?.tags.filter(value => !categorized.has(value.toLowerCase())) ?? [];
   return <div className="mt-3 text-sm">
     {!open ? <button aria-label={"View catalog details " + title} onClick={() => void load()} className="text-xs text-violet-200 underline">View catalog details</button> :
       <section aria-label={"Catalog details " + title} className="rounded-xl border border-white/10 p-3">
@@ -42,11 +44,12 @@ export default function CatalogDetails({ client, id, title, onError }: {
           {details.anime.nativeTitle && <p className="text-slate-400">{details.anime.nativeTitle}</p>}
           <p className="text-xs text-slate-400">{details.anime.season} {details.anime.releaseYear} · {details.anime.episodeCountKnown ? `${details.anime.episodeCount ?? 0} episodes` : "Episode total unknown"}</p>
           <p className="text-xs">Genres: {details.genres.join(", ") || "Not available"}</p>
+          <p className="text-xs">Demographics: {details.demographics?.join(", ") || "Not available"}</p>
           <p className="text-xs">Studios: {details.studios.join(", ") || "Not available"}</p>
           {!!details.synonyms.length && <p className="text-xs text-slate-400">Also known as: {details.synonyms.join(", ")}</p>}
           <p className="text-xs text-slate-500">{details.provider ? `Source: ${details.provider}` : "Starter catalog; source enrichment unavailable"}{details.observedAt ? ` · Observed ${new Date(details.observedAt).toLocaleString()}` : ""}</p>
-          <button onClick={() => setSpoilers(!spoilers)} className="text-xs text-amber-200 underline">{spoilers ? "Hide synopsis and tags" : "Show synopsis and tags (may contain spoilers)"}</button>
-          {spoilers && <div><p className="text-xs text-slate-300">{details.anime.synopsis || "No synopsis available."}</p><p className="mt-2 text-xs text-slate-400">Tags: {details.tags.join(", ") || "Not available"}</p></div>}
+          <button onClick={() => setSpoilers(!spoilers)} className="text-xs text-amber-200 underline">{spoilers ? "Hide synopsis, themes and tags" : "Show synopsis, themes and tags (may contain spoilers)"}</button>
+          {spoilers && <div><p className="text-xs text-slate-300">{details.anime.synopsis || "No synopsis available."}</p><p className="mt-2 text-xs text-slate-400">Themes: {details.themes?.join(", ") || "Not available"}</p><p className="mt-2 text-xs text-slate-400">Tags: {otherTags.join(", ") || "Not available"}</p></div>}
           {!!details.relations.length && <div className="flex flex-wrap gap-3">
             {details.relations.map(relation => <button key={relation.type + relation.animeId} disabled={busy} onClick={() => void load(relation.animeId)} className="text-xs text-violet-200 underline">View {relation.type.toLowerCase().replaceAll("_", " ")}{relation.title ? `: ${relation.title}` : " details"}{relation.mediaType ? ` · ${relation.mediaType}` : ""}{relation.status ? ` · ${relation.status}` : ""}</button>)}
           </div>}
