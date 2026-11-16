@@ -733,3 +733,7 @@ Added optional nextOffset/previousOffset response fields without an extra count 
 ## 2026-11-16 — Dashboard catalog page navigation
 
 Connected bounded next/previous offset hints to dashboard search with query/filter preservation, per-page expansion reset, retained results on failures and exact-destination retry. Existing request/account revisions reject late pages. Added browser failure/retry/return-navigation coverage with encoded filter assertions. Scoped web instructions read; packaged guides/toolchains absent, official client guide rechecked. No schema/grants/source activation/deployment. Exact CI pending.
+
+## 2026-11-16 — Reset unapplied catalog drafts across account boundaries
+
+Review found that unchanged applied-filter props could leave child draft text mounted across sign-in/sign-out. Keyed the form by account/public identity so draft state and pending label request lifetimes reset together. Added anonymous-to-account-to-anonymous browser regression coverage. Scoped web instructions read; packaged docs/toolchains absent, official client guide rechecked. No local pass claimed; exact CI pending. No schema/grants/source activation/deployment.
