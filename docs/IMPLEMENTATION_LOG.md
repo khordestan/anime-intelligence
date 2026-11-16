@@ -648,3 +648,6 @@ Added PostgreSQL tests for no-change defaults, complete preview rollback, origin
 - Synthetic unit/database coverage checks field comparisons (including unknown versus known zero), timestamps, cursor boundaries, audit/provider exclusion, malformed archives and no private/write grants.
 - Summaries expose only timestamps and allowlisted field names, never stored titles/prose or identifiers. No migration, service/source activation, raw-response archive, pruning or deployment.
 - Go/Node remain unavailable locally; exact code-commit CI/CodeQL validation pending.
+
+- Verified `a8a6ff0340cfea1c08a913e5479689a0faca2e1e`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43842253400) succeeded, including the PostgreSQL archive/preview atomicity and cursor/diff/reader isolation tests. Both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43842253442) succeeded; dependency review skipped on push.
+- Local Go/Node executables remain unavailable; these are exact-commit GitHub Actions results, not local test claims. Public repository visibility was rechecked. No deployment, live source activation, personal data or credentials were introduced.
