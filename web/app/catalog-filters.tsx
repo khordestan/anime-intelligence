@@ -17,9 +17,10 @@ export default function CatalogFilters({ client, values, onApply }: {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(values);
   const [error, setError] = useState("");
-  useEffect(() => { setDraft(values); setError(""); }, [values]);
+  const [labelGeneration,setLabelGeneration]=useState(0);
+  useEffect(() => { setDraft(values); setError(""); setLabelGeneration(current=>current+1); }, [values]);
   const applied = Object.values(values).filter(Boolean).length;
-  function clear() { setDraft(emptyCatalogFilters); setError(""); onApply(emptyCatalogFilters); }
+  function clear() { setLabelGeneration(current=>current+1); setDraft(emptyCatalogFilters); setError(""); onApply(emptyCatalogFilters); }
   return <div className="mt-3">
     <button aria-expanded={open} onClick={() => setOpen(!open)} className="text-sm text-violet-200 underline">{open ? "Hide catalog filters" : "Catalog filters"}{applied ? ` (${applied} applied)` : ""}</button>
     {open && <form aria-label="Catalog metadata filters" className="mt-3 space-y-3 rounded-xl border border-white/10 p-3" onSubmit={event => {
@@ -36,7 +37,7 @@ export default function CatalogFilters({ client, values, onApply }: {
           ["season", "Catalog release quarter", ["WINTER", "SPRING", "SUMMER", "FALL"]],
         ] as const).map(([key, label, options]) => <label key={key} className="text-xs text-slate-300">{label}<select aria-label={label} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-900 p-2"><option value="">Any</option>{options.map(value => <option key={value} value={value}>{value}</option>)}</select></label>)}
         <label className="text-xs text-slate-300">Catalog release year<input aria-label="Catalog release year" type="number" min={1900} max={9999} step={1} value={draft.releaseYear} onChange={event => setDraft(current => ({ ...current, releaseYear: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>
-        {([["genre", "Source genre"], ["theme", "Source theme (may contain spoilers)"], ["demographic", "Source demographic"], ["studio", "Source studio"]] as const).map(([key, label]) => <div key={key}><label className="text-xs text-slate-300">{label}<input aria-label={label} maxLength={256} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label><CatalogLabels client={client} field={{genre:"genres",theme:"themes",demographic:"demographics",studio:"studios"}[key]} value={draft[key]} onSelect={value=>setDraft(current=>({...current,[key]:value}))} /></div>)}
+        {([["genre", "Source genre"], ["theme", "Source theme (may contain spoilers)"], ["demographic", "Source demographic"], ["studio", "Source studio"]] as const).map(([key, label]) => <div key={key}><label className="text-xs text-slate-300">{label}<input aria-label={label} maxLength={256} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label><CatalogLabels key={key+":"+labelGeneration} client={client} field={{genre:"genres",theme:"themes",demographic:"demographics",studio:"studios"}[key]} value={draft[key]} onSelect={value=>setDraft(current=>({...current,[key]:value}))} /></div>)}
       </div>
       {error && <p role="alert" className="text-xs text-rose-200">{error}</p>}
       <div className="flex gap-4">
