@@ -17,21 +17,8 @@ var _ store.Repository = (*Repository)(nil)
 
 const animeColumns = `id::text,canonical_title,COALESCE(native_title,''),media_type,COALESCE(release_year,0),status,COALESCE(episode_count,0),COALESCE(synopsis,''),COALESCE(season_name,''),COALESCE(cover_image_url,''),episode_count IS NOT NULL`
 
-func (r *Repository) Catalog(ctx context.Context, q string, limit, offset int) ([]store.Anime, error) {
-	rows, err := r.db.pool.Query(ctx, `SELECT `+animeColumns+` FROM anime WHERE $1='' OR strpos(lower(canonical_title),lower($1))>0 OR strpos(lower(COALESCE(native_title,'')),lower($1))>0 OR EXISTS (SELECT 1 FROM catalog_metadata m WHERE m.anime_id=anime.id AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(m.payload->'synonyms','[]'::jsonb)) alternate_title(value) WHERE strpos(lower(value),lower($1))>0)) ORDER BY canonical_title,id LIMIT $2 OFFSET $3`, q, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := []store.Anime{}
-	for rows.Next() {
-		var a store.Anime
-		if err = rows.Scan(&a.ID, &a.Title, &a.NativeTitle, &a.MediaType, &a.ReleaseYear, &a.Status, &a.EpisodeCount, &a.Synopsis, &a.Season, &a.CoverImageURL, &a.EpisodeCountKnown); err != nil {
-			return nil, err
-		}
-		out = append(out, a)
-	}
-	return out, rows.Err()
+func (r *Repository) Catalog(ctx context.Context,q string,limit,offset int)([]store.Anime,error){
+ return r.FilterCatalog(ctx,store.CatalogFilter{Query:q},limit,offset)
 }
 func (r *Repository) GetAnime(ctx context.Context, id string) (store.Anime, bool, error) {
 	var a store.Anime
