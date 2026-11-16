@@ -22,3 +22,12 @@ Missing genre/theme/demographic/studio/year/quarter metadata cannot satisfy that
 PostgreSQL filters use a read-only transaction, two-second statement timeout and three-second overall context deadline. No total-count aggregation, arbitrary sorting, taxonomy inference, source activation, schema migration or grant expansion is added. Reads still use the existing no-store/security header boundary. Local mode filters only known starter scalar fields; source-label filters return an empty list.
 
 See [provider approval](PROVIDERS.md), [catalog feeds](CATALOG_FEEDS.md) and [current implementation](PROJECT_CONTEXT.md).
+
+
+## Dashboard
+
+Open Catalog filters in Add anime, select scalar fields or enter source labels, then Apply catalog filters. Draft edits do not fetch until applied. Filters work without a title query and combine with title/alias search when supplied. Clear catalog filters removes all applied criteria; hiding the controls preserves them. Inputs remain editable during a request.
+
+Filtered searches do not display unfiltered starter fallbacks while pending or failed. A local retry action repeats the current search, and response revisions discard older filter/query results. Account changes and successful tracker mutations reset applied filters alongside the existing query reset. Values and results are never persisted in browser storage.
+
+Eight matching suggestions appear initially; Show more catalog matches expands the returned results eight at a time, up to the current 100-result request. At that cap the dashboard explicitly asks for a narrower search. Broader catalog pagination/facets remain future work; there is no inferred taxonomy or hidden spoiler-bearing suggestion list.

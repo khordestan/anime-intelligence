@@ -691,3 +691,12 @@ Baseline d255709 passed all seven CI jobs 43845684186 and both CodeQL analyses 4
 Added optional combined filters for source genre/theme/demographic/studio and scalar format/status/year/quarter. Exact case-insensitive labels and literal title/native/alias search combine before deterministic ordering/pagination; absent metadata cannot satisfy a filter and legacy tags do not imply themes. Strict bounded UTF-8/query/enum/duplicate validation and fixed errors apply. Public filtered PostgreSQL reads have statement/overall deadlines; JSON mode only uses its known starter facts. No schema/grants, provider/model activation, private-data reads or deployment.
 
 Synthetic local/HTTP/PostgreSQL coverage checks combined filters, sparse/category semantics, aliases, literal SQL/wildcard-looking values, filter-before-pagination, bounds, cancellation and anonymous access. Local Go/Node remain unavailable; exact-commit CI/CodeQL pending.
+
+
+- Verified f3066abeb4e3d3ffa2c7583ae510974191553bb2: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43847016587) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43847016569) succeeded; dependency review skipped on push.
+
+## 2026-11-16 — Explicit dashboard metadata filters
+
+Added an apply/reset form for the combined scalar and sourced-label filters, with byte/year bounds, loading/empty/retry states and explicit sparse-metadata/quarter semantics. Search works without q, keeps alias searches when supplied, withholds unfiltered fallbacks for active filters and fences stale results by request/account revisions. Tracker mutations and account switches reset filters with the query. Show more expands eight suggestions at a time within the current 100-result request; the cap is labeled.
+
+Added a safe allowlisted filter-validation client error, a corresponding transport test, mocked browser coverage for combined URL encoding/draft application/clear/expansion and late-result/failure retry, plus a real anonymous PostgreSQL/browser filter test. Scoped web instructions read; packaged guides and local Go/Node remain absent, official use-client guide rechecked. Exact UI-commit CI/CodeQL pending. No schema/grants, source activation, personal fixtures, model calls or deployment.

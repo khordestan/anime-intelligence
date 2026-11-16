@@ -151,3 +151,14 @@ test("late DELETE completion cannot cross an account boundary and never decodes 
   complete({ok: true, status: 204, json: () => { throw new Error("204 body must not be decoded"); }});
   await assert.rejects(pending, StaleSessionError);
 });
+
+
+test("catalog filter validation has a safe specific message", async () => {
+  const client = new ApiClient("http://api.test", async () =>
+    Response.json({ error: "invalid_catalog_filter", message: "synthetic hidden SQL details" }, { status: 400 }),
+  );
+  await assert.rejects(client.request("/anime?genre=invalid"), error =>
+    error instanceof ApiError && error.code === "invalid_catalog_filter" &&
+    error.message === "Check the catalog filters and try again.",
+  );
+});

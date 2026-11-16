@@ -60,7 +60,8 @@ export class ApiClient {
           (response.status === 401 &&
             body?.error === "invalid_current_password") ||
           (response.status === 400 &&
-            (body?.error === "invalid_password" ||
+            (body?.error === "invalid_catalog_filter" ||
+              body?.error === "invalid_password" ||
               body?.error === "invalid_or_expired_token"))
         )
           code = body.error;
@@ -84,6 +85,8 @@ export class ApiClient {
         message = "Verify your email before using your library.";
       if (code === "invalid_current_password")
         message = "The current password is incorrect.";
+      if (code === "invalid_catalog_filter")
+        message = "Check the catalog filters and try again.";
       if (code === "invalid_password")
         message = "The new password must contain 12–1024 UTF-8 bytes.";
       if (code === "invalid_or_expired_token")

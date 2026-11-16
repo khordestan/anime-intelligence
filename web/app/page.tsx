@@ -7,6 +7,7 @@ import EpisodeEditor from "./episode-editor";
 import RewatchManager from "./rewatch-manager";
 import NotesEditor from "./notes-editor";
 import CatalogDetails from "./catalog-details";
+import CatalogFilters, { emptyCatalogFilters, type CatalogFilterValues } from "./catalog-filters";
 import PersonalMatches from "./personal-matches";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
@@ -65,6 +66,11 @@ export default function Home() {
     [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [searchedCatalog, setSearchedCatalog] = useState<Anime[] | null>(null);
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>(emptyCatalogFilters);
+  const hasCatalogFilters = Object.values(catalogFilters).some(Boolean);
+  const [catalogSearchBusy, setCatalogSearchBusy] = useState(false);
+  const [catalogSearchError, setCatalogSearchError] = useState("");
+  const [catalogResultLimit, setCatalogResultLimit] = useState(8);
   const catalogSearchRevision = useRef(0);
   const [client] = useState(() => new ApiClient(API));
   const [identityAvailable, setIdentityAvailable] = useState(false);
@@ -83,6 +89,7 @@ export default function Home() {
       accountRevision.current++;
       catalogSearchRevision.current++;
       setSearchedCatalog(null);
+      setCatalogFilters(emptyCatalogFilters); setCatalogSearchBusy(false); setCatalogSearchError("");
       refreshRevision.current++;
       setRemoval(null);
       client.setSession(next);
@@ -144,15 +151,19 @@ export default function Home() {
   }, [client, handleError]);
   useEffect(() => {
     const revision = ++catalogSearchRevision.current;
-    setSearchedCatalog(null);
-    if (!query.trim() || mode === null) return;
+    setSearchedCatalog(null); setCatalogSearchError(""); setCatalogSearchBusy(false); setCatalogResultLimit(8);
+    if ((!query.trim() && !hasCatalogFilters) || mode === null) return;
+    setCatalogSearchBusy(true);
     const timer = setTimeout(() => {
-      client.request<{ items: Anime[] }>("/anime?q=" + encodeURIComponent(query.trim()) + "&limit=100")
+      const params = new URLSearchParams({ q: query.trim(), limit: "100" });
+      for (const [key, value] of Object.entries(catalogFilters)) if (value) params.set(key, value);
+      client.request<{ items: Anime[] }>("/anime?" + params.toString())
         .then(result => { if (revision === catalogSearchRevision.current) setSearchedCatalog(result.items ?? []); })
-        .catch(error => { if (revision === catalogSearchRevision.current) handleError(error); });
+        .catch(error => { if (revision === catalogSearchRevision.current) { setCatalogSearchError("Could not search catalog. Try again."); handleError(error); } })
+        .finally(() => { if (revision === catalogSearchRevision.current) setCatalogSearchBusy(false); });
     }, 250);
     return () => { clearTimeout(timer); catalogSearchRevision.current++; };
-  }, [query, mode, client, handleError]);
+  }, [query, mode, client, handleError, catalogFilters, hasCatalogFilters]);
   async function refreshVerifiedUser() {
     if (!session) return;
     try {
@@ -248,7 +259,7 @@ export default function Home() {
       });
       if (revision !== accountRevision.current) return;
       setRemoval(null);
-      setQuery("");
+      setQuery(""); setCatalogFilters(emptyCatalogFilters);
       await refresh();
     } catch (e) {
       handleError(e);
@@ -260,17 +271,17 @@ export default function Home() {
     () => library.filter((x) => filter === "ALL" || x.watchStatus === filter),
     [library, filter],
   );
-  const results = useMemo(
+  const matchingCatalog = useMemo(
     () =>
-      (searchedCatalog ?? catalog)
+      (searchedCatalog ?? (hasCatalogFilters ? [] : catalog))
         .filter(
           (x) =>
             (searchedCatalog !== null || x.title.toLowerCase().includes(query.toLowerCase())) &&
             !library.some((e) => e.animeId === x.id),
-        )
-        .slice(0, 8),
-    [catalog, searchedCatalog, library, query],
+        ),
+    [catalog, searchedCatalog, library, query, hasCatalogFilters],
   );
+  const results = matchingCatalog.slice(0, catalogResultLimit);
   async function add(a: Anime) {
     await mutate("/tracker", "POST", {
       animeId: a.id,
@@ -479,7 +490,11 @@ export default function Home() {
           placeholder="Search starter catalog…"
           className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-violet-400"
         />
-        {query && (
+        <CatalogFilters values={catalogFilters} onApply={values => { catalogSearchRevision.current++; setSearchedCatalog(null); setCatalogFilters({ ...values }); }} />
+        {(query || hasCatalogFilters) && catalogSearchBusy && <p role="status" className="mt-3 text-sm text-slate-400">Searching catalog…</p>}
+        {catalogSearchError && <p role="alert" className="mt-3 text-sm text-rose-200">{catalogSearchError} <button onClick={() => setCatalogFilters(current => ({ ...current }))} className="underline">Retry catalog search</button></p>}
+        {(query || hasCatalogFilters) && searchedCatalog !== null && !catalogSearchBusy && results.length === 0 && <p className="mt-3 text-sm text-slate-400">No matching anime outside your library.</p>}
+        {(query || hasCatalogFilters) && (
           <div className="mt-3 space-y-2">
             {results.map((a) => (
               <div
@@ -502,6 +517,8 @@ export default function Home() {
                 <CatalogDetails key={`search-catalog:${session?.user.id ?? "public"}:${a.id}`} client={client} id={a.id} title={a.title} onError={handleError} />
               </div>
             ))}
+            {matchingCatalog.length > results.length && <button onClick={() => setCatalogResultLimit(current => current + 8)} className="text-sm text-violet-200 underline">Show more catalog matches</button>}
+            {searchedCatalog?.length === 100 && <p className="text-xs text-slate-400">Showing the first 100 matches. Refine your search or filters to narrow the results.</p>}
           </div>
         )}
       </section>

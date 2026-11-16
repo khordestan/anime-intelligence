@@ -401,3 +401,23 @@ test("real public linked-title view works without signing in", async ({ page, re
   await expect(linked.getByText("No linked prequels or sequels are available.", { exact: true })).toBeVisible();
   await expect(linked.getByRole("button", { name: "View linked title: Solo Leveling", exact: true })).toBeVisible();
 });
+
+
+test("real public catalog scalar and sparse-source filters work without authentication", async ({ page, request }) => {
+  const response = await request.get(API + "/anime?mediaType=TV&status=FINISHED&releaseYear=2024&q=Solo");
+  expect(response.status()).toBe(200);
+  expect((await response.json()).items.map((item: { title: string }) => item.title)).toEqual(["Solo Leveling"]);
+  const absent = await request.get(API + "/anime?genre=SyntheticUnobservedGenre");
+  expect(absent.status()).toBe(200);
+  expect((await absent.json()).items).toEqual([]);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Catalog filters", exact: true }).click();
+  const form = page.getByRole("form", { name: "Catalog metadata filters", exact: true });
+  await form.getByLabel("Catalog release year", { exact: true }).fill("2024");
+  await form.getByRole("button", { name: "Apply catalog filters", exact: true }).click();
+  await expect(page.getByRole("button", { name: "View catalog details Solo Leveling", exact: true })).toBeVisible();
+  await form.getByLabel("Source genre", { exact: true }).fill("SyntheticUnobservedGenre");
+  await form.getByRole("button", { name: "Apply catalog filters", exact: true }).click();
+  await expect(page.getByText("No matching anime outside your library.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View catalog details Solo Leveling", exact: true })).toHaveCount(0);
+});
