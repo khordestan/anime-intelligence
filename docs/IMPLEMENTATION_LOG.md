@@ -557,3 +557,9 @@ fbea195 passed all seven CI jobs 43819431830 and both CodeQL analyses 4381943183
 Primary Jikan OpenAPI review confirmed titles is the current collection and legacy title/name fields are deprecated. The offline converter now handles modern-only title responses, prefers current Default/Japanese entries, retains localized and legacy alternatives as bounded deduplicated search aliases, and uses deterministic English/Japanese canonical fallbacks when needed. Ambiguous typed primary names and missing classified/legacy identity fail closed.
 
 Added synthetic modern-only, mixed-field precedence/retention, future locale, duplicate/blank alias, fallback, conflicting-primary and malformed-value tests. Existing legacy fixtures remain required. No catalog API calls, live Jikan collection, personal data or source approval added. Exact-commit CI pending; local toolchains unavailable.
+
+## 2026-11-16 — Verified metadata/continuity/release-preview checkpoint
+
+6b05402 passed all seven CI jobs 43819766803 and both CodeQL analyses 43819766974. Prior commits 0fcc968 (per-title freshness/coverage), fc02a4d (season navigation) and fbea195 (historical preview correction) also passed their inspected CI and CodeQL runs recorded above. This includes disposable PostgreSQL public catalog tests, mocked named-season navigation, both real browser suites, recovery, backend and monitoring. Repository metadata still reports public.
+
+No local toolchain pass, provider activation, personal data import or deployment claimed. Source coverage, field arbitration, curation/retractions, rewatches, background alert delivery, recommendation evaluation/hybrid AI and production security remain open. This documentation checkpoint records the verified implementation SHA; its own automatic checks run separately.

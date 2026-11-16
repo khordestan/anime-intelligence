@@ -55,8 +55,10 @@
 - [ ] Canonical entity resolution and field-level provenance
 - [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
 - [ ] Real evidence corpus and broader reviewed scope coverage
-- [ ] Data quality and freshness monitoring
-- [ ] Franchise, season and episode relation graph
+- [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics
+- [ ] Catalog SLOs, metrics/alerts, field accuracy and completeness evaluation
+- [x] Validated canonical prequel/sequel graph and named bidirectional direct continuity navigation
+- [ ] Reviewed franchise curation/retractions, finer season conventions and graph browsing
 
 ## Milestone 3 — Tracker completeness
 - [x] Transactional owner-scoped tracker removal API with ratings/progress cleanup
