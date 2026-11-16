@@ -78,6 +78,24 @@ func TestDedicatedIdentityMapperHasNoPrivateOrRewriteAccess(t *testing.T){
  for _,query:=range []string{`SELECT email FROM users`,`SELECT count(*) FROM watch_cycles`,`UPDATE anime_external_ids SET anime_id='10000000-0000-4000-8000-000000000002'`,`DELETE FROM anime_external_ids`,`UPDATE data_sources SET enabled=false`,`UPDATE anime SET canonical_title='rewritten'`,`SELECT payload FROM source_records`}{
   if _,err=mapper.Exec(ctx,query);err==nil{t.Fatal("excess mapper privilege")}
  }
+ // Unexpected relations and indirect access must fail before any source fetch.
+ for _,fixture:=range []struct{create,grant,revoke string}{
+  {`CREATE TABLE synthetic_future_private(user_id uuid,payload text); ALTER TABLE synthetic_future_private ENABLE ROW LEVEL SECURITY; ALTER TABLE synthetic_future_private FORCE ROW LEVEL SECURITY`,`GRANT SELECT(payload) ON synthetic_future_private TO `+quoted,`REVOKE SELECT(payload) ON synthetic_future_private FROM `+quoted},
+  {`CREATE VIEW synthetic_private_view AS SELECT email FROM users`,`GRANT SELECT ON synthetic_private_view TO `+quoted,`REVOKE SELECT ON synthetic_private_view FROM `+quoted},
+  {`CREATE SCHEMA synthetic_private; CREATE TABLE synthetic_private.rows(payload text)`,`GRANT USAGE ON SCHEMA synthetic_private TO `+quoted+`; GRANT SELECT ON synthetic_private.rows TO `+quoted,`REVOKE SELECT ON synthetic_private.rows FROM `+quoted},
+  {`CREATE SCHEMA pgcustom_private; CREATE TABLE pgcustom_private.rows(payload text)`,`GRANT USAGE ON SCHEMA pgcustom_private TO `+quoted+`; GRANT SELECT ON pgcustom_private.rows TO `+quoted,`REVOKE SELECT ON pgcustom_private.rows FROM `+quoted},
+ }{
+  if _,err=owner.Exec(ctx,fixture.create);err!=nil{t.Fatal(err)}
+  if _,err=owner.Exec(ctx,fixture.grant);err!=nil{t.Fatal(err)}
+  if err=catalogsync.CheckWriter(ctx,mapper);err==nil{t.Fatal("indirect or unexpected private relation accepted")}
+  if _,err=owner.Exec(ctx,fixture.revoke);err!=nil{t.Fatal(err)}
+  if err=catalogsync.CheckWriter(ctx,mapper);err!=nil{t.Fatal("revoked unsafe privilege still rejected",err)}
+ }
+ if _,err=owner.Exec(ctx,`CREATE FUNCTION synthetic_private_definer() RETURNS text LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,public AS $$ SELECT 'synthetic-private'::text $$`);err!=nil{t.Fatal(err)}
+ // Functions default to PUBLIC EXECUTE; metadata checks must include that path.
+ if err=catalogsync.CheckWriter(ctx,mapper);err==nil{t.Fatal("executable security definer accepted")}
+ if _,err=owner.Exec(ctx,`REVOKE EXECUTE ON FUNCTION synthetic_private_definer() FROM PUBLIC`);err!=nil{t.Fatal(err)}
+ if err=catalogsync.CheckWriter(ctx,mapper);err!=nil{t.Fatal("non-executable definer rejected",err)}
  if _,err=owner.Exec(ctx,`GRANT SELECT(episodes_watched) ON watch_cycles TO `+quoted);err!=nil{t.Fatal(err)}
  if err=catalogsync.CheckWriter(ctx,mapper);err==nil{t.Fatal("private history column grant accepted")}
 }

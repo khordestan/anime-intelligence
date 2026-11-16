@@ -621,3 +621,9 @@ Added decoder/validation tests and PostgreSQL preview/replay/conflict/atomicity/
 ce3b460 passed all seven CI jobs 43836212263 and both CodeQL analyses 43836212323. Added exact case-sensitive GET /anime/lookup and public provider/externalId arrays in the existing consistent catalog-details snapshot. The dashboard renders these as text; metadata authority remains separate. External URLs, source review payloads/references and private records stay excluded.
 
 Added narrow runtime column reads with readiness/grant fixtures and tests covering lookup validation, route precedence, canonical reuse, cross-provider authority retention, missing/local identities, URL-read denial and browser ID display. No migration or public catalog write route. Scoped web instructions read; packaged guides/toolchains unavailable, official use-client guide rechecked and existing component pattern reused. Exact-commit CI pending; no source activation or deployment.
+
+## 2026-11-16 — Fail closed on indirect catalog-role data access
+
+cf3b325 passed all seven CI jobs 43837173422 and both CodeQL analyses 43837173610. Review found the common writer/curator/mapper guard relied on fixed private table names, which could miss future tables, other schemas, owner-backed views and executable security-definer routines. It now permits relation privileges only on the reviewed non-RLS public catalog table contract and rejects indirect user-schema access. The check reads privilege metadata only.
+
+Extended restricted mapper tests with a future forced-RLS table, a private view, another schema and PUBLIC-executable SECURITY DEFINER function; each is rejected while granted, and accepted again after unsafe execution/data privileges are revoked. Existing writer/curator suites remain required. No actual database privileges, private-data queries, schema migrations or deployment changed; exact-commit CI pending, local toolchains unavailable.

@@ -13,6 +13,8 @@ var ErrWorker = errors.New("catalog worker configuration or cycle failed")
 type Fetcher interface{Fetch(context.Context,[]string)(feed.Snapshot,error)}
 
 // CheckWriter rejects migration credentials and roles with account-data rights.
+// Only the fixed public catalog table contract is supported. Reject indirect
+// access through views/foreign relations, other schemas and security definers.
 // This check reads privilege metadata, never private rows.
 func CheckWriter(ctx context.Context,conn *pgx.Conn)error{
 	var unsafe bool
@@ -21,11 +23,19 @@ OR EXISTS(SELECT 1 FROM pg_auth_members m WHERE m.member=r.oid)
 OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='public' AND c.relkind='r' AND pg_has_role(current_user,c.relowner,'USAGE'))
 OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-WHERE n.nspname='public' AND c.relname IN
-('users','auth_sessions','auth_challenges','identity_outbox','identity_requests','user_anime','watch_cycles','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications')
+WHERE left(n.nspname::text,3)<>'pg_' AND n.nspname<>'information_schema'
+AND c.relkind IN ('r','p','v','m','f')
+AND (n.nspname<>'public' OR c.relkind<>'r' OR c.relrowsecurity OR c.relforcerowsecurity
+OR c.relname NOT IN ('anime','anime_external_ids','data_sources','source_records',
+'catalog_sync_state','catalog_fetch_state','catalog_metadata','anime_relations',
+'airing_schedule','domain_events','anime_features','anime_feature_observations'))
 AND (has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT')
-OR has_any_column_privilege(current_user,c.oid,'UPDATE') OR has_table_privilege(current_user,c.oid,'DELETE')
-OR has_table_privilege(current_user,c.oid,'TRUNCATE')))
+OR has_any_column_privilege(current_user,c.oid,'UPDATE') OR has_any_column_privilege(current_user,c.oid,'REFERENCES')
+OR has_table_privilege(current_user,c.oid,'DELETE') OR has_table_privilege(current_user,c.oid,'TRUNCATE')
+OR has_table_privilege(current_user,c.oid,'TRIGGER')))
+OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE left(n.nspname::text,3)<>'pg_' AND n.nspname<>'information_schema'
+AND p.prosecdef AND has_function_privilege(current_user,p.oid,'EXECUTE'))
 FROM pg_roles r WHERE r.rolname=current_user`).Scan(&unsafe)
 	if err!=nil||unsafe{return ErrWorker}
 	return nil
