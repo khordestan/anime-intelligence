@@ -6,7 +6,7 @@ Reviewed 2026-11-15 against primary sources. No scheduled external provider is e
 | --- | --- | --- | --- | --- | --- | --- |
 | Reviewed neutral feed | Strict version-1 JSON | Rich structured title metadata | Typed canonical resolution | Revisioned by track | Explicit releasedAt | Administrator source registration required |
 | Wikidata CC0 | Explicit-item live Action API fetch | Selected TV anime labels/native names/aliases, genres, year and non-conflicting episode totals | Unsupported | Unsupported | Unsupported | No scheduled job or database source enabled |
-| Jikan v4 | Offline full-anime and episode-page converters | Names, aliases, synopsis, media/status/year/quarter, nullable totals, genres/themes/demographics/studios | Anime-only supported relations; manga/adaptation edges excluded | Aired timestamps as UNKNOWN-track schedules | Unsupported; never inferred | Network collection disabled pending source-use approval |
+| Jikan v4 | Offline full-anime and episode-page converters | Typed/localized and legacy names, aliases, synopsis, media/status/year/quarter, nullable totals, genres/themes/demographics/studios | Anime-only supported relations; manga/adaptation edges excluded | Aired timestamps as UNKNOWN-track schedules | Unsupported; never inferred | Network collection disabled pending source-use approval |
 | AniList | None | Not ingested | Not ingested | Not ingested | Not ingested | Excluded under current tracker/collection restrictions |
 
 ## Jikan
@@ -49,3 +49,7 @@ Requests include a project User-Agent, maxlag=5, bounded response sizes, 15-seco
 A single primary API smoke check for Q124570859 returned HTTP 200 with the expected direct anime-TV class. No data was imported, user account read, media downloaded or source activated. Synthetic transport tests cover normalization, missing/unsupported entities, rank ambiguity, unknown facts, headers/pacing boundaries, redirects, rate limits, oversized/malformed responses and cancellation.
 
 Review the normalized feed before import. An administrator can register provider_key=wikidata with the official data-access policy URL and enabled=true in their own database, then use catalog-import. No source activation is performed by catalog-fetch. Existing authoritative mappings are not overwritten or name-merged. Wikidata is a sparse factual fallback, not a comprehensive anime/availability feed: synopsis, studio claims, season graph, streaming rights, airing schedules and confirmed SUB/DUB releases remain unknown. Scheduled fetching and persistent caches are not implemented.
+
+## 2026-11-16 title schema compatibility
+
+Rechecked the primary OpenAPI schema's current titles collection and deprecated legacy title fields. Offline conversion prefers typed Default and Japanese entries, retaining localized/unknown-type names as search aliases. Legacy title fields remain fallbacks and aliases. Without Default/legacy canonical data, English then Japanese provides a deterministic fallback; unclassified names alone do not become canonical identity. Conflicting nonblank Default/English/Japanese declarations fail closed. This changes no source-use permission or network activation.

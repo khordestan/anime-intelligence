@@ -15,6 +15,7 @@ type named struct {Name string `json:"name"`}
 type resource struct {ID int `json:"mal_id"`; Type string `json:"type"`}
 type full struct {
 	ID int `json:"mal_id"`
+	Titles []struct{Type string `json:"type"`;Title string `json:"title"`} `json:"titles"`
 	Title string `json:"title"`
 	English string `json:"title_english"`
 	Japanese string `json:"title_japanese"`
@@ -63,9 +64,29 @@ func DecodeFull(r io.Reader,observed,now time.Time) (feed.Snapshot,error) {
 	if err:=decode(r,&envelope);err!=nil || envelope.Data==nil {return feed.Snapshot{},feed.ErrInvalid}
 	d:=envelope.Data
 	if d.ID<1 {return feed.Snapshot{},feed.ErrInvalid}
-	t:=feed.Title{ExternalID:strconv.Itoa(d.ID),Title:strings.TrimSpace(d.Title),NativeTitle:d.Japanese,Synopsis:d.Synopsis,
+	// Prefer the current typed title collection. Deprecated fields remain
+	// fallbacks and aliases, never the only accepted source of title identity.
+	primary:=map[string]string{}
+	aliases:=append([]string{},d.Synonyms...)
+	aliases=append(aliases,d.English,d.Title,d.Japanese)
+	for _,title:=range d.Titles{
+		value:=strings.TrimSpace(title.Title)
+		if value==""{continue}
+		aliases=append(aliases,value)
+		kind:=strings.ToLower(strings.TrimSpace(title.Type))
+		switch kind{case "default","english","japanese":
+			if prior:=primary[kind];prior!=""&&!strings.EqualFold(prior,value){return feed.Snapshot{},feed.ErrInvalid}
+			primary[kind]=value
+		}
+	}
+	first:=func(values ...string)string{for _,value:=range values{if value=strings.TrimSpace(value);value!=""{return value}};return ""}
+	canonical:=first(primary["default"],d.Title,primary["english"],d.English,primary["japanese"],d.Japanese)
+	native:=first(primary["japanese"],d.Japanese)
+	namesForSearch:=[]string{}
+	for _,alias:=range unique(aliases){if !strings.EqualFold(alias,canonical)&&!strings.EqualFold(alias,native){namesForSearch=append(namesForSearch,alias)}}
+	t:=feed.Title{ExternalID:strconv.Itoa(d.ID),Title:canonical,NativeTitle:native,Synopsis:d.Synopsis,
 		MediaType:"UNKNOWN",Status:"UNKNOWN",ReleaseYear:d.Year,EpisodeCount:d.Episodes,
-		Synonyms:unique(append(d.Synonyms,d.English)),Genres:names(d.Genres,d.ExplicitGenres),Tags:names(d.Themes,d.Demographics),Studios:names(d.Studios)}
+		Synonyms:namesForSearch,Genres:names(d.Genres,d.ExplicitGenres),Tags:names(d.Themes,d.Demographics),Studios:names(d.Studios)}
 	switch d.Type {
 	case "TV","MOVIE","OVA","ONA","SPECIAL","MUSIC":t.MediaType=d.Type
 	case "Movie":t.MediaType="MOVIE"

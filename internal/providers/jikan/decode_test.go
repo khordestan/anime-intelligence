@@ -45,3 +45,32 @@ func TestTypeStatusAndRelationMappings(t *testing.T) {
 		if err!=nil || s.Titles[0].Status!=tc.want {t.Fatal("status mapping",tc,err)}
 	}
 }
+
+func TestCurrentTitlesAndLocalizedSearchAliases(t *testing.T){
+ now:=time.Date(2026,1,2,0,0,0,0,time.UTC)
+ input:=`{"data":{"mal_id":2001,"titles":[{"type":"Default","title":"Synthetic Modern Title"},{"type":"English","title":"Synthetic English"},{"type":"Japanese","title":"Synthetic Native"},{"type":"French","title":"Synthetic French"},{"type":"Synonym","title":"Synthetic Alias"},{"type":"Future Locale","title":"Synthetic Localized"},{"type":"Synonym","title":" synthetic alias "}],"type":"TV","status":"Currently Airing"}}`
+ snapshot,err:=DecodeFull(strings.NewReader(input),now,now)
+ if err!=nil{t.Fatal("modern-only response rejected",err)}
+ title:=snapshot.Titles[0]
+ if title.Title!="Synthetic Modern Title"||title.NativeTitle!="Synthetic Native"||len(title.Synonyms)!=4{t.Fatal("typed title mapping",title)}
+ for _,alias:=range []string{"Synthetic English","Synthetic French","Synthetic Alias","Synthetic Localized"}{
+  found:=false;for _,got:=range title.Synonyms{if got==alias{found=true}}
+  if !found{t.Fatal("localized alias lost",alias)}
+ }
+ mixed:=strings.Replace(input,`"mal_id":2001`,`"mal_id":2001,"title":"Synthetic Legacy Title","title_japanese":"Synthetic Legacy Native","title_english":"Synthetic Legacy English"`,1)
+ snapshot,err=DecodeFull(strings.NewReader(mixed),now,now)
+ if err!=nil||snapshot.Titles[0].Title!="Synthetic Modern Title"||snapshot.Titles[0].NativeTitle!="Synthetic Native"||len(snapshot.Titles[0].Synonyms)!=7{t.Fatal("modern precedence or legacy aliases lost",snapshot,err)}
+ for _,fallback:=range []struct{kind,want string}{{"English","Synthetic English Only"},{"Japanese","Synthetic Japanese Only"}}{
+  raw:=`{"data":{"mal_id":2001,"titles":[{"type":"`+fallback.kind+`","title":"`+fallback.want+`"}],"type":"TV"}}`
+  snapshot,err=DecodeFull(strings.NewReader(raw),now,now)
+  if err!=nil||snapshot.Titles[0].Title!=fallback.want{t.Fatal("typed fallback",snapshot,err)}
+ }
+ for _,raw:=range []string{
+  `{"data":{"mal_id":2001,"titles":[{"type":"Default","title":"One"},{"type":"Default","title":"Other"}]}}`,
+  `{"data":{"mal_id":2001,"titles":[{"type":"Default","title":" "} ]}}`,
+  `{"data":{"mal_id":2001,"titles":[{"type":"Unrecognized","title":"Unclassified Only"}]}}`,
+  `{"data":{"mal_id":2001,"titles":[{"type":"Default","title":5}]}}`,
+ }{
+  if _,err=DecodeFull(strings.NewReader(raw),now,now);err!=feed.ErrInvalid{t.Fatal("ambiguous/invalid title accepted")}
+ }
+}

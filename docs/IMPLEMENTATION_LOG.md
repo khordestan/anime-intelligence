@@ -549,3 +549,11 @@ fc02a4d passed all seven CI jobs 43819109502 and both CodeQL analyses 4381910940
 Review found the pure snapshot-pair release preview could report old backfilled confirmations as new events even though persistent ingestion baselines them. It now requires release times strictly newer than the supplied prior observation, using the same PostgreSQL microsecond precision, and rejects observation pairs indistinguishable at that precision.
 
 Added boundary regressions for known/new titles, historical/equal/sub-microsecond/new confirmations, while preserving track identity, stable keys, schedule-only suppression and first-import baseline behavior. Documented the preview's limited two-snapshot state: it cannot reproduce persistent per-title history after intervening partial feeds. No production ingestion semantics, provider activation or delivery changed. Exact-commit CI pending; local toolchains unavailable.
+
+## 2026-11-16 — Current provider title collections and localized aliases
+
+fbea195 passed all seven CI jobs 43819431830 and both CodeQL analyses 43819431835.
+
+Primary Jikan OpenAPI review confirmed titles is the current collection and legacy title/name fields are deprecated. The offline converter now handles modern-only title responses, prefers current Default/Japanese entries, retains localized and legacy alternatives as bounded deduplicated search aliases, and uses deterministic English/Japanese canonical fallbacks when needed. Ambiguous typed primary names and missing classified/legacy identity fail closed.
+
+Added synthetic modern-only, mixed-field precedence/retention, future locale, duplicate/blank alias, fallback, conflicting-primary and malformed-value tests. Existing legacy fixtures remain required. No catalog API calls, live Jikan collection, personal data or source approval added. Exact-commit CI pending; local toolchains unavailable.
