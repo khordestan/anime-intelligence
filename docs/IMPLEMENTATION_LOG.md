@@ -745,3 +745,7 @@ History decoding now checks canonical UUID syntax and runs neutral-feed validati
 ## 2026-11-16 — Aggregate catalog Prometheus diagnostics
 
 Added opt-in catalog-status -format=prometheus with fixed aggregate freshness/coverage/schedule gauges, snapshot timestamp, validation and no dynamic/private/provider labels. JSON default retained. Added unit contract/privacy/invalid-snapshot tests and a synthetic real-renderer promtool check to monitoring CI. No schema/grants/source activation/collector/receiver/deployment. Local toolchains absent; exact CI pending. Baseline a369580 passed CI 43882243818 and Security 43882243978.
+
+## 2026-11-16 — Verified catalog telemetry checkpoint
+
+0b000bd4e4f5b6ffd8c951be4fbb5686d3c65169 passed all seven CI jobs in https://github.com/khordestan/anime-intelligence/actions/runs/43889783641 and both CodeQL analyses in https://github.com/khordestan/anime-intelligence/actions/runs/43889783434 (dependency review skipped on push). This includes real-renderer promtool parsing, backend race/vet/build/vulnerability, migrations/RLS/recovery and browser suites. Updated stale context pending notes; all included catalog behavior is covered by this exact checkpoint. Local toolchains unavailable; no local pass claimed. No source/model/collector/receiver or deployment activated. Documentation-only follow-up checks run separately.

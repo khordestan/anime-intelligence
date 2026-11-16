@@ -77,7 +77,7 @@ The optional operator-only `catalog-history` command summarizes retained observa
 4. CI has backend, monitoring/parser/rule/unit checks, frontend/mocked-browser, database/migration/rollback, a dedicated isolated PostgreSQL 17 logical recovery drill, and two real PostgreSQL/browser suites (`postgres`, `identity`). Both use disposable restricted database roles and a loopback-only synthetic TLS mailbox. CodeQL runs separately. Verify checks for the exact pushed SHA; a local pass does not prove browser CI.
 5. Commit implementation/tests and context updates together where practical. Record verified results in the implementation log; leave pending checks explicitly pending. Keep code and context in GitHub rather than a separate artifact store.
 
-Latest verified implementation checkpoint: `cbdc71d` passed all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43847834579) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43847834679). Earlier exact-commit results and browser-discovery corrections remain in IMPLEMENTATION_LOG.md.
+Latest verified implementation checkpoint: `0b000bd` passed all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43889783641) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43889783434). This includes the catalog metrics promtool parser check. Earlier exact-commit evidence remains in IMPLEMENTATION_LOG.md.
 
 This continuation added public combined metadata filters and an explicit dashboard apply/reset form for source genres/themes/demographics/studios and format/status/year/quarter. Filters run before sorting/pagination, preserve unknown/category distinctions and retain alias search. Dashboard search/retry/expansion is bounded and stale results are fenced across query/filter/account revisions. No schema or grant update is required. No production data/source activation, external-model call or deployment occurred. The repository remains public; only source and synthetic fixtures were committed.
 
@@ -85,20 +85,20 @@ Local Go/Node toolchains are unavailable; verification ran in GitHub Actions. Co
 
 Direct Catalog repository reads now delegate to FilterCatalog, sharing validation and read deadlines. Exact follow-up CI pending; see CATALOG_READ_VALIDATION.md.
 
-Available source-label discovery is now implemented at GET /anime/facets with strict field/prefix/limit validation, deduplication and bounded lookahead. Dashboard suggestions remain pending. See CATALOG_FACETS.md; exact follow-up CI pending.
+Available source-label discovery is now implemented at GET /anime/facets with strict field/prefix/limit validation, deduplication and bounded lookahead. Dashboard suggestions are implemented with explicit user requests. See CATALOG_FACETS.md; Covered by the verified checkpoint above.
 
-Dashboard source-label discovery now loads only on explicit request, uses the draft label as a prefix, warns before requesting themes, and fences stale responses on edits/unmount. Selecting a suggestion changes only the draft; Apply remains required. CI pending.
+Dashboard source-label discovery now loads only on explicit request, uses the draft label as a prefix, warns before requesting themes, and fences stale responses on edits/unmount. Selecting a suggestion changes only the draft; Apply remains required. Covered by the verified checkpoint above.
 
-Dashboard label discovery rejects prefixes over 128 UTF-8 bytes locally with a specific message, while complete filter values retain the separate 256-byte limit. Browser coverage verifies multi-byte overflow sends no discovery request. Exact follow-up CI pending.
+Dashboard label discovery rejects prefixes over 128 UTF-8 bytes locally with a specific message, while complete filter values retain the separate 256-byte limit. Browser coverage verifies multi-byte overflow sends no discovery request. Covered by the verified checkpoint above.
 
-Direct local Catalog reads now share FilterCatalog validation, ordering and bounds with public filtered reads; local filtered reads honor cancelled contexts even when a sparse label would otherwise return early. No local-mode authentication is implied. Follow-up CI pending.
+Direct local Catalog reads now share FilterCatalog validation, ordering and bounds with public filtered reads; local filtered reads honor cancelled contexts even when a sparse label would otherwise return early. No local-mode authentication is implied. Covered by the verified checkpoint above.
 
-Catalog list responses now offer optional nextOffset/previousOffset hints within existing bounds, preserving filters and existing response fields. Full-page nextOffset may lead to an empty page; concurrent ingestion can shift offsets. See CATALOG_PAGINATION.md. CI pending.
+Catalog list responses now offer optional nextOffset/previousOffset hints within existing bounds, preserving filters and existing response fields. Full-page nextOffset may lead to an empty page; concurrent ingestion can shift offsets. See CATALOG_PAGINATION.md. Covered by the verified checkpoint above.
 
-Dashboard catalog searches now follow next/previous offset hints while preserving query and applied filters. Failed page requests retain results and retry the same offset; filter/query/account revisions fence late pages. Offset pages remain mutable during ingestion. CI pending.
+Dashboard catalog searches now follow next/previous offset hints while preserving query and applied filters. Failed page requests retain results and retry the same offset; filter/query/account revisions fence late pages. Offset pages remain mutable during ingestion. Covered by the verified checkpoint above.
 
-Catalog filter forms are now keyed to the active account/public identity, clearing unapplied drafts and unmounting label requests on sign-in/sign-out/account switches. Browser regression coverage added; exact CI pending.
+Catalog filter forms are now keyed to the active account/public identity, clearing unapplied drafts and unmounting label requests on sign-in/sign-out/account switches. Browser regression coverage added; Covered by the verified checkpoint above.
 
-Catalog history now validates retained canonical UUIDs and neutral title facts before summarizing observations, using the original observation time for release validation. Corrupt facts fail with the fixed history error; no raw values are returned. Exact CI pending.
+Catalog history now validates retained canonical UUIDs and neutral title facts before summarizing observations, using the original observation time for release validation. Corrupt facts fail with the fixed history error; no raw values are returned. Exact Covered by the verified checkpoint above.
 
-Catalog-status now offers optional aggregate Prometheus output with fixed metric names and no dynamic labels, provider values or account data. JSON remains default. Monitoring CI parses synthetic renderer output with promtool; no collection/alert receiver is activated. See CATALOG_METRICS.md. Exact CI pending.
+Catalog-status now offers optional aggregate Prometheus output with fixed metric names and no dynamic labels, provider values or account data. JSON remains default. Monitoring CI parses synthetic renderer output with promtool; no collection/alert receiver is activated. See CATALOG_METRICS.md. Exact Covered by the verified checkpoint above.

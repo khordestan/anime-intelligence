@@ -58,11 +58,14 @@
 - [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
 - [ ] Real evidence corpus and broader reviewed scope coverage
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics
-- [ ] Catalog SLOs, metrics/alerts, field accuracy and completeness evaluation
+- [x] Aggregate catalog freshness/metadata-presence Prometheus diagnostics with parser CI
+- [ ] Catalog SLOs/alert activation, field accuracy and completeness evaluation
 - [x] Validated canonical prequel/sequel graph and named bidirectional direct continuity navigation
 - [x] Bounded public transitive prequel/sequel API and dashboard browsing with source labels and cap warnings
 - [x] Combined sourced-category/format/status/year/quarter catalog filters with explicit dashboard controls and bounded result expansion
-- [ ] Available-value facets and broader catalog pagination
+- [x] Bounded available-value facets and explicit dashboard label discovery
+- [x] Offset navigation hints and dashboard filtered paging with retry
+- [ ] Stable cursor pagination and broader catalog navigation
 - [ ] Reviewed franchise curation/retractions and finer season conventions
 
 ## Milestone 3 — Tracker completeness
