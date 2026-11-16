@@ -60,7 +60,8 @@ func TestReleaseDetection(t *testing.T) {
 	next.Titles[0].Episodes[0].ScheduledAt=&past
 	events,err:=Releases(&old,next,clock)
 	if err!=nil || len(events)!=0 {t.Fatal("elapsed schedule must not imply release")}
-	next.Titles[0].Episodes[0].ReleasedAt=&past
+	confirmed:=clock.Add(-30*time.Minute)
+	next.Titles[0].Episodes[0].ReleasedAt=&confirmed
 	events,err=Releases(nil,next,clock)
 	if err!=nil || len(events)!=0 {t.Fatal("first sync must establish baseline")}
 	events,err=Releases(&old,next,clock)
@@ -69,7 +70,7 @@ func TestReleaseDetection(t *testing.T) {
 	later:=next;later.ObservedAt=clock.Add(time.Hour)
 	events,err=Releases(&next,later,clock.Add(time.Hour))
 	if err!=nil || len(events)!=0 {t.Fatal("repeat release should be suppressed")}
-	corrected:=clock.Add(-time.Hour)
+	corrected:=clock.Add(-15*time.Minute)
 	next.Titles[0].Episodes[0].ReleasedAt=&corrected
 	events,err=Releases(&old,next,clock)
 	if err!=nil || len(events)!=1 || events[0].Key!=key {t.Fatal("timestamp correction changed event identity")}
@@ -85,7 +86,7 @@ func TestReleaseDetection(t *testing.T) {
 func TestReleaseOrderingAndPartialSnapshots(t *testing.T) {
 	old:=fixture()
 	next:=fixture();next.ObservedAt=clock
-	at:=clock.Add(-time.Hour)
+	at:=clock.Add(-30*time.Minute)
 	next.Titles[0].Episodes=[]Episode{{Number:2,Track:"SUB",ReleasedAt:&at},{Number:1,Track:"SUB",ReleasedAt:&at}}
 	a,err:=Releases(&old,next,clock)
 	if err!=nil || len(a)!=2 {t.Fatal("expected two events")}
@@ -95,4 +96,26 @@ func TestReleaseOrderingAndPartialSnapshots(t *testing.T) {
 	empty:=Snapshot{Version:1,Provider:old.Provider,ObservedAt:clock}
 	events,err:=Releases(&old,empty,clock)
 	if err!=nil || len(events)!=0 {t.Fatal("partial snapshot must not retract records")}
+}
+
+func TestReleasePreviewBaselinesHistoricalConfirmations(t *testing.T){
+ previous:=fixture()
+ next:=fixture();next.ObservedAt=clock
+ for _,existing:=range []bool{true,false}{
+  for name,offset:=range map[string]time.Duration{"historical":-time.Hour,"boundary":0,"sub-microsecond":999*time.Nanosecond,"new":time.Microsecond}{
+   t.Run(name+map[bool]string{true:"-known",false:"-new-title"}[existing],func(t *testing.T){
+    at:=previous.ObservedAt.Add(offset)
+    title:=fixture().Titles[0]
+    if !existing{title.ExternalID="new-season";title.Relations=nil}
+    title.Episodes=[]Episode{{Number:1,Track:"SUB",ReleasedAt:&at}}
+    next.Titles=[]Title{title}
+    events,err:=Releases(&previous,next,clock)
+    want:=0;if offset>=time.Microsecond{want=1}
+    if err!=nil||len(events)!=want{t.Fatal("historical confirmation treated as new release",events,err)}
+   })
+  }
+ }
+ // The importer cannot distinguish observations within the same microsecond.
+ same:=fixture();same.ObservedAt=previous.ObservedAt.Add(500*time.Nanosecond)
+ if _,err:=Releases(&previous,same,clock);err!=ErrInvalid{t.Fatal("same stored observation precision accepted")}
 }

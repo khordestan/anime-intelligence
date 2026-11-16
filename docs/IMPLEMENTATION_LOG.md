@@ -541,3 +541,11 @@ Added source/catalog field-presence counts for known totals (including zero), sy
 Catalog details now resolve linked canonical title/media/status and derive only inverse PREQUEL/SEQUEL links. Single-sided provider assertions are navigable from either title; reciprocal assertions deduplicate. SIDE_STORY and other directed relations retain their explicit direction instead of acquiring invented chronology. This read-time public snapshot changes no stored provenance or private account data.
 
 Extended public PostgreSQL/API tests for single-sided reversal, reciprocal deduplication, named linked media and directed non-continuity preservation. The dashboard labels links with title/type/status; a mocked-browser test follows a sequel then its prequel and verifies spoiler reveal resets. Read scoped web instructions; packaged Next guides are unavailable in the empty workspace, so rechecked the official use-client documentation and reused the existing component pattern without new framework APIs/dependencies. Exact-commit CI pending; local toolchains unavailable.
+
+## 2026-11-16 — Historical confirmations stay out of offline release previews
+
+fc02a4d passed all seven CI jobs 43819109502 and both CodeQL analyses 43819109407.
+
+Review found the pure snapshot-pair release preview could report old backfilled confirmations as new events even though persistent ingestion baselines them. It now requires release times strictly newer than the supplied prior observation, using the same PostgreSQL microsecond precision, and rejects observation pairs indistinguishable at that precision.
+
+Added boundary regressions for known/new titles, historical/equal/sub-microsecond/new confirmations, while preserving track identity, stable keys, schedule-only suppression and first-import baseline behavior. Documented the preview's limited two-snapshot state: it cannot reproduce persistent per-title history after intervening partial feeds. No production ingestion semantics, provider activation or delivery changed. Exact-commit CI pending; local toolchains unavailable.

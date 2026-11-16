@@ -138,12 +138,16 @@ type Event struct {
 // Releases compares snapshots of the same provider. A first snapshot establishes
 // a baseline, avoiding a historical alert flood. Missing records never retract
 // releases. Durable consumers must retain event keys across partial snapshots.
+// Only confirmations strictly newer than the previous observation (at PostgreSQL
+// microsecond precision) are new releases; older confirmations establish history.
 // A corrected release timestamp has the same key and must not notify twice.
+// This preview has only the supplied pair, unlike the importer's retained
+// per-title observations and event ledger.
 func Releases(previous *Snapshot, next Snapshot, now time.Time) ([]Event,error) {
 	if next.Validate(now) != nil { return nil, ErrInvalid }
 	out := []Event{}
 	if previous == nil { return out,nil }
-	if previous.Validate(now) != nil || previous.Provider != next.Provider || !next.ObservedAt.After(previous.ObservedAt) { return nil,ErrInvalid }
+	if previous.Validate(now) != nil || previous.Provider != next.Provider || !next.ObservedAt.Truncate(time.Microsecond).After(previous.ObservedAt.Truncate(time.Microsecond)) { return nil,ErrInvalid }
 	released := map[string]bool{}
 	for _, t := range previous.Titles {
 		for _, e := range t.Episodes {
@@ -152,7 +156,7 @@ func Releases(previous *Snapshot, next Snapshot, now time.Time) ([]Event,error) 
 	}
 	for _, t := range next.Titles {
 		for _, e := range t.Episodes {
-			if e.ReleasedAt == nil || released[t.ExternalID+":"+episodeKey(e)] { continue }
+			if e.ReleasedAt == nil || released[t.ExternalID+":"+episodeKey(e)] || !e.ReleasedAt.Truncate(time.Microsecond).After(previous.ObservedAt.Truncate(time.Microsecond)) { continue }
 			b, _ := json.Marshal([]any{"episode_released",next.Provider,t.ExternalID,e.Number,e.Track})
 			sum := sha256.Sum256(b)
 			out = append(out,Event{Key:hex.EncodeToString(sum[:]),Type:"EPISODE_RELEASED",Provider:next.Provider,ExternalID:t.ExternalID,Number:e.Number,Track:e.Track,ReleasedAt:*e.ReleasedAt})

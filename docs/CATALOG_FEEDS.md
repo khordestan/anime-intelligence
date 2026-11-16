@@ -16,6 +16,8 @@ Run:
 - go run ./cmd/catalog-check -input=/path/to/current.json
 - go run ./cmd/catalog-check -input=/path/to/current.json -previous=/path/to/previous.json
 
+The preview compares only the two supplied snapshots: confirmations at or before the previous observation are historical, not new alerts, and times use PostgreSQL microsecond precision. It has no retained title history, identity mappings or durable event ledger. The persistent importer can differ after intervening partial feeds because it retains per-title observations and canonical event identities. Use importer validation/dry-run boundaries when reviewing actual database changes.
+
 Synthetic example:
 
 ```json
