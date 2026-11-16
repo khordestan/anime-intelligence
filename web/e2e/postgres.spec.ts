@@ -357,6 +357,15 @@ test("real PostgreSQL exact episode editor and franchise preferences stay owner 
   expect(passData.currentCycle).toBe(2);
   expect(passData.items[0].numbers).toEqual([1,3]);
   expect(passData.items[0].rating).toBe(5);
+  await article.getByRole("button", { name: "Edit private notes Solo Leveling", exact: true }).click();
+  const noteEditor = article.getByRole("group", { name: "Private notes Solo Leveling", exact: true });
+  await noteEditor.getByLabel("Notes Solo Leveling", { exact: true }).fill("Synthetic real-browser note");
+  await noteEditor.getByRole("button", { name: "Save notes", exact: true }).click();
+  await expect(noteEditor).toHaveCount(0);
+  const notesPath = API + "/tracker/" + saved.items[0].id + "/notes";
+  const privateNotes = await request.get(notesPath, { headers: headers(sessions[0].token) });
+  expect((await privateNotes.json()).notes).toBe("Synthetic real-browser note");
+  expect((await request.get(notesPath, { headers: headers(sessions[1].token) })).status()).toBe(404);
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(panel).toHaveCount(0);

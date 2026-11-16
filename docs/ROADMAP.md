@@ -65,8 +65,10 @@
 - [x] Dashboard removal confirmation, retry/cancel and browser isolation coverage
 - [x] Exact episode selections per canonical season/title, separate from aggregate count mode
 - [x] Dashboard exact-episode editing
-- [ ] Rewatches and finer season conventions
-- [ ] Notes, rewatches and season ratings
+- [x] Completed-pass archives, conditional rewatch starts and dashboard history
+- [ ] Finer season conventions
+- [x] Private tracker notes with conflict detection and dashboard editing
+- [ ] Finer season rating conventions
 - [ ] Import/export and bulk editing
 - [x] Transitive linked-season follows with explicit per-title scope
 

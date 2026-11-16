@@ -577,3 +577,9 @@ Added PostgreSQL tests for exact snapshot retention, stale/incomplete/foreign st
 Review found stale edits could cross a rewatch transition. Added optional expectedCycle to tracker PATCH/exact-episode PUT, with a shared conflict boundary and owner/row-lock recheck. Current dashboard edits opt in; legacy omission remains unconditional. Episode reads now lock the owned tracker before fetching progress, avoiding a joined pre-lock snapshot. Series ratings remain title-wide.
 
 Added HTTP regressions for stale/current count/status/exact edits, two mocked browser tests and real PostgreSQL/browser coverage for archive/reset, rating/exact-history retention, foreign/replayed/stale requests and account reset. Scoped Next instructions read; packaged docs/toolchains unavailable, official use-client guide rechecked and existing patterns reused without dependencies. No source activation/deployment; exact-commit CI pending.
+
+## 2026-11-16 — Conditional private tracker notes
+
+17637cb passed all seven CI jobs 43824995507 and both CodeQL analyses 43824995477. Added GET/PUT private notes on existing user_anime storage. Verified-owner predicates/RLS and tracker locks apply; required timestamp comparison rejects stale saves, including across rewatches. Notes are bounded to 2000 Unicode code points, strict JSON/plain text, included in existing export and deletion cascades, and retained across rewatches. No schema/grant changes.
+
+Added PostgreSQL/HTTP ownership, Unicode, conflict, export/clear/removal and rewatch retention tests; dashboard explicit edit/save/cancel/discard-reload with error draft preservation; two mock-browser privacy/conflict tests and real PostgreSQL browser save/foreign-read coverage. No browser persistence, external-model input, personal fixture data or deployment. Existing client-component instructions/patterns apply; local toolchains unavailable, exact-commit CI pending.

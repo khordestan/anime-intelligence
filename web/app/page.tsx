@@ -4,6 +4,7 @@ import SessionManager from "./session-manager";
 import ReleaseAlerts from "./release-alerts";
 import EpisodeEditor from "./episode-editor";
 import RewatchManager from "./rewatch-manager";
+import NotesEditor from "./notes-editor";
 import CatalogDetails from "./catalog-details";
 import PersonalMatches from "./personal-matches";
 import PasswordManager from "./password-manager";
@@ -608,13 +609,16 @@ export default function Home() {
                 {mode === "postgres" && session?.user.emailVerified && (
                   <RewatchManager client={client} id={e.id} title={e.title} completed={e.watchStatus === "COMPLETED"} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
                 )}
+                {mode === "postgres" && session?.user.emailVerified && (
+                  <NotesEditor client={client} id={e.id} title={e.title} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
+                )}
                 {e.exactProgress && <p className="mt-2 text-xs text-slate-400">Exact episodes tracked; use the episode editor to change your selection.</p>}
                 <div className="mt-4 border-t border-white/10 pt-3">
                   {removal === e.id ? (
                     <div role="group" aria-label={"Remove " + e.title}>
                       <p className="text-sm text-slate-300">
                         Remove {e.title} from your library? This also deletes its
-                        ratings, progress and archived viewing passes. Adding it again starts fresh.
+                        ratings, progress, notes and archived viewing passes. Adding it again starts fresh.
                       </p>
                       <div className="mt-3 flex gap-3">
                         <button disabled={busy || !canEdit}
