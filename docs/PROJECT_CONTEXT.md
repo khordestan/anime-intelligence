@@ -106,3 +106,5 @@ Catalog-status now offers optional aggregate Prometheus output with fixed metric
 Catalog Inspect now has a two-second statement timeout, bounded rollback cleanup and invalid-clock rejection. CI pending.
 
 Catalog-status now rejects elevated/account-capable credentials through the shared catalog privilege guard before inspection, pins its search path and bounds connection/cleanup. Use the dedicated catalog diagnostics reader role. CI pending.
+
+Catalog Prometheus diagnostics now include nine missing_metadata gauges, counting canonical titles without each selected field, including unobserved titles. Impossible presence counts above observed-title totals are rejected. These remain presence/absence measures, not accuracy/completeness claims. CI pending.

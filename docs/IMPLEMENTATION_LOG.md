@@ -757,3 +757,7 @@ Bound Inspect SQL statements to two seconds and rollback cleanup to five seconds
 ## 2026-11-16 — Restrict catalog diagnostic command credentials
 
 Applied the common fail-closed catalog privilege guard before diagnostic queries; elevated/account-capable roles are refused, matching other catalog operator commands. Pinned search_path, bounded connection setup/cleanup and validated format/window flags before connecting. Existing restricted catalog-role and diagnostics suites remain required. No new grants/schema/source activation/deployment. Local toolchains absent; exact CI pending. Baseline 6739ad59 passed CI 43891035559 and Security 43891035457.
+
+## 2026-11-16 — Explicit catalog metadata deficit gauges
+
+Added nine fixed missing_metadata gauges derived from canonical title counts minus field presence, including unobserved titles. Reject impossible coverage above observed-title totals before any output. Tests cover partial observations, unknown fields, empty catalogs and invalid coverage; existing monitoring fixture parses the expanded renderer output. No schema/grants/source activation/collector/deployment. Local toolchains unavailable; exact CI pending.

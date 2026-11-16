@@ -29,6 +29,21 @@ func Prometheus(status Status)(string,error){
  }
  for _,g:=range gauges{if g.value<0{return "",ErrStatus}}
  if status.ObservedTitles+status.UnobservedTitles!=status.Titles||status.StaleTitles>status.ObservedTitles||status.FutureTitles>status.StaleTitles||status.ConfirmedEpisodes>status.EpisodeSchedules{return "",ErrStatus}
+ // Deficits include every canonical title without a selected value, including
+ // completely unobserved titles. Presence does not establish factual accuracy.
+ for _,g:=range gauges{
+  if strings.HasPrefix(g.name,"metadata_"){
+   if g.value>int64(status.ObservedTitles){return "",ErrStatus}
+  }
+ }
+ presence:=append([]struct{name,help string;value int64}(nil),gauges...)
+ for _,g:=range presence{
+  if strings.HasPrefix(g.name,"metadata_"){
+   gauges=append(gauges,struct{name,help string;value int64}{
+    "missing_"+g.name,"Canonical titles without this selected metadata field.",int64(status.Titles)-g.value,
+   })
+  }
+ }
  var out strings.Builder
  for _,g:=range gauges{fmt.Fprintf(&out,"# HELP anime_catalog_%s %s\n# TYPE anime_catalog_%s gauge\nanime_catalog_%s %d\n",g.name,g.help,g.name,g.name,g.value)}
  return out.String(),nil
