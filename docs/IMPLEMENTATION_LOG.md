@@ -717,3 +717,7 @@ Added public genre/theme/demographic/studio facets with case-folded deduplicatio
 ## 2026-11-16 — Explicit dashboard source-label suggestions
 
 Connected source-label discovery to filter drafts with manual requests, theme spoiler warning, empty/truncated/error states and edit/unmount response fencing. Selection does not apply filters automatically. Added mocked browser coverage for explicit loading, draft-only selection, theme intent and clearing. Scoped web instructions read; packaged guides/toolchains absent, official client guide rechecked. No local test pass; exact CI pending. No provider activation, private-data changes or deployment. Baseline 8b4f9b8 passed CI 43865023549 and Security 43865023553.
+
+## 2026-11-16 — Distinguish discovery-prefix and filter-value bounds
+
+Added local 128-byte UTF-8 discovery-prefix validation with a specific message and stale-request invalidation; complete filter values still permit 256 bytes. Extended browser coverage with a multi-byte 129-byte prefix and zero-network assertion, followed by valid recovery. Baseline ee618735 passed CI 43866035260 and Security 43866035145. Local toolchains absent, official client guide rechecked; exact follow-up CI pending. No schema/grants/source activation/deployment.

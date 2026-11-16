@@ -16,6 +16,11 @@ test("source labels load explicitly and selection only changes filter drafts",as
  await page.getByRole("button",{name:"Catalog filters",exact:true}).click();
  expect(calls).toEqual([]);
  const form=page.getByRole("form",{name:"Catalog metadata filters",exact:true});
+ await form.getByLabel("Source genre",{exact:true}).fill("界".repeat(43));
+ await form.getByRole("button",{name:"Find genres labels",exact:true}).click();
+ await expect(form.getByText("Enter a shorter label prefix (at most 128 UTF-8 bytes).",{exact:true})).toBeVisible();
+ expect(calls).toEqual([]);
+ await form.getByLabel("Source genre",{exact:true}).fill("");
  await form.getByRole("button",{name:"Find genres labels",exact:true}).click();
  await form.getByRole("button",{name:"Action",exact:true}).click();
  await expect(form.getByLabel("Source genre",{exact:true})).toHaveValue("Action");

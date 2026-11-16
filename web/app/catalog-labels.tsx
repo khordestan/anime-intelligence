@@ -8,6 +8,7 @@ export default function CatalogLabels({client,field,value,onSelect}:{client:ApiC
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;revision.current++;};},[]);
  useEffect(()=>{revision.current++;setItems([]);setLoaded(false);setBusy(false);setError("");setMore(false);},[value]);
  async function load(){
+  if(new TextEncoder().encode(value.trim()).length>128){revision.current++;setBusy(false);setItems([]);setLoaded(false);setMore(false);setError("Enter a shorter label prefix (at most 128 UTF-8 bytes).");return;}
   const current=++revision.current;setBusy(true);setError("");
   try{
    const params=new URLSearchParams({field,prefix:value.trim(),limit:"50"});
