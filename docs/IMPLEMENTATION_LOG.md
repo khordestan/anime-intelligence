@@ -709,3 +709,7 @@ cbdc71ddbeb3a32664c3f7022319e419aee8a71d passed all seven [CI jobs](https://gith
 Coverage includes normalization/validation, sparse/category distinctions, combined labels/scalars, aliases, literal injection/wildcard-looking labels, filter-before-pagination, cancellation, draft/apply/reset/expansion, stale response replacement, retry and real anonymous PostgreSQL filtering. Existing authorization/RLS, recovery, monitoring, backend race/vet/build/vulnerability and frontend unit/typecheck/build/audit suites remain green.
 
 Public visibility rechecked. No schema/grants, private-data scope expansion, real fixture data, source/model activation or deployment. Local Go/Node are absent; these results are GitHub Actions verification. Comprehensive licensed metadata/availability, facets/broader catalog pagination, durable source jobs, corrections/arbitration, background delivery, AI/evaluation and production operations/security remain pending. This checkpoint records the verified implementation SHA; its own documentation checks run separately.
+
+## 2026-11-16 — Bounded source-label discovery
+
+Added public genre/theme/demographic/studio facets with case-folded deduplication, literal prefix matching, strict validation, lookahead and SQL/context deadlines. Synthetic PostgreSQL/HTTP tests cover categories, sparse fields, exact/overflow caps and literal prefixes. No grants/schema/private-data/source activation/deployment. Local toolchains unavailable; exact commit CI pending. Baseline 199d6e8 passed CI 43863761962 and Security 43863762039.

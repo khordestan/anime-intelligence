@@ -84,3 +84,5 @@ This continuation added public combined metadata filters and an explicit dashboa
 Local Go/Node toolchains are unavailable; verification ran in GitHub Actions. Comprehensive approved live availability, durable per-title source jobs, field-level arbitration and entity correction/merging, real reviewed feature evidence, background release delivery, hybrid AI/evaluation and production security/operations remain unfinished. Do not describe the project or its sparse catalog as complete/current or deployment-ready.
 
 Direct Catalog repository reads now delegate to FilterCatalog, sharing validation and read deadlines. Exact follow-up CI pending; see CATALOG_READ_VALIDATION.md.
+
+Available source-label discovery is now implemented at GET /anime/facets with strict field/prefix/limit validation, deduplication and bounded lookahead. Dashboard suggestions remain pending. See CATALOG_FACETS.md; exact follow-up CI pending.
