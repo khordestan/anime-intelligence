@@ -51,6 +51,7 @@
 - [x] Offline reviewed snapshot importer with exact external ID mapping
 - [x] Bounded explicit-item Wikidata CC0 factual fetch adapter
 - [ ] Comprehensive approved metadata and confirmed-availability adapters
+- [x] Opt-in selected neutral metadata observations, full transactional import preview and bounded operator field-change history
 - [ ] Raw source snapshots where licensing permits
 - [x] Reviewed exact provider identity links with audit/replay protection and public lookup/display
 - [ ] Canonical entity merges, correction/retraction and field-level source arbitration

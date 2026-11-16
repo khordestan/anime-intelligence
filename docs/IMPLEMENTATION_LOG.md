@@ -639,3 +639,12 @@ This introduces no schema migration or active source/deployment. Existing API in
 Baseline 2d4ec30 passed CI 43839078696 and Security 43839078680. Added ImportWithOptions while preserving default Import/worker behavior, plus CLI -preview/-archive. Preview validates the complete persisted import then rolls back. Explicit archive stores selected neutral observations with type-scoped hashes in existing source_records, atomically with identities, metadata, schedules, events and high-water state. It requires separate historical-retention rights review; no raw envelope or private data is copied.
 
 Added PostgreSQL tests for no-change defaults, complete preview rollback, original/revised observation retention, stale replay, late archive failure rolling back earlier facts/archives/new IDs/events, and API payload-read denial. Connection and rollback cleanup are bounded. No schema/API grants, source activation or deployment; local toolchains unavailable, exact-commit CI pending.
+
+- Verified `2e0838b2b451f775d3823035014b902ebe62294f`: all seven CI jobs succeeded in run [43841704241](https://github.com/khordestan/anime-intelligence/actions/runs/43841704241); both CodeQL analyses succeeded in [43841704210](https://github.com/khordestan/anime-intelligence/actions/runs/43841704210), dependency review skipped on push.
+
+### Bounded operator observation-history summary
+- Added a read-only exact-provider/title history command with cursor pagination, cross-page field comparisons, first retained baseline semantics, fixed errors and payload/time/row bounds.
+- Added a narrow operator reader SQL role and the existing fail-closed catalog privilege guard; API and mapping roles retain no payload access.
+- Synthetic unit/database coverage checks field comparisons (including unknown versus known zero), timestamps, cursor boundaries, audit/provider exclusion, malformed archives and no private/write grants.
+- Summaries expose only timestamps and allowlisted field names, never stored titles/prose or identifiers. No migration, service/source activation, raw-response archive, pruning or deployment.
+- Go/Node remain unavailable locally; exact code-commit CI/CodeQL validation pending.

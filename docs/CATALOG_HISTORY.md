@@ -17,3 +17,18 @@ Archives store the selected provider-neutral title (including approved prose whe
 Archive insertion shares the catalog transaction/advisory lock. Failure rolls back metadata, identity creation, schedules, events and source state together. API runtime credentials receive no archive reads/writes. The factual worker continues to use non-archiving Import; no service/source/retention job is activated.
 
 This is not raw provider-response archival, complete field provenance or a claim that the underlying facts are correct/current. Earlier imports made without -archive cannot be reconstructed. All fields in one retained title still originate from its selected source observation; cross-provider arbitration remains separate.
+
+## Operator field-change summary
+
+Apply the optional deployments/catalog-history-role.sql using migration credentials and set its password outside source control. Supply that separate reader connection through CATALOG_HISTORY_DATABASE_URL:
+
+```sh
+go run ./cmd/catalog-history -provider=reviewed-provider -external-id=exact-title-id -limit=20
+go run ./cmd/catalog-history -provider=reviewed-provider -external-id=exact-title-id -limit=20 -before=2026-01-02T03:04:05Z
+```
+
+The command emits only observation times, sorted changed field names, baseline/truncated flags and an optional nextBefore cursor. It never emits canonical/provider IDs, titles, synopsis values, raw bodies or credentials. Identifiers match exactly; missing IDs return an empty entries array. It compares selected observations, not effective canonical/schedule state (a missing release confirmation can remain effective in the schedule). Array order counts as a literal change. Known episode count zero differs from an absent count.
+
+Pages contain 1–100 newest observations, optionally strictly older than the before cursor. Use nextBefore for the next page. An extra older row supplies the comparison at a page boundary; baseline means no earlier retained observation, not an initial catalog import. Pruning or concurrent imports can change later reads; each call uses its own repeatable-read read-only snapshot. Imports without archives create unobservable gaps.
+
+The dedicated reader has narrow catalog column SELECT grants, no private-table access or writes. The CLI rejects elevated/account-capable roles with the shared catalog privilege guard and uses a fixed search path. Reads have a two-second statement timeout, a ten-second overall command deadline, at most 101 fetched observations and a sixteen-MiB total payload bound. Oversized, malformed or duplicate-time observations fail with a fixed error rather than returning partial summaries. No HTTP history endpoint, role/source activation, pruning or restore process is enabled.
