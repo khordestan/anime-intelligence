@@ -15,6 +15,8 @@ import (
 )
 func run() error {
 	input:=flag.String("input","","Reviewed snapshot JSON file (required)")
+	preview:=flag.Bool("preview",false,"Validate complete database import and roll back all changes")
+	archive:=flag.Bool("archive",false,"Retain reviewed structured observations only when historical storage is permitted")
 	flag.Parse()
 	file,err:=os.Open(*input)
 	if err!=nil {return feed.ErrInvalid}
@@ -26,10 +28,13 @@ func run() error {
 	if dsn=="" {return catalogsync.ErrImport}
 	ctx,cancel:=context.WithTimeout(context.Background(),2*time.Minute)
 	defer cancel()
-	conn,err:=pgx.Connect(ctx,dsn)
+	config,err:=pgx.ParseConfig(dsn)
+	if err!=nil{return catalogsync.ErrImport}
+	config.ConnectTimeout=5*time.Second;config.RuntimeParams["search_path"]="pg_catalog,public"
+	conn,err:=pgx.ConnectConfig(ctx,config)
 	if err!=nil {return catalogsync.ErrImport}
-	defer conn.Close(context.Background())
-	result,err:=catalogsync.Import(ctx,conn,snapshot,now)
+	defer func(){cleanup,stop:=context.WithTimeout(context.Background(),5*time.Second);defer stop();_=conn.Close(cleanup)}()
+	result,err:=catalogsync.ImportWithOptions(ctx,conn,snapshot,now,catalogsync.ImportOptions{Preview:*preview,Archive:*archive})
 	if err!=nil {return err}
 	return json.NewEncoder(os.Stdout).Encode(result)
 }

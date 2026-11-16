@@ -20,7 +20,13 @@ var (
 	ErrConflict = errors.New("catalog authority or continuity conflict")
 	ErrImport = errors.New("catalog import failed")
 )
+type ImportOptions struct {
+	Preview bool
+	Archive bool // Operator must separately approve historical retention rights.
+}
 type Result struct {
+	Preview bool `json:"preview,omitempty"`
+	ArchivedRecords int `json:"archivedRecords,omitempty"`
 	Titles int `json:"titles"`
 	SeasonAnnouncements int `json:"seasonAnnouncements"`
 	ScheduleRevisions int `json:"scheduleRevisions"`
@@ -32,20 +38,23 @@ type Result struct {
 // schedule revisions and unique event ledger atomically. Callers must not log
 // database errors or raw source content; returned errors are fixed.
 func Import(ctx context.Context, conn *pgx.Conn, s feed.Snapshot, now time.Time) (Result,error) {
+ return ImportWithOptions(ctx,conn,s,now,ImportOptions{})
+}
+func ImportWithOptions(ctx context.Context,conn *pgx.Conn,s feed.Snapshot,now time.Time,options ImportOptions)(Result,error){
 	if s.Validate(now) != nil { return Result{},feed.ErrInvalid }
 	s.ObservedAt = s.ObservedAt.UTC().Truncate(time.Microsecond)
-	result,err := apply(ctx,conn,s)
+	result,err := apply(ctx,conn,s,options)
 	if err != nil {
 		if errors.Is(err,ErrSource) || errors.Is(err,ErrStale) || errors.Is(err,ErrConflict) { return Result{},err }
 		return Result{},ErrImport
 	}
 	return result,nil
 }
-func apply(ctx context.Context, conn *pgx.Conn, s feed.Snapshot) (Result,error) {
+func apply(ctx context.Context, conn *pgx.Conn, s feed.Snapshot,options ImportOptions) (Result,error) {
 	out := Result{}
 	tx,err := conn.Begin(ctx)
 	if err != nil { return out,err }
-	defer tx.Rollback(context.Background())
+	defer func(){cleanup,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel();_=tx.Rollback(cleanup)}()
 	// Global ordering also serializes imports from different providers which may
 	// share canonical IDs or contribute edges to the same continuity graph.
 	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(742019684)`);err!=nil {return out,err}
@@ -90,6 +99,10 @@ VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) D
 			out.ScheduleRevisions+=revision
 			out.ReleaseEvents+=event
 		}
+		if options.Archive{
+   archived,err:=archiveMetadata(ctx,tx,source,id,s.Provider,s.ObservedAt,title)
+   if err!=nil{return out,err};out.ArchivedRecords+=archived
+  }
 		out.Titles++
 	}
 	unresolved,err:=syncRelations(ctx,tx,source,s.Provider)
@@ -97,6 +110,7 @@ VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) D
 	out.UnresolvedRelations=unresolved
 	if _,err=tx.Exec(ctx,`INSERT INTO catalog_sync_state(source_id,observed_at) VALUES($1,$2)
 ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.ObservedAt);err!=nil {return out,err}
+	if options.Preview{if err=tx.Rollback(ctx);err!=nil{return Result{},err};out.Preview=true;return out,nil}
 	if err=tx.Commit(ctx);err!=nil {return out,err}
 	return out,nil
 }

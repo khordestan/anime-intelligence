@@ -633,3 +633,9 @@ Extended restricted mapper tests with a future forced-RLS table, a private view,
 fa7f575 passed all seven CI jobs 43838337320 and both CodeQL analyses 43838337446. Predecessor ce3b460 passed CI 43836212263/Security 43836212323; cf3b325 passed CI 43837173422/Security 43837173610. Inspected the exact job results, including database identity review/audit/role regressions, both real-browser suites, frontend, backend, monitoring and recovery. Public repository state rechecked.
 
 This introduces no schema migration or active source/deployment. Existing API installations need refreshed narrow runtime identity read grants. Local toolchains unavailable; no local pass claimed. Field arbitration, canonical merges/retractions, comprehensive licensed data/availability and production security remain separate work. This document records the verified implementation SHA; its own automatic CI runs separately.
+
+## 2026-11-16 — Transactional catalog preview and opt-in metadata archives
+
+Baseline 2d4ec30 passed CI 43839078696 and Security 43839078680. Added ImportWithOptions while preserving default Import/worker behavior, plus CLI -preview/-archive. Preview validates the complete persisted import then rolls back. Explicit archive stores selected neutral observations with type-scoped hashes in existing source_records, atomically with identities, metadata, schedules, events and high-water state. It requires separate historical-retention rights review; no raw envelope or private data is copied.
+
+Added PostgreSQL tests for no-change defaults, complete preview rollback, original/revised observation retention, stale replay, late archive failure rolling back earlier facts/archives/new IDs/events, and API payload-read denial. Connection and rollback cleanup are bounded. No schema/API grants, source activation or deployment; local toolchains unavailable, exact-commit CI pending.
