@@ -737,3 +737,7 @@ Connected bounded next/previous offset hints to dashboard search with query/filt
 ## 2026-11-16 — Reset unapplied catalog drafts across account boundaries
 
 Review found that unchanged applied-filter props could leave child draft text mounted across sign-in/sign-out. Keyed the form by account/public identity so draft state and pending label request lifetimes reset together. Added anonymous-to-account-to-anonymous browser regression coverage. Scoped web instructions read; packaged docs/toolchains absent, official client guide rechecked. No local pass claimed; exact CI pending. No schema/grants/source activation/deployment.
+
+## 2026-11-16 — Validate retained catalog history facts
+
+History decoding now checks canonical UUID syntax and runs neutral-feed validation at the retained observation time, rejecting corrupt status/count/release/relation facts without emitting raw values. Updated valid synthetic envelope fixtures and added invalid-ID/status/title/future-release/self-link cases. No schema/grants/source activation/deployment. Baseline f856a827 CI and Security green; local toolchains unavailable, exact CI pending.

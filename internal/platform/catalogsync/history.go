@@ -67,7 +67,8 @@ func History(ctx context.Context,conn *pgx.Conn,provider,external string,limit i
 }
 func decodeHistory(payload []byte,provider,external string)(metadataArchive,error){
  var r metadataArchive
- if json.Unmarshal(payload,&r)!=nil||r.Kind!=metadataRecordType||r.Provider!=provider||r.Title.ExternalID!=external||r.AnimeID==""||r.ObservedAt.IsZero(){return metadataArchive{},ErrHistory}
+ if json.Unmarshal(payload,&r)!=nil||r.Kind!=metadataRecordType||r.Provider!=provider||r.Title.ExternalID!=external||!historyCanonicalID(r.AnimeID)||r.ObservedAt.IsZero(){return metadataArchive{},ErrHistory}
+ if (feed.Snapshot{Version:1,Provider:r.Provider,ObservedAt:r.ObservedAt,Titles:[]feed.Title{r.Title}}).Validate(r.ObservedAt)!=nil{return metadataArchive{},ErrHistory}
  r.ObservedAt=r.ObservedAt.UTC()
  return r,nil
 }
@@ -81,4 +82,13 @@ func historyChanges(current,previous feed.Title)[]string{
   if !bytes.Equal(newer[key],older[key]){out=append(out,key)}
  }
  return out
+}
+
+func historyCanonicalID(id string)bool{
+ if len(id)!=36{return false}
+ for i,c:=range id{
+  if i==8||i==13||i==18||i==23{if c!='-'{return false};continue}
+  if !((c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F')){return false}
+ }
+ return true
 }

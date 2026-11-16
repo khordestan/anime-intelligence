@@ -24,7 +24,7 @@ func TestHistoryFieldChanges(t *testing.T){
 }
 func TestHistoryEnvelopeValidationAndSafeSummary(t *testing.T){
  at:=time.Date(2026,1,2,3,4,5,0,time.FixedZone("fixture",3600))
- r:=metadataArchive{Kind:metadataRecordType,AnimeID:"synthetic-id",Provider:"fixture",ObservedAt:at,Title:feed.Title{ExternalID:"one",Title:"Synthetic hidden title",Synopsis:"Synthetic hidden prose"}}
+ r:=metadataArchive{Kind:metadataRecordType,AnimeID:"10000000-0000-4000-8000-000000000001",Provider:"fixture",ObservedAt:at,Title:feed.Title{ExternalID:"one",Title:"Synthetic hidden title",Synopsis:"Synthetic hidden prose",MediaType:"TV",Status:"UNKNOWN"}}
  payload,_:=json.Marshal(r)
  got,err:=decodeHistory(payload,"fixture","one")
  if err!=nil||got.ObservedAt.Location()!=time.UTC||!got.ObservedAt.Equal(at){t.Fatal(got,err)}
@@ -34,4 +34,20 @@ func TestHistoryEnvelopeValidationAndSafeSummary(t *testing.T){
  if strings.Contains(string(summary),"Synthetic")||strings.Contains(string(summary),"synthetic-id"){t.Fatal("summary leaked values")}
  for _,id:=range []string{"","has space","slash/id",strings.Repeat("a",129)}{if historyIdentifier(id){t.Fatal("invalid identifier accepted")}}
  if !historyIdentifier("fixture-A_1.2"){t.Fatal("valid identifier rejected")}
+}
+
+func TestHistoryRejectsInvalidArchivedFacts(t *testing.T){
+ at:=time.Date(2026,1,1,0,0,0,0,time.UTC)
+ valid:=metadataArchive{Kind:metadataRecordType,AnimeID:"10000000-0000-4000-8000-000000000001",Provider:"fixture",ObservedAt:at,Title:feed.Title{ExternalID:"one",Title:"Synthetic",MediaType:"TV",Status:"UNKNOWN"}}
+ future:=at.Add(time.Hour)
+ for _,mutate:=range []func(*metadataArchive){
+ func(r *metadataArchive){r.AnimeID="invalid"},
+ func(r *metadataArchive){r.Title.Status="INVALID"},
+ func(r *metadataArchive){r.Title.Title=""},
+ func(r *metadataArchive){r.Title.Episodes=[]feed.Episode{{Number:1,Track:"SUB",ReleasedAt:&future}}},
+ func(r *metadataArchive){r.Title.Relations=[]feed.Relation{{ExternalID:"one",Type:"SEQUEL"}}},
+ }{
+ r:=valid;mutate(&r);payload,_:=json.Marshal(r)
+ if _,err:=decodeHistory(payload,"fixture","one");!errors.Is(err,ErrHistory){t.Fatal("invalid archive facts accepted")}
+ }
 }

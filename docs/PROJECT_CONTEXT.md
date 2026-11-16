@@ -98,3 +98,5 @@ Catalog list responses now offer optional nextOffset/previousOffset hints within
 Dashboard catalog searches now follow next/previous offset hints while preserving query and applied filters. Failed page requests retain results and retry the same offset; filter/query/account revisions fence late pages. Offset pages remain mutable during ingestion. CI pending.
 
 Catalog filter forms are now keyed to the active account/public identity, clearing unapplied drafts and unmounting label requests on sign-in/sign-out/account switches. Browser regression coverage added; exact CI pending.
+
+Catalog history now validates retained canonical UUIDs and neutral title facts before summarizing observations, using the original observation time for release validation. Corrupt facts fail with the fixed history error; no raw values are returned. Exact CI pending.
