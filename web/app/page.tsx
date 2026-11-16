@@ -71,6 +71,8 @@ export default function Home() {
   const [catalogSearchBusy, setCatalogSearchBusy] = useState(false);
   const [catalogSearchError, setCatalogSearchError] = useState("");
   const [catalogResultLimit, setCatalogResultLimit] = useState(8);
+  const [catalogPage,setCatalogPage]=useState<{offset:number;next?:number;previous?:number}>({offset:0});
+  const retryPage=useRef<number|null>(null);
   const catalogSearchRevision = useRef(0);
   const [client] = useState(() => new ApiClient(API));
   const [identityAvailable, setIdentityAvailable] = useState(false);
@@ -151,19 +153,32 @@ export default function Home() {
   }, [client, handleError]);
   useEffect(() => {
     const revision = ++catalogSearchRevision.current;
-    setSearchedCatalog(null); setCatalogSearchError(""); setCatalogSearchBusy(false); setCatalogResultLimit(8);
+    setSearchedCatalog(null); setCatalogSearchError(""); setCatalogSearchBusy(false); setCatalogResultLimit(8); setCatalogPage({offset:0}); retryPage.current=null;
     if ((!query.trim() && !hasCatalogFilters) || mode === null) return;
     setCatalogSearchBusy(true);
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ q: query.trim(), limit: "100" });
       for (const [key, value] of Object.entries(catalogFilters)) if (value) params.set(key, value);
-      client.request<{ items: Anime[] }>("/anime?" + params.toString())
-        .then(result => { if (revision === catalogSearchRevision.current) setSearchedCatalog(result.items ?? []); })
+      client.request<{ items: Anime[];nextOffset?:number;previousOffset?:number }>("/anime?" + params.toString())
+        .then(result => { if (revision === catalogSearchRevision.current) {setSearchedCatalog(result.items ?? []);setCatalogPage({offset:0,next:result.nextOffset,previous:result.previousOffset});} })
         .catch(error => { if (revision === catalogSearchRevision.current) { setCatalogSearchError("Could not search catalog. Try again."); handleError(error); } })
         .finally(() => { if (revision === catalogSearchRevision.current) setCatalogSearchBusy(false); });
     }, 250);
     return () => { clearTimeout(timer); catalogSearchRevision.current++; };
   }, [query, mode, client, handleError, catalogFilters, hasCatalogFilters]);
+  async function catalogPageRequest(offset:number){
+    if(catalogSearchBusy||!Number.isInteger(offset)||offset<0||offset>100000)return;
+    const revision=++catalogSearchRevision.current;
+    setCatalogSearchBusy(true);setCatalogSearchError("");retryPage.current=offset;
+    const params=new URLSearchParams({q:query.trim(),limit:"100",offset:String(offset)});
+    for(const[key,value]of Object.entries(catalogFilters))if(value)params.set(key,value);
+    try{
+      const result=await client.request<{items:Anime[];nextOffset?:number;previousOffset?:number}>("/anime?"+params);
+      if(revision!==catalogSearchRevision.current)return;
+      setSearchedCatalog(result.items??[]);setCatalogPage({offset,next:result.nextOffset,previous:result.previousOffset});setCatalogResultLimit(8);retryPage.current=null;
+    }catch(error){if(revision===catalogSearchRevision.current){setCatalogSearchError("Could not search catalog. Try again.");handleError(error);}}
+    finally{if(revision===catalogSearchRevision.current)setCatalogSearchBusy(false);}
+  }
   async function refreshVerifiedUser() {
     if (!session) return;
     try {
@@ -492,7 +507,7 @@ export default function Home() {
         />
         <CatalogFilters client={client} values={catalogFilters} onApply={values => { catalogSearchRevision.current++; setSearchedCatalog(null); setCatalogFilters({ ...values }); }} />
         {(query || hasCatalogFilters) && catalogSearchBusy && <p role="status" className="mt-3 text-sm text-slate-400">Searching catalog…</p>}
-        {catalogSearchError && <p role="alert" className="mt-3 text-sm text-rose-200">{catalogSearchError} <button onClick={() => setCatalogFilters(current => ({ ...current }))} className="underline">Retry catalog search</button></p>}
+        {catalogSearchError && <p role="alert" className="mt-3 text-sm text-rose-200">{catalogSearchError} <button onClick={() => retryPage.current!==null?void catalogPageRequest(retryPage.current):setCatalogFilters(current => ({ ...current }))} className="underline">Retry catalog search</button></p>}
         {(query || hasCatalogFilters) && searchedCatalog !== null && !catalogSearchBusy && results.length === 0 && <p className="mt-3 text-sm text-slate-400">No matching anime outside your library.</p>}
         {(query || hasCatalogFilters) && (
           <div className="mt-3 space-y-2">
@@ -518,7 +533,11 @@ export default function Home() {
               </div>
             ))}
             {matchingCatalog.length > results.length && <button onClick={() => setCatalogResultLimit(current => current + 8)} className="text-sm text-violet-200 underline">Show more catalog matches</button>}
-            {searchedCatalog?.length === 100 && <p className="text-xs text-slate-400">Showing the first 100 matches. Refine your search or filters to narrow the results.</p>}
+            {searchedCatalog!==null&&<div className="flex gap-4">
+              {catalogPage.previous!==undefined&&<button disabled={catalogSearchBusy} onClick={()=>void catalogPageRequest(catalogPage.previous!)} className="text-sm underline">Previous catalog page</button>}
+              {catalogPage.next!==undefined&&<button disabled={catalogSearchBusy} onClick={()=>void catalogPageRequest(catalogPage.next!)} className="text-sm underline">Next catalog page</button>}
+            </div>}
+            {catalogPage.offset>0&&<p className="text-xs text-slate-400">Catalog results starting at {catalogPage.offset+1}. Catalog updates can shift pages.</p>}
           </div>
         )}
       </section>

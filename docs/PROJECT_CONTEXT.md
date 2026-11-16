@@ -94,3 +94,5 @@ Dashboard label discovery rejects prefixes over 128 UTF-8 bytes locally with a s
 Direct local Catalog reads now share FilterCatalog validation, ordering and bounds with public filtered reads; local filtered reads honor cancelled contexts even when a sparse label would otherwise return early. No local-mode authentication is implied. Follow-up CI pending.
 
 Catalog list responses now offer optional nextOffset/previousOffset hints within existing bounds, preserving filters and existing response fields. Full-page nextOffset may lead to an empty page; concurrent ingestion can shift offsets. See CATALOG_PAGINATION.md. CI pending.
+
+Dashboard catalog searches now follow next/previous offset hints while preserving query and applied filters. Failed page requests retain results and retry the same offset; filter/query/account revisions fence late pages. Offset pages remain mutable during ingestion. CI pending.

@@ -729,3 +729,7 @@ Direct Local.Catalog previously bypassed filtering validation and could pass neg
 ## 2026-11-16 — Bounded catalog offset navigation hints
 
 Added optional nextOffset/previousOffset response fields without an extra count query. Full-page hints are explicitly not existence guarantees or stable snapshots; prior offsets clamp to zero and successors stay within the existing cap. Synthetic HTTP coverage covers full/short/empty-filtered pages and boundary behavior. No schema/grants/private-data/source activation/deployment changes. Local toolchains unavailable; exact CI pending. Baseline d8b1811 passed all CI 43870396211 and Security 43870396248 jobs.
+
+## 2026-11-16 — Dashboard catalog page navigation
+
+Connected bounded next/previous offset hints to dashboard search with query/filter preservation, per-page expansion reset, retained results on failures and exact-destination retry. Existing request/account revisions reject late pages. Added browser failure/retry/return-navigation coverage with encoded filter assertions. Scoped web instructions read; packaged guides/toolchains absent, official client guide rechecked. No schema/grants/source activation/deployment. Exact CI pending.
