@@ -32,3 +32,6 @@ GRANT UPDATE(observed_at) ON catalog_schedule_observations TO anime_catalog_writ
 -- Migration 000019: retain latest primary facts and honor reviewed field choices.
 GRANT SELECT,INSERT,UPDATE ON catalog_base_metadata TO anime_catalog_writer;
 GRANT SELECT ON catalog_field_choices TO anime_catalog_writer;
+
+-- Migration 000022: invoker-rights identity retirement fence.
+GRANT SELECT ON catalog_identity_retractions TO anime_catalog_writer;

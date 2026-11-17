@@ -65,7 +65,7 @@ func Apply(ctx context.Context,conn *pgx.Conn,s Snapshot,now time.Time,commit bo
  out,err:=apply(ctx,conn,s,commit)
  if err!=nil{
   for _,known:=range []error{ErrSource,ErrConflict,ErrTarget}{if errors.Is(err,known){return Result{},known}}
-  var pg *pgconn.PgError;if errors.As(err,&pg)&&pg.Code=="23505"{return Result{},ErrConflict}
+  var pg *pgconn.PgError;if errors.As(err,&pg)&&(pg.Code=="23505"||(pg.Code=="23514"&&pg.ConstraintName=="catalog_identity_retired")){return Result{},ErrConflict}
   return Result{},ErrApply
  }
  return out,nil

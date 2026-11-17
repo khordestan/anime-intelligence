@@ -868,3 +868,12 @@ Validation for `df9ca7be8614bf631dbec94576b3ada23a599f3d`: all seven [CI jobs](h
 - No real metadata, prose copying, personal data, provider calls, source/host activation or deployment.
 
 Validation for `daac704276d539b9987310823357814ee726d716`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44079706907) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/44079706507) passed. Database logs confirm text preview/replay/search/provenance/refresh/restoration/empty/audit-rollback/downgrade and both announcement-baseline scenarios executed and passed. Existing 36 mocked browser tests, real PostgreSQL/identity browser suites, backend unit/race/vet/build/vulnerability, migration up/down and logical recovery checks passed. No local checks ran. This documentation-only follow-up records exact implementation validation.
+
+## 2026-11-17 — Reviewed unused identity retirement
+
+- Added strict exact-row retraction manifests and a preview-default catalog-retract command with dedicated credentials and the common public-only role guard.
+- Dependency checks refuse primary/selected/retained-review facts, schedule observations/revisions, relation edges/claims, durable jobs and non-mapping archives. Disabled sources can still be corrected; no canonical/private/event data is moved or erased.
+- Migration 000022 adds immutable reviewed tombstones and an invoker-rights, shared-lock identity trigger preventing mapping/import resurrection. Refreshed writer/mapper SELECT grants are required; API grants unchanged. Downgrade refuses retained retirements.
+- Added strict manifest, preview, disabled-source/concurrent replay, lookup/details preservation, stale/different-review, mapping/import rollback, restricted-role, dependency matrix, batch rollback and downgrade regressions. Recovery ledger and explicit migration CI include 000022.
+- Baseline a13073a24021094bfb7d5ff84f85f64d2cfecad2 CI 44080181072 and Security 44080181088 passed on inspection. Local Go/Node unavailable; exact implementation hosted checks pending.
+- No real metadata, secrets, account/watch data, provider requests, source/host activation or deployment.
