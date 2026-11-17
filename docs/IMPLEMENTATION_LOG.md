@@ -777,3 +777,13 @@ Added TITLE/NEWEST/OLDEST sorting to public catalog API and dashboard controls. 
 ## 2026-11-17 — Catalog release-year ranges
 
 Added minYear/maxYear to local/PostgreSQL search, strict API parsing and dashboard inputs. Inclusive bounds exclude unknown years and compose before sorting/pagination; exact-year filters still combine with AND. Added PostgreSQL boundary/unknown/exact/reversed cases and expanded combined dashboard request coverage. Local toolchains unavailable; scoped web instructions and official client guide checked, exact CI pending. Product work only, no monitoring/schema/grants/source activation/deployment.
+
+
+## 2026-11-17 — Library browsing product controls
+
+- Added independent library title search, rated/unrated/exact-score filtering and default/title/rating/watched-episode sorts, combined with watch status.
+- Unrated entries remain last for both rating directions; ties use title/ID. Presentation sorting does not mutate the stored library. Clear restores server order and all filters; account changes clear the controls.
+- Added matching counts, explicit empty states and pressed status buttons. Catalog search remains independent.
+- Playwright covers combined filters, sort ties, unrated behavior, clear/refresh and absence of writes; extended account-switch coverage checks resets.
+- Prior checkpoint 7a35e5e: inspected all seven CI jobs successful (43976735338) and Security workflow successful (43976735440).
+- No local executor/toolchain is available. Exact pushed-commit CI is pending. No monitoring changes, real user data, source activation or deployment.

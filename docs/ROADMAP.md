@@ -74,6 +74,7 @@
 - [x] Exact episode selections per canonical season/title, separate from aggregate count mode
 - [x] Dashboard exact-episode editing
 - [x] Completed-pass archives, conditional rewatch starts and dashboard history
+- [x] Library title search, status/rating filters and explicit title/rating/episode ordering
 - [ ] Finer season conventions
 - [x] Private tracker notes with conflict detection and dashboard editing
 - [ ] Finer season rating conventions

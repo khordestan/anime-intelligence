@@ -64,6 +64,9 @@ export default function Home() {
     [filter, setFilter] = useState("ALL"),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
+  const [libraryQuery, setLibraryQuery] = useState("");
+  const [libraryRating, setLibraryRating] = useState("ALL");
+  const [librarySort, setLibrarySort] = useState("DEFAULT");
   const [notice, setNotice] = useState("");
   const [searchedCatalog, setSearchedCatalog] = useState<Anime[] | null>(null);
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>(emptyCatalogFilters);
@@ -104,6 +107,7 @@ export default function Home() {
       setError("");
       setQuery("");
       setFilter("ALL");
+      setLibraryQuery(""); setLibraryRating("ALL"); setLibrarySort("DEFAULT");
       setBusy(false);
     },
     [client],
@@ -282,10 +286,28 @@ export default function Home() {
       if (revision === accountRevision.current) setBusy(false);
     }
   }
-  const filtered = useMemo(
-    () => library.filter((x) => filter === "ALL" || x.watchStatus === filter),
-    [library, filter],
-  );
+  const filtered = useMemo(() => {
+    const titleQuery = libraryQuery.trim().toLowerCase();
+    const entries = library.filter(entry =>
+      (filter === "ALL" || entry.watchStatus === filter) &&
+      entry.title.toLowerCase().includes(titleQuery) &&
+      (libraryRating === "ALL" ||
+        (libraryRating === "UNRATED" ? entry.rating == null :
+          libraryRating === "RATED" ? entry.rating != null :
+            entry.rating === Number(libraryRating))));
+    if (librarySort === "DEFAULT") return entries;
+    return entries.sort((a, b) => {
+      if (librarySort === "RATING_HIGH" || librarySort === "RATING_LOW") {
+        if (a.rating == null && b.rating != null) return 1;
+        if (b.rating == null && a.rating != null) return -1;
+        if (a.rating != null && b.rating != null && a.rating !== b.rating)
+          return librarySort === "RATING_HIGH" ? b.rating - a.rating : a.rating - b.rating;
+      }
+      if (librarySort === "EPISODES" && a.episodesWatched !== b.episodesWatched)
+        return b.episodesWatched - a.episodesWatched;
+      return a.title.localeCompare(b.title, "en") || a.id.localeCompare(b.id, "en");
+    });
+  }, [library, filter, libraryQuery, libraryRating, librarySort]);
   const matchingCatalog = useMemo(
     () =>
       (searchedCatalog ?? (hasCatalogFilters ? [] : catalog))
@@ -541,7 +563,7 @@ export default function Home() {
           </div>
         )}
       </section>
-      <section className="mt-10">
+      <section aria-label="My Library" className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-2xl font-semibold">My Library</h2>
           <button
@@ -555,6 +577,7 @@ export default function Home() {
           {statuses.map((s) => (
             <button
               key={s}
+              aria-pressed={filter === s}
               onClick={() => setFilter(s)}
               className={`rounded-full px-4 py-2 text-xs ${filter === s ? "bg-violet-300 text-slate-950" : "border border-white/10 text-slate-400"}`}
             >
@@ -562,6 +585,34 @@ export default function Home() {
             </button>
           ))}
         </div>
+        {canEdit && <div className="mt-4 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="text-sm text-slate-300">Search your library
+              <input aria-label="Search your library" type="search" maxLength={2048} value={libraryQuery}
+                onChange={event => setLibraryQuery(event.target.value)}
+                className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" />
+            </label>
+            <label className="text-sm text-slate-300">Library rating filter
+              <select aria-label="Library rating filter" value={libraryRating} onChange={event => setLibraryRating(event.target.value)}
+                className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-900 p-2">
+                <option value="ALL">Any rating</option><option value="RATED">Rated</option><option value="UNRATED">Not rated</option>
+                {[1,2,3,4,5].map(score => <option key={score} value={String(score)}>{score} / 5</option>)}
+              </select>
+            </label>
+            <label className="text-sm text-slate-300">Library sort order
+              <select aria-label="Library sort order" value={librarySort} onChange={event => setLibrarySort(event.target.value)}
+                className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-900 p-2">
+                <option value="DEFAULT">Default order</option><option value="TITLE">Title A–Z</option>
+                <option value="RATING_HIGH">Highest rating</option><option value="RATING_LOW">Lowest rating</option>
+                <option value="EPISODES">Most episodes watched</option>
+              </select>
+            </label>
+          </div>
+          <button onClick={() => {setFilter("ALL");setLibraryQuery("");setLibraryRating("ALL");setLibrarySort("DEFAULT");}}
+            className="text-sm text-violet-200 underline">Clear library filters</button>
+          {!loading && <p role="status" className="text-sm text-slate-400">Showing {filtered.length} of {library.length} library titles.</p>}
+          {!loading && filtered.length === 0 && <p className="text-sm text-slate-400">{library.length ? "No library titles match these filters." : "Your library is empty. Add anime from the catalog above."}</p>}
+        </div>}
         {error && (
           <p
             role="alert"

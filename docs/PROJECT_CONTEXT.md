@@ -1,6 +1,6 @@
 # Anime Intelligence — project context
 
-Last updated: 2026-11-16. GitHub `main` is the source of truth. Update this document alongside implementation changes; use Git history and Actions for exact commit and validation status. This file contains no real user data or operational credentials.
+Last updated: 2026-11-17. GitHub `main` is the source of truth. Update this document alongside implementation changes; use Git history and Actions for exact commit and validation status. This file contains no real user data or operational credentials.
 
 ## Goal and working agreement
 
@@ -77,7 +77,7 @@ The optional operator-only `catalog-history` command summarizes retained observa
 4. CI has backend, monitoring/parser/rule/unit checks, frontend/mocked-browser, database/migration/rollback, a dedicated isolated PostgreSQL 17 logical recovery drill, and two real PostgreSQL/browser suites (`postgres`, `identity`). Both use disposable restricted database roles and a loopback-only synthetic TLS mailbox. CodeQL runs separately. Verify checks for the exact pushed SHA; a local pass does not prove browser CI.
 5. Commit implementation/tests and context updates together where practical. Record verified results in the implementation log; leave pending checks explicitly pending. Keep code and context in GitHub rather than a separate artifact store.
 
-Latest verified implementation checkpoint: `0b000bd` passed all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43889783641) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43889783434). This includes the catalog metrics promtool parser check. Earlier exact-commit evidence remains in IMPLEMENTATION_LOG.md.
+Latest verified implementation checkpoint: `7a35e5e` passed all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43976735338) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43976735440). This includes catalog ranges and sorting. Later changes require their own exact-commit verification.
 
 This continuation added public combined metadata filters and an explicit dashboard apply/reset form for source genres/themes/demographics/studios and format/status/year/quarter. Filters run before sorting/pagination, preserve unknown/category distinctions and retain alias search. Dashboard search/retry/expansion is bounded and stale results are fenced across query/filter/account revisions. No schema or grant update is required. No production data/source activation, external-model call or deployment occurred. The repository remains public; only source and synthetic fixtures were committed.
 
@@ -116,3 +116,5 @@ Product focus: catalog search now supports inclusive minEpisodes/maxEpisodes fil
 Catalog API/dashboard now support sort=TITLE/NEWEST/OLDEST. Unknown release years stay last; title/ID tie-breakers remain deterministic before pagination. Offset pages can still shift during ingestion. Exact CI pending. Product work only.
 
 Catalog API/dashboard now offer inclusive minYear/maxYear bounds (1900–9999) with reversed-range validation, unknown-year exclusion and composition with existing filters/sorts. Exact releaseYear remains an additional AND constraint. Regression/browser coverage added; exact CI pending. No monitoring or deployment.
+
+Library browsing now supports independent title search, rated/unrated/exact-score filters and title/rating/watched-episode ordering, combined with watch status. Controls operate only on the current loaded private library, preserve default server order, keep unrated titles last in both rating sorts, and reset on identity changes. No persistence or API writes are added. See [library browsing](LIBRARY_BROWSING.md). Exact CI pending; no monitoring work or deployment.
