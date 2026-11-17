@@ -787,3 +787,5 @@ Added minYear/maxYear to local/PostgreSQL search, strict API parsing and dashboa
 - Playwright covers combined filters, sort ties, unrated behavior, clear/refresh and absence of writes; extended account-switch coverage checks resets.
 - Prior checkpoint 7a35e5e: inspected all seven CI jobs successful (43976735338) and Security workflow successful (43976735440).
 - No local executor/toolchain is available. Exact pushed-commit CI is pending. No monitoring changes, real user data, source activation or deployment.
+
+Validation for `efa8be2aeb64ea85f4300d998d26710d04b85ccb`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43987814257) passed, including backend unit/race/vet/build, frontend typecheck/build and 30 mocked browser tests, PostgreSQL integration/migrations/rollback, recovery and both real full-stack browser suites. Both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43987814284) passed; dependency review skipped on push as configured. No local tests were run. This follow-up records those exact-commit results without changing product code.
