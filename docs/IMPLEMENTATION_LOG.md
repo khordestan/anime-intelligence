@@ -796,3 +796,5 @@ Validation for `efa8be2aeb64ea85f4300d998d26710d04b85ccb`: all seven [CI jobs](h
 - Extended browser coverage for combined rating/status filtering, refresh preservation, clear/default-order restoration and account-switch reset; no-write assertions retained.
 - Inspected baseline `6548649996a72e5164c7cde9e2814c8e98ab0fdd`: CI and Security push workflows completed successfully. Scoped web instructions and current official client-component guide read; installed guide/local Go/Node toolchains are unavailable. New exact-commit CI pending.
 - No schema/grant changes, source activation, real user data or deployment.
+
+Validation for `de4172a0d6ab64f802db4c819b1e10b6f29bd852`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44046690497) passed, including the extended mocked-browser and account-switch tests, both PostgreSQL browser suites, database integration/migrations, backend, recovery and monitoring. Both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/44046690353) passed. Local tests were unavailable. This follow-up records exact-commit hosted results only.
