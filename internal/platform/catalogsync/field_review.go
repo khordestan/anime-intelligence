@@ -141,6 +141,7 @@ func reviewFields(ctx context.Context,conn *pgx.Conn,s FieldReview,commit bool)(
   if _,err=tx.Exec(ctx,`INSERT INTO catalog_field_choice_audits(anime_id,field,revision,payload) VALUES($1,$2,$3,$4)`,v.AnimeID,v.Field,revision,payload);err!=nil{return out,err}
   var base feed.Title
   if json.Unmarshal(basePayload,&base)!=nil{return out,ErrFieldApply}
+  if (feed.Snapshot{Version:1,Provider:"base",ObservedAt:baseAt,Titles:[]feed.Title{base}}).Validate(time.Now().UTC())!=nil{return out,ErrFieldApply}
   effective,err:=projectLabelFields(ctx,tx,v.AnimeID,base);if err!=nil{return out,err}
   projected,err:=json.Marshal(effective);if err!=nil{return out,err}
   if _,err=tx.Exec(ctx,`UPDATE catalog_metadata SET payload=$2 WHERE anime_id=$1`,v.AnimeID,projected);err!=nil{return out,err}

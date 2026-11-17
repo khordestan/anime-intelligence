@@ -842,3 +842,5 @@ Validation for `9aa30dab242cee2d69ff4ab67caf05b996bc213f`: all seven [CI jobs](h
 - Added validation, preview/replay/refresh/restoration/empty-value/query consistency, CAS concurrency, batch/audit rollback, role boundary and downgrade tests; dashboard field provenance preserves spoiler boundaries.
 - Baseline cc3628c0739a53319e68a9d30342bf52ec70852f CI/Security workflows were inspected and passed. Local toolchains/installed web guide unavailable; scoped web/current official client guide checked. Exact new hosted CI pending.
 - No actual source collection, real metadata corpus, private watch history, credentials, source/host activation or deployment.
+
+Follow-up review: the curator now revalidates the retained primary neutral title before projection. A regression removes its required external ID from otherwise valid JSON and verifies the decision/audit/projection transaction rolls back. Baseline implementation `bb8434577f750f628864ae85fc163a9e50159236` passed all seven CI jobs (44073033687) and both CodeQL analyses (44073033693); this follow-up requires its own CI.

@@ -144,6 +144,13 @@ func TestFieldChoiceConflictsAuditRollbackAndRoleBoundaries(t *testing.T){
   if _,err=curator.Exec(ctx,query);err==nil{t.Fatal("curator exceeded boundary",query)}
  }
  if _,err=writer.Exec(ctx,`UPDATE catalog_metadata SET payload=payload`);err==nil{t.Fatal("old binary bypassed projection context")}
+ // Valid JSON alone is insufficient: a corrupt retained primary observation
+ // cannot be laundered into a resolved payload by a label-field review.
+ queueExec(t,owner,`UPDATE catalog_base_metadata SET payload=payload-'externalId' WHERE anime_id=$1`,id)
+ corrupt:=labelReview(id,"demographics",[]string{"Synthetic audience"},0,base.Add(4*time.Hour))
+ if _,err=catalogsync.ReviewFields(ctx,curator,corrupt,time.Now(),true);!errors.Is(err,catalogsync.ErrFieldApply){t.Fatal("corrupt base was reprojected",err)}
+ if err=owner.QueryRow(ctx,`SELECT count(*) FROM catalog_field_choices WHERE field='demographics'`).Scan(&n);err!=nil||n!=0{t.Fatal("corrupt-base failure retained choice",n,err)}
+
 }
 func TestFieldChoiceMigrationRollbackPreservesDecisions(t *testing.T){
  owner,_,curator,_,_:=fieldReviewDB(t)
