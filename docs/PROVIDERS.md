@@ -1,11 +1,12 @@
 # Provider capability and approval registry
 
-Reviewed 2026-11-15 against primary sources. No scheduled external provider is enabled by the application or database seed. A bounded explicit-item Wikidata fetch command is implemented under its CC0 structured-data terms. Adapter code and API/software licenses do not establish a right to build a competing metadata/tracker product or redistribute source content.
+Initial review 2026-11-15; TVmaze review added 2026-11-17 against primary sources. No scheduled external provider is enabled by the application or database seed. A bounded explicit-item Wikidata fetch command is implemented under its CC0 structured-data terms. Adapter code and API/software licenses do not establish a right to build a competing metadata/tracker product or redistribute source content.
 
 | Source | Implemented input | Metadata | Relations | Episode schedules | Confirmed availability | Activation |
 | --- | --- | --- | --- | --- | --- | --- |
 | Reviewed neutral feed | Strict version-1 JSON | Rich structured title metadata | Typed canonical resolution | Revisioned by track | Explicit releasedAt | Administrator source registration required |
 | Wikidata CC0 | Explicit-item live Action API fetch | Selected supported anime-work labels/native names/aliases, genres, year and non-conflicting episode totals | Unsupported | Unsupported | Unsupported | No scheduled job or database source enabled |
+| TVmaze CC BY-SA 4.0 | Explicit reviewed show/season HTTPS fetch and opt-in durable jobs | Adapted season label and explicit premiere year; unknown totals/status | Unsupported | Regular season-local UNKNOWN-track airstamps | Unsupported; never inferred | Source approval, anime-season review flag and attribution required; idle by default |
 | Jikan v4 | Offline full-anime and episode-page converters | Typed/localized and legacy names, aliases, synopsis, media/status/year/quarter, nullable totals, separate genres/themes/demographics plus legacy tags/studios | Anime-only supported relations; manga/adaptation edges excluded | Aired timestamps as UNKNOWN-track schedules | Unsupported; never inferred | Network collection disabled pending source-use approval |
 | AniList | None | Not ingested | Not ingested | Not ingested | Not ingested | Excluded under current tracker/collection restrictions |
 
@@ -48,7 +49,7 @@ Requests include a project User-Agent, maxlag=5, bounded response sizes, 15-seco
 
 A single primary API smoke check for Q124570859 returned HTTP 200 with the expected direct anime-TV class. No data was imported, user account read, media downloaded or source activated. Synthetic transport tests cover normalization, missing/unsupported entities, rank ambiguity, unknown facts, headers/pacing boundaries, redirects, rate limits, oversized/malformed responses and cancellation.
 
-Review the normalized feed before import. An administrator can register provider_key=wikidata with the official data-access policy URL and enabled=true in their own database, then use catalog-import. No source activation is performed by catalog-fetch. Existing authoritative mappings are not overwritten or name-merged. Wikidata is a sparse factual fallback, not a comprehensive anime/availability feed: synopsis, studio claims, season graph, streaming rights, airing schedules and confirmed SUB/DUB releases remain unknown. The opt-in bounded worker and persisted source admission/cooldowns are implemented but idle by default. Durable per-title fetch jobs and persistent response caches remain pending.
+Review the normalized feed before import. An administrator can register provider_key=wikidata with the official data-access policy URL and enabled=true in their own database, then use catalog-import. No source activation is performed by catalog-fetch. Existing authoritative mappings are not overwritten or name-merged. Wikidata is a sparse factual fallback, not a comprehensive anime/availability feed: synopsis, studio claims, season graph, streaming rights, airing schedules and confirmed SUB/DUB releases remain unknown. The opt-in bounded worker and persisted source admission/cooldowns are implemented but idle by default. Durable per-title fetch jobs are implemented; persistent response caches remain pending.
 
 ## 2026-11-16 title schema compatibility
 
@@ -67,3 +68,7 @@ The neutral feed and details API now preserve themes and demographics separately
 | [Original net animation Q1047299](https://www.wikidata.org/wiki/Q1047299) | ONA |
 
 Explicit OVA/ONA formats take precedence over a co-asserted broad anime-film class. TV plus film/OVA/ONA, or OVA plus ONA, is ambiguous and rejected; TV series plus TV-season resolves to TV. Existing preferred/deprecated rank rules still apply. Generic film/anime classes or suggestive names alone are insufficient. No unsupported subclass closure, language/region release availability, exact season links or a default one-episode movie total is inferred. This review expands structured-fact mapping only; no catalog item or source was activated.
+
+## 2026-11-17 TVmaze integration
+
+The bounded adapter and provider-isolated durable worker support are implemented with synthetic tests. The data scope, source/license links, explicit review and upgrade requirements are recorded in [TVmaze integration](TVMAZE.md). TVmaze labels an Animation show, not an automatically verified anime; use only explicitly reviewed season identities. Airdate observations stay unconfirmed schedules. ShareAlike and attribution apply to distributed TVmaze-derived data. Comprehensive catalog/availability coverage and source/host activation remain unfinished.

@@ -33,3 +33,7 @@ Rows retain explicit public catalog IDs, times, counters, states and lease diges
 The worker remains bounded to twenty explicitly reviewed IDs and the existing Wikidata adapter. This is a durable queue for that approved adapter, not comprehensive discovery, a licensed availability adapter or a complete/current catalog. Persistent HTTP caching and broader provider adapters remain pending.
 
 Supported explicit TV-series/TV-season/movie/OVA/ONA classes retain their own identities and sparse facts. No season graph, release status or confirmed SUB/DUB availability is inferred. Existing notification baseline/confirmation rules remain unchanged. Live collection and public deployment are not activated by these changes.
+
+## Additional reviewed TVmaze adapter
+
+The worker also supports CATALOG_SYNC_PROVIDER=tvmaze with explicit reviewed show/season IDs and CATALOG_SYNC_REVIEWED_ANIME_SEASONS=1. Apply migration 000017 before using it. See [TVmaze scope, attribution and configuration](TVMAZE.md). The default provider remains Wikidata, with existing Q IDs unchanged. Provider source rows, due times and cooldowns are separate; one source is configured per process and the existing collector advisory lock serializes cycles across processes. Neither provider is enabled automatically.

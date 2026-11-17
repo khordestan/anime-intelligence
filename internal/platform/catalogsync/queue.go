@@ -12,6 +12,7 @@ import (
  "github.com/jackc/pgx/v5"
  "github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
  "github.com/khordestan/anime-intelligence/internal/providers/wikidata"
+ "github.com/khordestan/anime-intelligence/internal/providers/tvmaze"
 )
 
 const fetchLease = 3*time.Minute
@@ -20,6 +21,7 @@ var fetchID = regexp.MustCompile(`^Q[1-9][0-9]{0,11}$`)
 
 type fetchClaim struct {
  source string
+ provider string
  id string
  digest []byte
  interval time.Duration
@@ -31,17 +33,23 @@ type fetchClaim struct {
 // No transaction is held during HTTP. The shared collector lock coordinates
 // this queue with legacy collectors; leases fence acknowledgements after crashes.
 func SyncQueuedWikidata(ctx context.Context,conn *pgx.Conn,fetcher Fetcher,ids []string,interval time.Duration,now time.Time)(bool,error){
+ return SyncQueuedProvider(ctx,conn,"wikidata",fetcher,ids,interval,now)
+}
+// SyncQueuedProvider supports only reviewed Wikidata and TVmaze adapters. No
+// dynamic endpoint, arbitrary provider or automatic anime classification is allowed.
+func SyncQueuedProvider(ctx context.Context,conn *pgx.Conn,provider string,fetcher Fetcher,ids []string,interval time.Duration,now time.Time)(bool,error){
+ if provider!="wikidata"&&provider!="tvmaze"{return false,ErrWorker}
  if fetcher==nil || conn==nil || now.IsZero() || now.Unix()<0 || now.Year()>9999 ||
  interval<time.Hour || interval>7*24*time.Hour || len(ids)==0 || len(ids)>20 {return false,ErrWorker}
  ordered:=append([]string(nil),ids...)
  sort.Strings(ordered)
- for i,id:=range ordered {if !fetchID.MatchString(id)||(i>0&&id==ordered[i-1]) {return false,ErrWorker}}
+ for i,id:=range ordered {if !validFetchID(provider,id)||(i>0&&id==ordered[i-1]) {return false,ErrWorker}}
  if err:=CheckWriter(ctx,conn);err!=nil{return false,ErrWorker}
  var locked bool
  if err:=conn.QueryRow(ctx,`SELECT pg_try_advisory_lock(742019686)`).Scan(&locked);err!=nil{return false,ErrWorker}
  if !locked{return false,nil}
  defer func(){cleanup,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel();_,_=conn.Exec(cleanup,`SELECT pg_advisory_unlock(742019686)`)}()
- claim,err:=claimFetch(ctx,conn,ordered,interval,now.UTC().Truncate(time.Microsecond))
+ claim,err:=claimFetch(ctx,conn,provider,ordered,interval,now.UTC().Truncate(time.Microsecond))
  if err!=nil{return false,err}
  if claim==nil{return false,nil}
  snapshot,fetchErr:=fetcher.Fetch(ctx,[]string{claim.id})
@@ -55,11 +63,18 @@ func SyncQueuedWikidata(ctx context.Context,conn *pgx.Conn,fetcher Fetcher,ids [
    if retry.IsZero(){retry=time.Now().UTC().Add(limited.Wait)}
    if retry.After(until){until=retry}
   }
+  var tvLimited *tvmaze.RateLimitError
+  if errors.As(fetchErr,&tvLimited){
+   outcome="RATE_LIMITED"
+   retry:=tvLimited.Until
+   if retry.IsZero(){retry=time.Now().UTC().Add(tvLimited.Wait)}
+   if retry.After(until){until=retry}
+  }
   _=failFetch(conn,*claim,outcome,until)
   return false,ErrWorker
  }
  now=time.Now().UTC()
- if snapshot.Provider!="wikidata" || len(snapshot.Titles)!=1 ||
+ if snapshot.Provider!=provider || len(snapshot.Titles)!=1 ||
  snapshot.Titles[0].ExternalID!=claim.id || snapshot.Validate(now)!=nil {
   _=failFetch(conn,*claim,"FETCH_FAILED",now.Add(fetchRetry(claim.attempts)))
   return false,ErrWorker
@@ -86,14 +101,14 @@ func fetchRetry(attempt int)time.Duration{
  return 15*time.Minute*time.Duration(1<<uint(attempt-1))
 }
 
-func claimFetch(ctx context.Context,conn *pgx.Conn,ids []string,interval time.Duration,now time.Time)(*fetchClaim,error){
+func claimFetch(ctx context.Context,conn *pgx.Conn,provider string,ids []string,interval time.Duration,now time.Time)(*fetchClaim,error){
  tx,err:=conn.Begin(ctx)
  if err!=nil{return nil,ErrWorker}
  defer rollbackFetch(tx)
  if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return nil,ErrWorker}
  var source string
- err=tx.QueryRow(ctx,`SELECT id::text FROM data_sources WHERE provider_key='wikidata'
- AND enabled AND COALESCE(policy_url,'')<>'' FOR UPDATE`).Scan(&source)
+ err=tx.QueryRow(ctx,`SELECT id::text FROM data_sources WHERE provider_key=$1
+ AND enabled AND COALESCE(policy_url,'')<>'' FOR UPDATE`,provider).Scan(&source)
  if errors.Is(err,pgx.ErrNoRows){return nil,ErrSource}
  if err!=nil{return nil,ErrWorker}
  seconds:=int((interval+time.Second-1)/time.Second)
@@ -114,7 +129,7 @@ func claimFetch(ctx context.Context,conn *pgx.Conn,ids []string,interval time.Du
  _,err=tx.Exec(ctx,`UPDATE catalog_fetch_jobs SET state='FAILED',lease_digest=NULL,lease_until=NULL,updated_at=$3
  WHERE source_id=$1 AND external_id=ANY($2::text[]) AND state='LEASED' AND lease_until<=$3 AND attempts>=5`,source,ids,now)
  if err!=nil{return nil,ErrWorker}
- claim:=&fetchClaim{source:source}
+ claim:=&fetchClaim{source:source,provider:provider}
  var intervalSeconds int
  err=tx.QueryRow(ctx,`SELECT external_id,interval_seconds,attempts FROM catalog_fetch_jobs
  WHERE source_id=$1 AND external_id=ANY($2::text[]) AND state<>'FAILED'
@@ -153,8 +168,8 @@ func completeFetch(ctx context.Context,conn *pgx.Conn,claim fetchClaim,snapshot 
  if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return ErrWorker}
  if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(742019684)`);err!=nil{return ErrWorker}
  var source string
- err=tx.QueryRow(ctx,`SELECT id::text FROM data_sources WHERE id=$1 AND provider_key='wikidata'
- AND enabled AND COALESCE(policy_url,'')<>'' FOR UPDATE`,claim.source).Scan(&source)
+ err=tx.QueryRow(ctx,`SELECT id::text FROM data_sources WHERE id=$1 AND provider_key=$2
+ AND enabled AND COALESCE(policy_url,'')<>'' FOR UPDATE`,claim.source,claim.provider).Scan(&source)
  if err!=nil{return ErrWorker}
  var id string
  err=tx.QueryRow(ctx,`SELECT external_id FROM catalog_fetch_jobs WHERE source_id=$1 AND external_id=$2
@@ -200,4 +215,12 @@ func failFetch(conn *pgx.Conn,claim fetchClaim,outcome string,until time.Time)er
  if err!=nil{return ErrWorker}
  if err=tx.Commit(ctx);err!=nil{return ErrWorker}
  return nil
+}
+
+func validFetchID(provider,id string)bool{
+ switch provider{
+ case "wikidata":return fetchID.MatchString(id)
+ case "tvmaze":_,_,err:=tvmaze.ParseID(id);return err==nil
+ default:return false
+ }
 }

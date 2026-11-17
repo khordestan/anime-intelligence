@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionManager from "./session-manager";
+import ProviderCredit from "./provider-credit";
 import ReleaseAlerts from "./release-alerts";
 import ReleaseCalendar from "./release-calendar";
 import EpisodeEditor from "./episode-editor";
@@ -745,6 +746,7 @@ export default function Home() {
       <footer className="mt-14 border-t border-white/10 pt-5 text-xs text-slate-600">
         Anime Intelligence · Development foundation ·{" "}
         {mode === "postgres" ? "Private account library" : "Local demo profile"}
+        <p className="mt-2"><ProviderCredit provider="tvmaze" /></p>
       </footer>
     </main>
   );

@@ -12,10 +12,11 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/platform/catalogjob"
 	"github.com/khordestan/anime-intelligence/internal/platform/catalogsync"
 	"github.com/khordestan/anime-intelligence/internal/providers/wikidata"
+ "github.com/khordestan/anime-intelligence/internal/providers/tvmaze"
 )
 func main(){
 	logger:=slog.New(slog.NewJSONHandler(os.Stdout,nil))
-	config,err:=catalogjob.Parse(os.Getenv("CATALOG_SYNC_IDS"),os.Getenv("CATALOG_SYNC_INTERVAL"))
+	config,err:=catalogjob.ParseProvider(os.Getenv("CATALOG_SYNC_PROVIDER"),os.Getenv("CATALOG_SYNC_IDS"),os.Getenv("CATALOG_SYNC_INTERVAL"),os.Getenv("CATALOG_SYNC_REVIEWED_ANIME_SEASONS")=="1")
 	if err!=nil{logger.Error("invalid catalog worker configuration");os.Exit(1)}
 	ctx,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM);defer stop()
 	if len(config.IDs)==0{
@@ -24,7 +25,8 @@ func main(){
 	}
 	dsn:=os.Getenv("CATALOG_DATABASE_URL")
 	if dsn==""{logger.Error("catalog worker connection is required");os.Exit(1)}
-	client:=wikidata.New()
+	var client catalogsync.Fetcher=wikidata.New()
+ if config.Provider=="tvmaze"{client=tvmaze.New(true)}
 	task:=func(parent context.Context)error{
 		cycle,cancel:=context.WithTimeout(parent,2*time.Minute);defer cancel()
 		settings,err:=pgx.ParseConfig(dsn)
@@ -34,7 +36,7 @@ func main(){
 		conn,err:=pgx.ConnectConfig(cycle,settings)
 		if err!=nil{return catalogsync.ErrWorker}
 		defer func(){cleanup,done:=context.WithTimeout(context.Background(),5*time.Second);defer done();_=conn.Close(cleanup)}()
-		_,err=catalogsync.SyncQueuedWikidata(cycle,conn,client,config.IDs,config.Interval,time.Now().UTC())
+		_,err=catalogsync.SyncQueuedProvider(cycle,conn,config.Provider,client,config.IDs,config.Interval,time.Now().UTC())
 		return err
 	}
 	logger.Info("catalog queue worker enabled","refresh_interval_seconds",int(config.Interval.Seconds()),"item_count",len(config.IDs))

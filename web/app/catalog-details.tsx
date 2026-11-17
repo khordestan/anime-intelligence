@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 import CatalogContinuity from "./catalog-continuity";
+import ProviderCredit from "./provider-credit";
 
 type Details = {
   externalIds?: { provider: string; externalId: string }[];
@@ -50,6 +51,7 @@ export default function CatalogDetails({ client, id, title, onError }: {
           <p className="text-xs">Studios: {details.studios.join(", ") || "Not available"}</p>
           {!!details.synonyms.length && <p className="text-xs text-slate-400">Also known as: {details.synonyms.join(", ")}</p>}
           <p className="text-xs text-slate-500">{details.provider ? `Source: ${details.provider}` : "Starter catalog; source enrichment unavailable"}{details.observedAt ? ` · Observed ${new Date(details.observedAt).toLocaleString()}` : ""}</p>
+          {details.provider === "tvmaze" && <p className="text-xs text-slate-400"><ProviderCredit provider="tvmaze" /></p>}
           {!!details.externalIds?.length && <p className="text-xs text-slate-400">Provider IDs: {details.externalIds.map(identity => identity.provider + ": " + identity.externalId).join(" · ")}</p>}
           <button onClick={() => setSpoilers(!spoilers)} className="text-xs text-amber-200 underline">{spoilers ? "Hide synopsis, themes and tags" : "Show synopsis, themes and tags (may contain spoilers)"}</button>
           {spoilers && <div><p className="text-xs text-slate-300">{details.anime.synopsis || "No synopsis available."}</p><p className="mt-2 text-xs text-slate-400">Themes: {details.themes?.join(", ") || "Not available"}</p><p className="mt-2 text-xs text-slate-400">Tags: {otherTags.join(", ") || "Not available"}</p></div>}

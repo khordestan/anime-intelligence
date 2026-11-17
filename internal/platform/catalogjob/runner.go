@@ -7,19 +7,26 @@ import (
 	"regexp"
 	"strings"
 	"time"
+ "github.com/khordestan/anime-intelligence/internal/providers/tvmaze"
 )
 var ErrConfig=errors.New("invalid catalog synchronization configuration")
 var qid=regexp.MustCompile(`^Q[1-9][0-9]{0,11}$`)
-type Config struct{IDs []string;Interval time.Duration}
-func Parse(ids,interval string)(Config,error){
-	c:=Config{Interval:24*time.Hour}
+type Config struct{IDs []string;Interval time.Duration;Provider string}
+func Parse(ids,interval string)(Config,error){return ParseProvider("wikidata",ids,interval,false)}
+// ParseProvider requires explicit anime-season review for TVmaze. Empty IDs
+// remain completely idle, even when unused configuration is invalid.
+func ParseProvider(provider,ids,interval string,reviewed bool)(Config,error){
+ if provider==""{provider="wikidata"}
+ c:=Config{Interval:24*time.Hour,Provider:provider}
 	if strings.TrimSpace(ids)==""{return c,nil}
-	if interval!=""{d,err:=time.ParseDuration(interval);if err!=nil{return c,ErrConfig};c.Interval=d}
+	if provider!="wikidata"&&provider!="tvmaze"{return c,ErrConfig}
+ if provider=="tvmaze"&&!reviewed{return c,ErrConfig}
+ if interval!=""{d,err:=time.ParseDuration(interval);if err!=nil{return c,ErrConfig};c.Interval=d}
 	if c.Interval<time.Hour||c.Interval>7*24*time.Hour{return c,ErrConfig}
 	c.IDs=strings.Split(ids,",")
 	if len(c.IDs)>20{return c,ErrConfig}
 	seen:=map[string]bool{}
-	for i,id:=range c.IDs{id=strings.TrimSpace(id);if !qid.MatchString(id)||seen[id]{return c,ErrConfig};seen[id]=true;c.IDs[i]=id}
+	for i,id:=range c.IDs{id=strings.TrimSpace(id);valid:=qid.MatchString(id);if provider=="tvmaze"{_,_,err:=tvmaze.ParseID(id);valid=err==nil};if !valid||seen[id]{return c,ErrConfig};seen[id]=true;c.IDs[i]=id}
 	return c,nil
 }
 func Wait(ctx context.Context,d time.Duration)error{

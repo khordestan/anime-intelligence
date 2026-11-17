@@ -50,6 +50,7 @@
 - [ ] Production source-use permissions and licensed network activation
 - [x] Offline reviewed snapshot importer with exact external ID mapping
 - [x] Bounded explicit-item Wikidata CC0 factual fetch adapter
+- [x] Bounded reviewed TVmaze season metadata/schedule adapter with attribution and durable source-isolated jobs
 - [ ] Comprehensive approved metadata and confirmed-availability adapters
 - [x] Opt-in selected neutral metadata observations, full transactional import preview and bounded operator field-change history
 - [ ] Raw source snapshots where licensing permits

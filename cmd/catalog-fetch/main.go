@@ -1,4 +1,4 @@
-// catalog-fetch reads explicit CC0 Wikidata anime items without user accounts.
+// catalog-fetch normalizes explicit reviewed provider items without user accounts.
 package main
 
 import (
@@ -12,23 +12,35 @@ import (
 	"time"
 
 	"github.com/khordestan/anime-intelligence/internal/providers/wikidata"
+ "github.com/khordestan/anime-intelligence/internal/providers/tvmaze"
+ "github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
 )
 func run() error {
 	ids:=flag.String("ids","","Comma-separated supported Wikidata anime work IDs (TV/season/movie/OVA/ONA; maximum 20)")
-	flag.Parse()
+ provider:=flag.String("provider","wikidata","Provider: wikidata or tvmaze")
+ reviewed:=flag.Bool("reviewed-anime-seasons",false,"Explicitly reviewed anime classification and season identities for TVmaze")
+ flag.Parse()
+ if flag.NArg()!=0{return feed.ErrInvalid}
 	items:=strings.Split(*ids,",")
 	for i:=range items {items[i]=strings.TrimSpace(items[i])}
 	ctx,cancel:=context.WithTimeout(context.Background(),time.Minute)
 	defer cancel()
-	snapshot,err:=wikidata.New().Fetch(ctx,items)
+	var snapshot feed.Snapshot
+ var err error
+ switch *provider{
+ case "wikidata":snapshot,err=wikidata.New().Fetch(ctx,items)
+ case "tvmaze":snapshot,err=tvmaze.New(*reviewed).Fetch(ctx,items)
+ default:return feed.ErrInvalid
+ }
 	if err!=nil {return err}
 	return json.NewEncoder(os.Stdout).Encode(snapshot)
 }
 func main() {
 	if err:=run();err!=nil {
 		var limited *wikidata.RateLimitError
+  var tvLimited *tvmaze.RateLimitError
 		if errors.As(err,&limited) {fmt.Fprintln(os.Stderr,"catalog fetch rate limited; wait at least",int(limited.Wait.Seconds()),"seconds")
-		} else {fmt.Fprintln(os.Stderr,"catalog fetch failed; retry later if the source is busy")}
+		} else if errors.As(err,&tvLimited){fmt.Fprintln(os.Stderr,"catalog fetch rate limited; wait at least",int(tvLimited.Wait.Seconds()),"seconds")} else {fmt.Fprintln(os.Stderr,"catalog fetch failed; check provider review/configuration or retry later if busy")}
 		os.Exit(1)
 	}
 }
