@@ -33,7 +33,7 @@ No network client, retries, cache, periodic job, source activation or public pub
 
 ## Remaining evidence and operations
 
-Record approval scope, policy URL/review date, required attribution, permitted fields, cache/retention/deletion terms and quotas before enabling any source. Current data_sources.enabled plus policy_url is an administrator-controlled gate; it is not an automated license check. Scheduling, availability verification, region/language semantics and provider health telemetry remain pending.
+Record approval scope, policy URL/review date, required attribution, permitted fields, cache/retention/deletion terms and quotas before enabling any source. Current data_sources.enabled plus policy_url is an administrator-controlled gate; it is not an automated license check. Comprehensive collection, availability verification, region/language semantics and broader provider health telemetry remain pending; bounded scheduling for the two supported network adapters is implemented.
 
 ## Wikidata CC0 factual metadata
 

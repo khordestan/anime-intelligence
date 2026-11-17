@@ -1,6 +1,6 @@
-# Opt-in Wikidata factual synchronization
+# Opt-in catalog synchronization
 
-The worker schedules durable per-title jobs for explicitly configured Wikidata Q IDs. It remains idle without network/database access when CATALOG_SYNC_IDS is empty. No host service, source or schedule is activated by the repository.
+The worker schedules durable per-title jobs for explicitly configured Wikidata Q IDs or reviewed TVmaze show/season pairs. The default provider is Wikidata; TVmaze configuration and data scope are documented below. It remains idle without network/database access when CATALOG_SYNC_IDS is empty. No host service, source or schedule is activated by the repository.
 
 ## Upgrade and configuration
 
@@ -30,7 +30,7 @@ Signal cancellation interrupts waits/fetches. A bounded independent cleanup cont
 
 Rows retain explicit public catalog IDs, times, counters, states and lease digests, never provider payloads, response/error strings, private watch lists or credentials. Logs contain generic outcomes, refresh interval and item count, never IDs, labels or connection strings. API credentials receive no queue access. Catalog diagnostics still report provider attempts and metadata freshness; a dedicated queue-inspection CLI/metrics view and operational pruning remain future work.
 
-The worker remains bounded to twenty explicitly reviewed IDs and the existing Wikidata adapter. This is a durable queue for that approved adapter, not comprehensive discovery, a licensed availability adapter or a complete/current catalog. Persistent HTTP caching and broader provider adapters remain pending.
+The worker remains bounded to twenty explicitly reviewed IDs for one supported provider per process. Wikidata facts and TVmaze reviewed-season metadata/schedules have distinct source state. Comprehensive discovery, confirmed availability, persistent HTTP caching and further provider adapters remain pending.
 
 Supported explicit TV-series/TV-season/movie/OVA/ONA classes retain their own identities and sparse facts. No season graph, release status or confirmed SUB/DUB availability is inferred. Existing notification baseline/confirmation rules remain unchanged. Live collection and public deployment are not activated by these changes.
 

@@ -16,7 +16,7 @@ import (
  "github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
 )
 func run() error {
-	ids:=flag.String("ids","","Comma-separated supported Wikidata anime work IDs (TV/season/movie/OVA/ONA; maximum 20)")
+	ids:=flag.String("ids","","Provider IDs: up to 20 Wikidata Q IDs, or one reviewed TVmaze show-N-season-N pair")
  provider:=flag.String("provider","wikidata","Provider: wikidata or tvmaze")
  reviewed:=flag.Bool("reviewed-anime-seasons",false,"Explicitly reviewed anime classification and season identities for TVmaze")
  flag.Parse()
