@@ -143,6 +143,7 @@ test("account switching and reload never retain another account's library or bea
   await page.getByLabel("Search your library", { exact: true }).fill("Synthetic");
   await page.getByLabel("Library rating filter", { exact: true }).selectOption("UNRATED");
   await page.getByLabel("Library sort order", { exact: true }).selectOption("RATING_HIGH");
+  await page.getByLabel("Library progress mode", { exact: true }).selectOption("EXACT");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(0);
   await page
@@ -158,6 +159,7 @@ test("account switching and reload never retain another account's library or bea
   await expect(page.getByLabel("Search your library", { exact: true })).toHaveValue("");
   await expect(page.getByLabel("Library rating filter", { exact: true })).toHaveValue("ALL");
   await expect(page.getByLabel("Library sort order", { exact: true })).toHaveValue("DEFAULT");
+  await expect(page.getByLabel("Library progress mode", { exact: true })).toHaveValue("ALL");
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Confirm removal", exact: true })).toHaveCount(0);

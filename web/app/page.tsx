@@ -67,6 +67,7 @@ export default function Home() {
   const [libraryQuery, setLibraryQuery] = useState("");
   const [libraryRating, setLibraryRating] = useState("ALL");
   const [librarySort, setLibrarySort] = useState("DEFAULT");
+  const [libraryProgress, setLibraryProgress] = useState("ALL");
   const [notice, setNotice] = useState("");
   const [searchedCatalog, setSearchedCatalog] = useState<Anime[] | null>(null);
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>(emptyCatalogFilters);
@@ -107,7 +108,7 @@ export default function Home() {
       setError("");
       setQuery("");
       setFilter("ALL");
-      setLibraryQuery(""); setLibraryRating("ALL"); setLibrarySort("DEFAULT");
+      setLibraryQuery(""); setLibraryRating("ALL"); setLibrarySort("DEFAULT"); setLibraryProgress("ALL");
       setBusy(false);
     },
     [client],
@@ -291,6 +292,7 @@ export default function Home() {
     const entries = library.filter(entry =>
       (filter === "ALL" || entry.watchStatus === filter) &&
       entry.title.toLowerCase().includes(titleQuery) &&
+      (libraryProgress === "ALL" || (libraryProgress === "EXACT" ? entry.exactProgress === true : entry.exactProgress !== true)) &&
       (libraryRating === "ALL" ||
         (libraryRating === "UNRATED" ? entry.rating == null :
           libraryRating === "RATED" ? entry.rating != null :
@@ -307,7 +309,7 @@ export default function Home() {
         return b.episodesWatched - a.episodesWatched;
       return a.title.localeCompare(b.title, "en") || a.id.localeCompare(b.id, "en");
     });
-  }, [library, filter, libraryQuery, libraryRating, librarySort]);
+  }, [library, filter, libraryQuery, libraryRating, librarySort, libraryProgress]);
   const matchingCatalog = useMemo(
     () =>
       (searchedCatalog ?? (hasCatalogFilters ? [] : catalog))
@@ -608,7 +610,15 @@ export default function Home() {
               </select>
             </label>
           </div>
-          <button onClick={() => {setFilter("ALL");setLibraryQuery("");setLibraryRating("ALL");setLibrarySort("DEFAULT");}}
+          <label className="block text-sm text-slate-300">Library progress mode
+            <select aria-label="Library progress mode" value={libraryProgress} onChange={event => setLibraryProgress(event.target.value)}
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-900 p-2 sm:w-auto">
+              <option value="ALL">Any progress mode</option>
+              <option value="EXACT">Exact episode selections</option>
+              <option value="COUNT">Episode count</option>
+            </select>
+          </label>
+          <button onClick={() => {setFilter("ALL");setLibraryQuery("");setLibraryRating("ALL");setLibrarySort("DEFAULT");setLibraryProgress("ALL");}}
             className="text-sm text-violet-200 underline">Clear library filters</button>
           {!loading && <p role="status" className="text-sm text-slate-400">Showing {filtered.length} of {library.length} library titles.</p>}
           {!loading && filtered.length === 0 && <p className="text-sm text-slate-400">{library.length ? "No library titles match these filters." : "Your library is empty. Add anime from the catalog above."}</p>}

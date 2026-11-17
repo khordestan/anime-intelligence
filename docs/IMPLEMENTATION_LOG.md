@@ -789,3 +789,10 @@ Added minYear/maxYear to local/PostgreSQL search, strict API parsing and dashboa
 - No local executor/toolchain is available. Exact pushed-commit CI is pending. No monitoring changes, real user data, source activation or deployment.
 
 Validation for `efa8be2aeb64ea85f4300d998d26710d04b85ccb`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/43987814257) passed, including backend unit/race/vet/build, frontend typecheck/build and 30 mocked browser tests, PostgreSQL integration/migrations/rollback, recovery and both real full-stack browser suites. Both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/43987814284) passed; dependency review skipped on push as configured. No local tests were run. This follow-up records those exact-commit results without changing product code.
+
+## 2026-11-17 — Library progress-mode browsing
+
+- Added a current-pass exact-selection/count-mode filter alongside existing library controls, without changing tracker data or browser storage. Absent flags preserve count-mode compatibility.
+- Extended browser coverage for combined rating/status filtering, refresh preservation, clear/default-order restoration and account-switch reset; no-write assertions retained.
+- Inspected baseline `6548649996a72e5164c7cde9e2814c8e98ab0fdd`: CI and Security push workflows completed successfully. Scoped web instructions and current official client-component guide read; installed guide/local Go/Node toolchains are unavailable. New exact-commit CI pending.
+- No schema/grant changes, source activation, real user data or deployment.

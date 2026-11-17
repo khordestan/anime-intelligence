@@ -11,3 +11,5 @@ Watch status and **Library rating filter** combine with the title query. Ratings
 These controls are in-memory presentation state, reset on account changes and reload, and never write tracker records or browser storage. They operate on the current tracker response; they do not imply server-side pagination or full-catalog search.
 
 Validation: Playwright covers combined filters, rating/tie ordering, unrated behavior, reset/default-order preservation and no writes. The existing account-switch regression also checks that all three new controls reset. Hosted CI is required; no local executor is available.
+
+**Library progress mode** filters the current pass to exact episode selections or episode count, combined with all other filters. Missing `exactProgress` in count-mode/local entries is treated as count mode. The filter does not infer gaps, completion, or availability, and refresh preserves it. Clear, account changes, and reload reset it.

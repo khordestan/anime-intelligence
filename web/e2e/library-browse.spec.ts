@@ -7,8 +7,8 @@ test("private library browsing combines status, title and rating without changin
     "Access-Control-Allow-Methods": "GET, OPTIONS",
   };
   const entries = [
-    {id:"one",animeId:"a",title:"Zeta Synthetic",watchStatus:"WATCHING",episodesWatched:12,rating:5},
-    {id:"two",animeId:"b",title:"Alpha Synthetic",watchStatus:"COMPLETED",episodesWatched:24,rating:2},
+    {id:"one",animeId:"a",title:"Zeta Synthetic",watchStatus:"WATCHING",episodesWatched:12,rating:5,exactProgress:true},
+    {id:"two",animeId:"b",title:"Alpha Synthetic",watchStatus:"COMPLETED",episodesWatched:24,rating:2,exactProgress:false},
     {id:"three",animeId:"c",title:"Beta Synthetic",watchStatus:"WATCHING",episodesWatched:2},
     {id:"four",animeId:"d",title:"Delta Synthetic",watchStatus:"WATCHING",episodesWatched:12,rating:5},
   ];
@@ -52,6 +52,21 @@ test("private library browsing combines status, title and rating without changin
   await expect(titles).toHaveText(entries.map(entry=>entry.title));
   await expect(library.getByRole("button",{name:"All",exact:true})).toHaveAttribute("aria-pressed","true");
   await library.getByRole("button",{name:"Refresh",exact:true}).click();
+  await expect(titles).toHaveText(entries.map(entry=>entry.title));
+  await page.getByLabel("Library progress mode",{exact:true}).selectOption("EXACT");
+  await expect(titles).toHaveText(["Zeta Synthetic"]);
+  await library.getByRole("button",{name:"Refresh",exact:true}).click();
+  await expect(titles).toHaveText(["Zeta Synthetic"]);
+  await page.getByLabel("Library rating filter",{exact:true}).selectOption("UNRATED");
+  await expect(titles).toHaveCount(0);
+  await page.getByLabel("Library progress mode",{exact:true}).selectOption("COUNT");
+  await expect(titles).toHaveText(["Beta Synthetic"]);
+  await page.getByLabel("Library rating filter",{exact:true}).selectOption("ALL");
+  await expect(titles).toHaveText(["Alpha Synthetic","Beta Synthetic","Delta Synthetic"]);
+  await library.getByRole("button",{name:"Completed",exact:true}).click();
+  await expect(titles).toHaveText(["Alpha Synthetic"]);
+  await library.getByRole("button",{name:"Clear library filters",exact:true}).click();
+  await expect(page.getByLabel("Library progress mode",{exact:true})).toHaveValue("ALL");
   await expect(titles).toHaveText(entries.map(entry=>entry.title));
   expect(writes).toEqual([]);
 });
