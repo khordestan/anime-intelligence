@@ -55,6 +55,17 @@ func apply(ctx context.Context, conn *pgx.Conn, s feed.Snapshot,options ImportOp
 	tx,err := conn.Begin(ctx)
 	if err != nil { return out,err }
 	defer func(){cleanup,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel();_=tx.Rollback(cleanup)}()
+	result,err:=applyTx(ctx,tx,s,options)
+	if err!=nil{return Result{},err}
+	if options.Preview{if err=tx.Rollback(ctx);err!=nil{return Result{},err};result.Preview=true;return result,nil}
+	if err=tx.Commit(ctx);err!=nil{return Result{},err}
+	return result,nil
+}
+// applyTx lets the durable worker atomically commit imported facts and its
+// fenced acknowledgement. Callers validate the snapshot before entering here.
+func applyTx(ctx context.Context,tx pgx.Tx,s feed.Snapshot,options ImportOptions)(Result,error){
+	out:=Result{}
+	var err error
 	// Global ordering also serializes imports from different providers which may
 	// share canonical IDs or contribute edges to the same continuity graph.
 	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(742019684)`);err!=nil {return out,err}
@@ -110,8 +121,6 @@ VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) D
 	out.UnresolvedRelations=unresolved
 	if _,err=tx.Exec(ctx,`INSERT INTO catalog_sync_state(source_id,observed_at) VALUES($1,$2)
 ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.ObservedAt);err!=nil {return out,err}
-	if options.Preview{if err=tx.Rollback(ctx);err!=nil{return Result{},err};out.Preview=true;return out,nil}
-	if err=tx.Commit(ctx);err!=nil {return out,err}
 	return out,nil
 }
 func equalTime(a,b *time.Time) bool {

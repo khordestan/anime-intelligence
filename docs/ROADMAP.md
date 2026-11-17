@@ -84,7 +84,8 @@
 ## Milestone 4 — Release intelligence
 - [x] Transactional offline schedule ingestion and revision history
 - [x] Opt-in bounded Wikidata factual synchronization with persisted source due time
-- [ ] Durable fetch jobs, broad metadata/availability synchronization and per-title scheduling
+- [x] Durable explicit-ID Wikidata jobs, per-title scheduling, bounded retries and fenced atomic import acknowledgement
+- [ ] Broad approved metadata/availability synchronization and catalog discovery
 - [x] Durable post-baseline season-announcement and confirmed episode-release detection
 - [x] Owner-scoped polling in-app episode notifications and per-follow release tracks
 - [x] Dashboard notification controls

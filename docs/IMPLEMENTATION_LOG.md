@@ -798,3 +798,12 @@ Validation for `efa8be2aeb64ea85f4300d998d26710d04b85ccb`: all seven [CI jobs](h
 - No schema/grant changes, source activation, real user data or deployment.
 
 Validation for `de4172a0d6ab64f802db4c819b1e10b6f29bd852`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44046690497) passed, including the extended mocked-browser and account-switch tests, both PostgreSQL browser suites, database integration/migrations, backend, recovery and monitoring. Both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/44046690353) passed. Local tests were unavailable. This follow-up records exact-commit hosted results only.
+
+## 2026-11-17 — Durable per-title Wikidata ingestion
+
+- Migration 000016 adds explicit public-ID jobs, due times, per-title refresh intervals, five-claim budgets and digest-fenced expiring leases. API roles receive no grants; the dedicated catalog-writer role receives narrowly scoped queue rights.
+- The opt-in worker now schedules configured IDs and processes one due title per minute poll, preserving provider-wide cooldowns and separate per-title refresh targets. Removed IDs stay dormant. Exhausted jobs require operator review; adding/configuring IDs does not bypass provider Retry-After.
+- Extracted the existing import transaction body so facts/provenance/schedules/events/high-water mark and a live lease acknowledgement commit together. Failed imports or late acknowledgements roll everything back. No row transaction spans HTTP; cancellation attempts bounded failure cleanup.
+- Added synthetic PostgreSQL tests for approval checks, no locks during fetch, restart durability, configured-ID scope, retry exhaustion/poison isolation, provider cooldowns across new IDs/restarts, lease expiry/replacement, revocation during fetch, wrong response IDs, cancellation and late acknowledgement rollback. Added queue polling tests and updated migration apply/rollback CI and recovery ledger expectations.
+- Baseline 211165ab85e787ee7163448aa3044167e3ee007e CI and Security workflows were inspected and passed. Local Go/Node toolchains are unavailable; Docker socket access is denied. New exact-commit hosted CI is pending, not a local pass.
+- No live source/host activation, deployment, secrets, account data or real watch history. Existing installations must apply migration 000016 and reapply catalog-writer grants before running the new worker.

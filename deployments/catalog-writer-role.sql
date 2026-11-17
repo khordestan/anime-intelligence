@@ -21,3 +21,6 @@ GRANT UPDATE(last_verified_at) ON airing_schedule TO anime_catalog_writer;
 GRANT UPDATE(confidence) ON anime_relations TO anime_catalog_writer;
 
 GRANT SELECT,INSERT,UPDATE ON catalog_fetch_state TO anime_catalog_writer;
+
+-- Migration 000016: durable explicit-title jobs; no API/runtime grants.
+GRANT SELECT,INSERT,UPDATE ON catalog_fetch_jobs TO anime_catalog_writer;

@@ -34,11 +34,11 @@ func main(){
 		conn,err:=pgx.ConnectConfig(cycle,settings)
 		if err!=nil{return catalogsync.ErrWorker}
 		defer func(){cleanup,done:=context.WithTimeout(context.Background(),5*time.Second);defer done();_=conn.Close(cleanup)}()
-		_,err=catalogsync.SyncWikidata(cycle,conn,client,config.IDs,config.Interval,time.Now().UTC())
+		_,err=catalogsync.SyncQueuedWikidata(cycle,conn,client,config.IDs,config.Interval,time.Now().UTC())
 		return err
 	}
-	logger.Info("catalog worker enabled","interval_seconds",int(config.Interval.Seconds()),"item_count",len(config.IDs))
-	err=catalogjob.Run(ctx,config.Interval,task,catalogjob.Wait,func(ok bool){
+	logger.Info("catalog queue worker enabled","refresh_interval_seconds",int(config.Interval.Seconds()),"item_count",len(config.IDs))
+	err=catalogjob.RunQueue(ctx,time.Minute,task,catalogjob.Wait,func(ok bool){
 		if ok{logger.Info("catalog cycle completed or not yet due")}else{logger.Warn("catalog cycle failed; no immediate retry")}
 	})
 	if err!=nil&&ctx.Err()==nil{logger.Error("catalog scheduler stopped unexpectedly");os.Exit(1)}

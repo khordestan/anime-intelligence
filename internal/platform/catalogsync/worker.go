@@ -27,7 +27,7 @@ WHERE left(n.nspname::text,3)<>'pg_' AND n.nspname<>'information_schema'
 AND c.relkind IN ('r','p','v','m','f')
 AND (n.nspname<>'public' OR c.relkind<>'r' OR c.relrowsecurity OR c.relforcerowsecurity
 OR c.relname NOT IN ('anime','anime_external_ids','data_sources','source_records',
-'catalog_sync_state','catalog_fetch_state','catalog_metadata','anime_relations',
+'catalog_sync_state','catalog_fetch_state','catalog_fetch_jobs','catalog_metadata','anime_relations',
 'airing_schedule','domain_events','anime_features','anime_feature_observations'))
 AND (has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT')
 OR has_any_column_privilege(current_user,c.oid,'UPDATE') OR has_any_column_privilege(current_user,c.oid,'REFERENCES')

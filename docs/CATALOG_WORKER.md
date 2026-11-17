@@ -1,29 +1,35 @@
 # Opt-in Wikidata factual synchronization
 
-The worker now supports one explicitly configured Wikidata fact-sync job. It stays idle with no network/database access when CATALOG_SYNC_IDS is empty. No host service, source or schedule is activated by the repository.
+The worker schedules durable per-title jobs for explicitly configured Wikidata Q IDs. It remains idle without network/database access when CATALOG_SYNC_IDS is empty. No host service, source or schedule is activated by the repository.
 
-Apply migration 000014 and reapply catalog writer/reader grants before updating worker or diagnostics. Current API deployments separately require migration 000015 and fourteen private RLS tables. Keep worker/curator binaries current so their privilege checks also reject watch_cycles access.
+## Upgrade and configuration
 
-## Configuration
+1. Apply migration **000016** and reapply deployments/catalog-writer-role.sql before updating the worker. The API still requires its existing migration 000015/security contract; no new API/runtime grants are added.
+2. Provision the dedicated writer role with its password out of band. CheckWriter rejects elevated/table-owner roles, role memberships and private-data access. Do not use API or administrator credentials.
+3. Independently review the CC0 factual scope in PROVIDERS.md and register provider_key=wikidata with a nonempty reviewed policy_url and enabled=true. Only the administrator may approve a source; the queue cannot enable it.
+4. Supply CATALOG_DATABASE_URL (DATABASE_URL is never a fallback), CATALOG_SYNC_IDS (up to twenty distinct supported Q IDs) and optionally CATALOG_SYNC_INTERVAL (default 24h, minimum 1h, maximum 7d).
+5. Run go run ./cmd/worker in a private environment. It polls once per minute, serially, with a separate connection and a two-minute context per cycle. The interval is the per-title refresh target, not the polling cadence.
 
-1. Apply migrations and provision deployments/catalog-writer-role.sql as an administrator. Set its password out of band. Use a new dedicated role; CheckWriter rejects elevated/table-owner roles, role memberships and any private-table/column access.
-2. Review the CC0 factual source scope in PROVIDERS.md and register provider_key=wikidata with a nonempty reviewed policy_url and enabled=true. Only the administrator may enable sources or change policy URLs.
-3. Supply the writer connection as CATALOG_DATABASE_URL. DATABASE_URL is never a fallback.
-4. Set CATALOG_SYNC_IDS to up to twenty explicit supported Q IDs and optionally CATALOG_SYNC_INTERVAL (default 24h, minimum 1h, maximum 7d).
-5. Run go run ./cmd/worker in a private development environment.
+The writer has public catalog insert/read/update permissions, without DELETE, ownership or private-table rights. Narrow UPDATE(display_name) on data_sources and UPDATE(external_url) on external IDs support row locks without granting source approval or identity remapping. Provisioning does not remove existing excessive grants; review them separately.
 
-The role has public catalog insert/read/update permissions only, without DELETE, schema ownership or private-table rights. PostgreSQL row locking requires UPDATE privilege on a selected table: narrowly scoped UPDATE(display_name) on data_sources and UPDATE(external_url) on external IDs support existing importer locks without allowing source approval or identity remapping. Existing roles must be reviewed for extra grants; the provisioning script does not revoke pre-existing privileges.
+## Durable per-title lifecycle
 
-## Lifecycle and boundaries
+Each configured ID has one row in catalog_fetch_jobs. Scheduling inserts a missing row and updates its refresh interval without overriding its due time, retry budget, lease or terminal failure. Removing an ID from configuration makes its retained job dormant; it is not deleted or processed. Re-adding it resumes the retained state. Changing the interval affects future completions and does not bring an already scheduled job forward.
 
-Each cycle uses a separate bounded connection, a two-minute context and the provider client's request limits. A session advisory lock suppresses simultaneous collectors sharing this database. No database row transaction remains open during network fetches. Source approval is checked before fetching and again during atomic import. The source-wide persisted observation time prevents refetching before the interval after process restarts. A future timestamp fails closed. Updating the configured item list does not override that source-wide due time.
+At most one due title is claimed per cycle in due-time/ID order. The shared session advisory lock coordinates legacy and queued collectors on this database. Source approval is checked at admission and again before import. No source/job row transaction remains open during HTTP. A job receives a three-minute lease with a random digest and consumes one of five claims, including claims lost to crashes. Provider admission is committed before HTTP and prevents another request for at least that lease window after a crash.
 
-Cycles run serially and wait the full configured interval after success, skip or failure; no tight retries or overlapping tasks occur. Signal cancellation interrupts waiting/fetching and closes the connection, releasing the advisory lock. Logs contain only generic outcomes, interval and item count, never connection strings, item labels, provider response bodies or account data.
+Success atomically commits the existing catalog import (canonical data, provenance, schedule/event rules and source high-water mark), a fenced job acknowledgement, reset retry budget and next per-title due time. Import/acknowledgement failure rolls the entire transaction back. Expired or replaced claims cannot import facts or acknowledge a newer claim. SQL statements have a two-second timeout and cleanup is bounded.
 
-The scheduler is not a durable job queue. Migration 000014 persists each admitted attempt, its next allowed time and an allowlisted outcome before external fetching. A crash leaves STARTED with at least the configured interval of backoff. Rate-limit responses persist the greater of the interval and provider Retry-After, including cooldowns longer than one hour. A restarted worker checks that row before fetching. Success/failure outcomes never contain response bodies, connection details or selected item lists. Attempt counts saturate at one billion.
+After success the provider is paced for one minute; every cycle still waits at least one minute. Ordinary title failures persist retry delays of 15/30/60/120 minutes, without imposing the entire title delay on other due titles. The admission's existing three-minute source floor remains conservative after failures. Provider Retry-After extends the durable source cooldown and the failed title's retry time; new IDs and restarted workers cannot bypass it. Existing catalog_fetch_state cooldowns, including legacy cooldowns, remain honored on upgrade.
 
-Persistent HTTP content caching, queued/per-title jobs and global quotas across different databases remain pending. If database connectivity is lost after HTTP responds, the longer provider cooldown may not be recorded; the pre-fetch interval remains durable and the in-process client retains its cooldown. Operators must respect source limits across databases/restarts and investigate source failures. No source is automatically enabled.
+Five failed or crashed claims mark a job FAILED. That job stays dormant while other titles proceed. An operator must investigate before explicitly resetting its state to PENDING, attempts to zero, lease fields to NULL and next_attempt_at to a reviewed retry time using administrator credentials. Configuration changes never silently reset exhausted jobs.
 
-Wikidata facts remain sparse and retain item granularity, sometimes spanning seasons. They do not supply confirmed SUB/DUB availability, studio review, synopsis or reliable release status, so this job cannot invent episode alerts. Comprehensive availability collection and public deployment remain blocked on suitable data/operational review.
+Signal cancellation interrupts waits/fetches. A bounded independent cleanup context attempts to persist a failure even after cancellation; if the process or connection dies, the committed lease/admission permits recovery after expiry. Failure to record an HTTP Retry-After during database loss remains an operational limitation: only pre-fetch admission and the process-local client cooldown are guaranteed. Respect provider limits across different databases; there is no cross-database quota.
 
-Explicit items may use the reviewed TV-series/TV-season/movie/OVA/ONA classes in PROVIDERS.md. A season item keeps its own identity; no season graph is inferred. Media classification changes do not imply approval for streaming availability or automatic source activation.
+## Scope and operational limits
+
+Rows retain explicit public catalog IDs, times, counters, states and lease digests, never provider payloads, response/error strings, private watch lists or credentials. Logs contain generic outcomes, refresh interval and item count, never IDs, labels or connection strings. API credentials receive no queue access. Catalog diagnostics still report provider attempts and metadata freshness; a dedicated queue-inspection CLI/metrics view and operational pruning remain future work.
+
+The worker remains bounded to twenty explicitly reviewed IDs and the existing Wikidata adapter. This is a durable queue for that approved adapter, not comprehensive discovery, a licensed availability adapter or a complete/current catalog. Persistent HTTP caching and broader provider adapters remain pending.
+
+Supported explicit TV-series/TV-season/movie/OVA/ONA classes retain their own identities and sparse facts. No season graph, release status or confirmed SUB/DUB availability is inferred. Existing notification baseline/confirmation rules remain unchanged. Live collection and public deployment are not activated by these changes.

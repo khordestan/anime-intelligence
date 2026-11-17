@@ -30,7 +30,16 @@ func Wait(ctx context.Context,d time.Duration)error{
 // automatic tight-loop retries occur; cancellation interrupts idle waiting.
 func Run(ctx context.Context,interval time.Duration,task func(context.Context)error,wait func(context.Context,time.Duration)error,report func(bool))error{
 	if interval<time.Hour||interval>7*24*time.Hour||task==nil||wait==nil{return ErrConfig}
-	for{
+ return run(ctx,interval,task,wait,report)
+}
+// RunQueue polls a durable queue at a bounded cadence, separate from each
+// title's persisted refresh interval. Tasks stay serial and cancellation-aware.
+func RunQueue(ctx context.Context,poll time.Duration,task func(context.Context)error,wait func(context.Context,time.Duration)error,report func(bool))error{
+ if poll<time.Minute||poll>time.Hour||task==nil||wait==nil{return ErrConfig}
+ return run(ctx,poll,task,wait,report)
+}
+func run(ctx context.Context,interval time.Duration,task func(context.Context)error,wait func(context.Context,time.Duration)error,report func(bool))error{
+ for{
 		if ctx.Err()!=nil{return ctx.Err()}
 		err:=task(ctx)
 		if ctx.Err()!=nil{return ctx.Err()}
