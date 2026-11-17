@@ -1,4 +1,4 @@
-// catalog-fields previews or applies reviewed public label-field choices.
+// catalog-fields previews or applies reviewed public metadata field choices.
 package main
 
 import (

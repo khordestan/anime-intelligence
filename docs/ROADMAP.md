@@ -57,7 +57,8 @@
 - [x] Reviewed exact provider identity links with audit/replay protection and public lookup/display
 - [x] Explicit reviewed secondary episode-source imports with per-title baselines and preserved metadata authority
 - [x] Reviewed label-field choices with retained primary observations, source provenance, restoration and refresh-safe projections
-- [ ] Canonical entity merges, correction/retraction and scalar/prose field arbitration
+- [x] Reviewed release-year/quarter/format/episode-total choices with atomic projection and retained-episode conflict checks
+- [ ] Canonical entity merges, correction/retraction and title/prose/status field arbitration
 - [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
 - [ ] Real evidence corpus and broader reviewed scope coverage
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics

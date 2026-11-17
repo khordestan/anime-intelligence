@@ -8,7 +8,7 @@ import ProviderCredit from "./provider-credit";
 type Details = {
   fieldSources?: { field: string; mode: string; revision: number; provider: string; observedAt?: string }[];
   externalIds?: { provider: string; externalId: string }[];
-  anime: { id: string; title: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
+  anime: { id: string; title: string; mediaType?: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
   provider?: string; observedAt?: string; genres: string[]; tags: string[]; themes?: string[]; demographics?: string[]; studios: string[]; synonyms: string[];
   relations: { animeId: string; type: string; title?: string; mediaType?: string; status?: string }[];
   episodes: { provider?: string; number: number; track: string; scheduledAt?: string; releasedAt?: string; revision: number }[];
@@ -46,7 +46,7 @@ export default function CatalogDetails({ client, id, title, onError }: {
         {details && <div className="mt-3 space-y-2">
           <h4 className="font-semibold">{details.anime.title}</h4>
           {details.anime.nativeTitle && <p className="text-slate-400">{details.anime.nativeTitle}</p>}
-          <p className="text-xs text-slate-400">{details.anime.season} {details.anime.releaseYear} · {details.anime.episodeCountKnown ? `${details.anime.episodeCount ?? 0} episodes` : "Episode total unknown"}</p>
+          <p className="text-xs text-slate-400">{details.anime.mediaType ? details.anime.mediaType + " · " : ""}{details.anime.season} {details.anime.releaseYear} · {details.anime.episodeCountKnown ? `${details.anime.episodeCount ?? 0} episodes` : "Episode total unknown"}</p>
           <p className="text-xs">Genres: {details.genres.join(", ") || "Not available"}</p>
           <p className="text-xs">Demographics: {details.demographics?.join(", ") || "Not available"}</p>
           <p className="text-xs">Studios: {details.studios.join(", ") || "Not available"}</p>
@@ -55,7 +55,7 @@ export default function CatalogDetails({ client, id, title, onError }: {
           {(details.provider === "tvmaze" || details.episodes.some(episode => episode.provider === "tvmaze") || details.fieldSources?.some(source => source.provider === "tvmaze")) && <p className="text-xs text-slate-400"><ProviderCredit provider="tvmaze" /></p>}
           {!!details.fieldSources?.length && <ul aria-label="Field sources" className="text-xs text-slate-400">
             {details.fieldSources.map(source => <li key={source.field}>
-              {source.field}: {source.provider || "Primary source"}{source.observedAt ? ` · Observed ${new Date(source.observedAt).toLocaleString()}` : ""}
+              {({releaseYear:"Release year",season:"Airing quarter",mediaType:"Format",episodeCount:"Episode total"} as Record<string,string>)[source.field] ?? source.field}: {source.provider || "Primary source"}{source.observedAt ? ` · Observed ${new Date(source.observedAt).toLocaleString()}` : ""}
             </li>)}
           </ul>}
           {!!details.externalIds?.length && <p className="text-xs text-slate-400">Provider IDs: {details.externalIds.map(identity => identity.provider + ": " + identity.externalId).join(" · ")}</p>}

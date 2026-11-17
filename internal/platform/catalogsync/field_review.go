@@ -26,6 +26,7 @@ type FieldSelection struct{
  Provider string `json:"provider,omitempty"`
  ExternalID string `json:"externalId,omitempty"`
  Values []string `json:"values"`
+ Scalar json.RawMessage `json:"scalar,omitempty"`
  ObservedAt time.Time `json:"observedAt,omitempty"`
 }
 type FieldReview struct{
@@ -61,13 +62,17 @@ func(s FieldReview)Validate(now time.Time)error{
  seen:=map[string]bool{}
  for _,v:=range s.Selections{
   key:=strings.ToLower(v.AnimeID)+":"+v.Field
-  if !fieldUUID(v.AnimeID)||!labelField(v.Field)||v.ExpectedRevision==nil||*v.ExpectedRevision<0||*v.ExpectedRevision>=1000000000||seen[key]{return ErrFieldReview}
+  if !fieldUUID(v.AnimeID)||(!labelField(v.Field)&&!scalarField(v.Field))||v.ExpectedRevision==nil||*v.ExpectedRevision<0||*v.ExpectedRevision>=1000000000||seen[key]{return ErrFieldReview}
   seen[key]=true
   switch v.Mode{
   case "SELECT":
-   if !fieldIdentifier(v.Provider)||!fieldIdentifier(v.ExternalID)||!validFieldValues(v.Values)||v.ObservedAt.IsZero()||v.ObservedAt.After(s.ReviewedAt){return ErrFieldReview}
+   if !fieldIdentifier(v.Provider)||!fieldIdentifier(v.ExternalID)||v.ObservedAt.IsZero()||v.ObservedAt.After(s.ReviewedAt){return ErrFieldReview}
+   if labelField(v.Field){if !validFieldValues(v.Values)||len(v.Scalar)!=0{return ErrFieldReview}}else{
+    if v.Values!=nil{return ErrFieldReview}
+    if _,ok:=scalarValue(v.Field,v.Scalar);!ok{return ErrFieldReview}
+   }
   case "BASE":
-   if v.Provider!=""||v.ExternalID!=""||v.Values!=nil||!v.ObservedAt.IsZero(){return ErrFieldReview}
+   if v.Provider!=""||v.ExternalID!=""||v.Values!=nil||len(v.Scalar)!=0||!v.ObservedAt.IsZero(){return ErrFieldReview}
   default:return ErrFieldReview
   }
  }
@@ -91,8 +96,16 @@ func ReviewFields(ctx context.Context,conn *pgx.Conn,s FieldReview,now time.Time
  s.ReviewedAt=s.ReviewedAt.UTC().Truncate(time.Microsecond)
  s.Selections=append([]FieldSelection(nil),s.Selections...)
  for i:=range s.Selections{s.Selections[i].AnimeID=strings.ToLower(s.Selections[i].AnimeID);s.Selections[i].ObservedAt=s.Selections[i].ObservedAt.UTC().Truncate(time.Microsecond)}
+ for i:=range s.Selections{
+  if s.Selections[i].Mode=="SELECT"&&scalarField(s.Selections[i].Field){
+   value,_:=scalarValue(s.Selections[i].Field,s.Selections[i].Scalar)
+   raw,err:=json.Marshal(value);if err!=nil{return FieldReviewResult{},ErrFieldReview}
+   s.Selections[i].Scalar=raw
+  }
+ }
  out,err:=reviewFields(ctx,conn,s,commit)
  if err!=nil{
+  if errors.Is(err,ErrConflict){return FieldReviewResult{},ErrFieldConflict}
   if errors.Is(err,ErrSource)||errors.Is(err,ErrFieldConflict){return FieldReviewResult{},err}
   return FieldReviewResult{},ErrFieldApply
  }
@@ -115,6 +128,7 @@ func reviewFields(ctx context.Context,conn *pgx.Conn,s FieldReview,commit bool)(
    if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM anime_external_ids WHERE anime_id=$1 AND provider=$2 AND external_id=$3)`,v.AnimeID,v.Provider,v.ExternalID).Scan(&matches);err!=nil{return out,err}
    if !matches{return out,ErrFieldConflict}
    raw,err:=json.Marshal(v.Values);if err!=nil{return out,err}
+   if scalarField(v.Field){raw=v.Scalar}
    source=id;external=v.ExternalID;value=raw;observed=v.ObservedAt
   }
   var primary,baseSource string;var primaryAt,baseAt time.Time;var basePayload []byte
@@ -142,7 +156,15 @@ func reviewFields(ctx context.Context,conn *pgx.Conn,s FieldReview,commit bool)(
   var base feed.Title
   if json.Unmarshal(basePayload,&base)!=nil{return out,ErrFieldApply}
   if (feed.Snapshot{Version:1,Provider:"base",ObservedAt:baseAt,Titles:[]feed.Title{base}}).Validate(time.Now().UTC())!=nil{return out,ErrFieldApply}
-  effective,err:=projectLabelFields(ctx,tx,v.AnimeID,base);if err!=nil{return out,err}
+  effective,err:=projectMetadataFields(ctx,tx,v.AnimeID,base);if err!=nil{return out,err}
+  if err=validateResolvedMetadata(ctx,tx,v.AnimeID,effective,baseAt);err!=nil{return out,err}
+  switch v.Field{
+  case "releaseYear":_,err=tx.Exec(ctx,`UPDATE anime SET release_year=NULLIF($2::int,0),updated_at=now() WHERE id=$1`,v.AnimeID,effective.ReleaseYear)
+  case "season":_,err=tx.Exec(ctx,`UPDATE anime SET season_name=NULLIF($2::text,''),updated_at=now() WHERE id=$1`,v.AnimeID,effective.Season)
+  case "mediaType":_,err=tx.Exec(ctx,`UPDATE anime SET media_type=$2,updated_at=now() WHERE id=$1`,v.AnimeID,effective.MediaType)
+  case "episodeCount":_,err=tx.Exec(ctx,`UPDATE anime SET episode_count=$2,updated_at=now() WHERE id=$1`,v.AnimeID,effective.EpisodeCount)
+  }
+  if err!=nil{return out,err}
   projected,err:=json.Marshal(effective);if err!=nil{return out,err}
   if _,err=tx.Exec(ctx,`UPDATE catalog_metadata SET payload=$2 WHERE anime_id=$1`,v.AnimeID,projected);err!=nil{return out,err}
   out.AuditRecords++

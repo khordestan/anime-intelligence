@@ -100,24 +100,19 @@ func applyTx(ctx context.Context,tx pgx.Tx,s feed.Snapshot,options ImportOptions
 		known := err==nil
 		if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,err}
 		if known && authority!=source {return out,ErrConflict}
-  if title.EpisodeCount!=nil{
-   var conflicts bool
-   if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM airing_schedule
- WHERE anime_id=$1 AND source_id IS DISTINCT FROM $2::uuid AND episode_number>$3)`,id,source,*title.EpisodeCount).Scan(&conflicts);err!=nil{return out,err}
-   if conflicts{return out,ErrConflict}
-  }
   basePayload,err:=json.Marshal(title)
   if err!=nil{return out,err}
   if _,err=tx.Exec(ctx,`INSERT INTO catalog_base_metadata(anime_id,source_id,observed_at,payload) VALUES($1,$2,$3,$4)
  ON CONFLICT(anime_id) DO UPDATE SET source_id=excluded.source_id,observed_at=excluded.observed_at,payload=excluded.payload`,id,source,s.ObservedAt,basePayload);err!=nil{return out,err}
-  effective,err:=projectLabelFields(ctx,tx,id,title)
+  effective,err:=projectMetadataFields(ctx,tx,id,title)
   if err!=nil{return out,err}
+  if err=validateResolvedMetadata(ctx,tx,id,effective,s.ObservedAt);err!=nil{return out,err}
   payload,err:=json.Marshal(effective)
   if err!=nil{return out,err}
 		if _,err=tx.Exec(ctx,`INSERT INTO catalog_metadata(anime_id,source_id,observed_at,payload) VALUES($1,$2,$3,$4)
 ON CONFLICT(anime_id) DO UPDATE SET observed_at=excluded.observed_at,payload=excluded.payload`,id,source,s.ObservedAt,payload);err!=nil {return out,err}
 		if _,err=tx.Exec(ctx,`UPDATE anime SET canonical_title=$2,native_title=NULLIF($3,''),synopsis=NULLIF($4,''),media_type=$5,status=$6,release_year=NULLIF($7,0),season_name=NULLIF($8,''),episode_count=$9,updated_at=now() WHERE id=$1`,
-			id,title.Title,title.NativeTitle,title.Synopsis,title.MediaType,title.Status,title.ReleaseYear,title.Season,title.EpisodeCount);err!=nil {return out,err}
+			id,title.Title,title.NativeTitle,title.Synopsis,effective.MediaType,title.Status,effective.ReleaseYear,effective.Season,effective.EpisodeCount);err!=nil {return out,err}
 		if !previous.IsZero() && title.Status=="ANNOUNCED" && (!known || priorStatus=="UNKNOWN") {
 			tag,err:=tx.Exec(ctx,`INSERT INTO domain_events(event_key,event_type,aggregate_type,aggregate_id,payload,occurred_at)
 VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) DO NOTHING`,"season-announced:"+id,id,s.ObservedAt)
