@@ -21,10 +21,12 @@ var (
 	ErrImport = errors.New("catalog import failed")
 )
 type ImportOptions struct {
+ SchedulesOnly bool // Requires existing reviewed identities; never writes metadata.
 	Preview bool
 	Archive bool // Operator must separately approve historical retention rights.
 }
 type Result struct {
+ SchedulesOnly bool `json:"schedulesOnly,omitempty"`
 	Preview bool `json:"preview,omitempty"`
 	ArchivedRecords int `json:"archivedRecords,omitempty"`
 	Titles int `json:"titles"`
@@ -41,7 +43,7 @@ func Import(ctx context.Context, conn *pgx.Conn, s feed.Snapshot, now time.Time)
  return ImportWithOptions(ctx,conn,s,now,ImportOptions{})
 }
 func ImportWithOptions(ctx context.Context,conn *pgx.Conn,s feed.Snapshot,now time.Time,options ImportOptions)(Result,error){
-	if s.Validate(now) != nil { return Result{},feed.ErrInvalid }
+	if (options.SchedulesOnly&&options.Archive)||s.Validate(now) != nil { return Result{},feed.ErrInvalid }
 	s.ObservedAt = s.ObservedAt.UTC().Truncate(time.Microsecond)
 	result,err := apply(ctx,conn,s,options)
 	if err != nil {
@@ -77,6 +79,13 @@ func applyTx(ctx context.Context,tx pgx.Tx,s feed.Snapshot,options ImportOptions
 	err=tx.QueryRow(ctx,`SELECT observed_at FROM catalog_sync_state WHERE source_id=$1 FOR UPDATE`,source).Scan(&previous)
 	if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,err}
 	if !previous.IsZero() && !s.ObservedAt.After(previous) {return out,ErrStale}
+ if options.SchedulesOnly{
+  out,err=applySelectedSchedules(ctx,tx,s,source)
+  if err!=nil{return Result{},err}
+  if _,err=tx.Exec(ctx,`INSERT INTO catalog_sync_state(source_id,observed_at) VALUES($1,$2)
+ ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.ObservedAt);err!=nil{return Result{},err}
+  return out,nil
+ }
 	for _,title:=range s.Titles {
 		var id string
 		err=tx.QueryRow(ctx,`SELECT anime_id::text FROM anime_external_ids WHERE provider=$1 AND external_id=$2 FOR UPDATE`,s.Provider,title.ExternalID).Scan(&id)
@@ -90,6 +99,12 @@ func applyTx(ctx context.Context,tx pgx.Tx,s feed.Snapshot,options ImportOptions
 		known := err==nil
 		if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,err}
 		if known && authority!=source {return out,ErrConflict}
+  if title.EpisodeCount!=nil{
+   var conflicts bool
+   if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM airing_schedule
+ WHERE anime_id=$1 AND source_id IS DISTINCT FROM $2::uuid AND episode_number>$3)`,id,source,*title.EpisodeCount).Scan(&conflicts);err!=nil{return out,err}
+   if conflicts{return out,ErrConflict}
+  }
 		payload,err:=json.Marshal(title)
 		if err!=nil {return out,err}
 		if _,err=tx.Exec(ctx,`INSERT INTO catalog_metadata(anime_id,source_id,observed_at,payload) VALUES($1,$2,$3,$4)

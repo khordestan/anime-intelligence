@@ -11,7 +11,7 @@ import (
 )
 var ErrConfig=errors.New("invalid catalog synchronization configuration")
 var qid=regexp.MustCompile(`^Q[1-9][0-9]{0,11}$`)
-type Config struct{IDs []string;Interval time.Duration;Provider string}
+type Config struct{IDs []string;Interval time.Duration;Provider string;SchedulesOnly bool}
 func Parse(ids,interval string)(Config,error){return ParseProvider("wikidata",ids,interval,false)}
 // ParseProvider requires explicit anime-season review for TVmaze. Empty IDs
 // remain completely idle, even when unused configuration is invalid.
@@ -53,4 +53,18 @@ func run(ctx context.Context,interval time.Duration,task func(context.Context)er
 		if report!=nil{report(err==nil)}
 		if err=wait(ctx,interval);err!=nil{return err}
 	}
+}
+
+// ParseWorker keeps unused configuration idle and makes secondary schedule
+// collection explicit. Wikidata has no schedule capability.
+func ParseWorker(provider,ids,interval string,reviewed bool,scope string)(Config,error){
+ c,err:=ParseProvider(provider,ids,interval,reviewed)
+ if err!=nil||len(c.IDs)==0{return c,err}
+ switch scope{
+ case "","full":return c,nil
+ case "schedules":
+  if c.Provider!="tvmaze"{return c,ErrConfig}
+  c.SchedulesOnly=true;return c,nil
+ default:return c,ErrConfig
+ }
 }

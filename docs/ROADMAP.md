@@ -55,7 +55,8 @@
 - [x] Opt-in selected neutral metadata observations, full transactional import preview and bounded operator field-change history
 - [ ] Raw source snapshots where licensing permits
 - [x] Reviewed exact provider identity links with audit/replay protection and public lookup/display
-- [ ] Canonical entity merges, correction/retraction and field-level source arbitration
+- [x] Explicit reviewed secondary episode-source imports with per-title baselines and preserved metadata authority
+- [ ] Canonical entity merges, correction/retraction and general field-level source arbitration
 - [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
 - [ ] Real evidence corpus and broader reviewed scope coverage
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics

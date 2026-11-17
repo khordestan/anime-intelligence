@@ -10,7 +10,7 @@ type Details = {
   anime: { id: string; title: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
   provider?: string; observedAt?: string; genres: string[]; tags: string[]; themes?: string[]; demographics?: string[]; studios: string[]; synonyms: string[];
   relations: { animeId: string; type: string; title?: string; mediaType?: string; status?: string }[];
-  episodes: { number: number; track: string; scheduledAt?: string; releasedAt?: string; revision: number }[];
+  episodes: { provider?: string; number: number; track: string; scheduledAt?: string; releasedAt?: string; revision: number }[];
 };
 export default function CatalogDetails({ client, id, title, onError }: {
   client: ApiClient; id: string; title: string; onError: (error: unknown) => void;
@@ -51,7 +51,7 @@ export default function CatalogDetails({ client, id, title, onError }: {
           <p className="text-xs">Studios: {details.studios.join(", ") || "Not available"}</p>
           {!!details.synonyms.length && <p className="text-xs text-slate-400">Also known as: {details.synonyms.join(", ")}</p>}
           <p className="text-xs text-slate-500">{details.provider ? `Source: ${details.provider}` : "Starter catalog; source enrichment unavailable"}{details.observedAt ? ` · Observed ${new Date(details.observedAt).toLocaleString()}` : ""}</p>
-          {details.provider === "tvmaze" && <p className="text-xs text-slate-400"><ProviderCredit provider="tvmaze" /></p>}
+          {(details.provider === "tvmaze" || details.episodes.some(episode => episode.provider === "tvmaze")) && <p className="text-xs text-slate-400"><ProviderCredit provider="tvmaze" /></p>}
           {!!details.externalIds?.length && <p className="text-xs text-slate-400">Provider IDs: {details.externalIds.map(identity => identity.provider + ": " + identity.externalId).join(" · ")}</p>}
           <button onClick={() => setSpoilers(!spoilers)} className="text-xs text-amber-200 underline">{spoilers ? "Hide synopsis, themes and tags" : "Show synopsis, themes and tags (may contain spoilers)"}</button>
           {spoilers && <div><p className="text-xs text-slate-300">{details.anime.synopsis || "No synopsis available."}</p><p className="mt-2 text-xs text-slate-400">Themes: {details.themes?.join(", ") || "Not available"}</p><p className="mt-2 text-xs text-slate-400">Tags: {otherTags.join(", ") || "Not available"}</p></div>}
@@ -63,7 +63,7 @@ export default function CatalogDetails({ client, id, title, onError }: {
           {!details.episodes.length && <p className="text-xs text-slate-400">No episode schedule is available.</p>}
           <ul className="space-y-2">
             {details.episodes.slice(0, limit).map(episode => <li key={episode.number + episode.track} className="text-xs text-slate-400">
-              Episode {episode.number} · {episode.track} · {episode.releasedAt ? `Confirmed ${new Date(episode.releasedAt).toLocaleString()}` : episode.scheduledAt ? `Scheduled ${new Date(episode.scheduledAt).toLocaleString()}` : "Time unknown"} · Revision {episode.revision}
+              Episode {episode.number} · {episode.track} · {episode.releasedAt ? `Confirmed ${new Date(episode.releasedAt).toLocaleString()}` : episode.scheduledAt ? `Scheduled ${new Date(episode.scheduledAt).toLocaleString()}` : "Time unknown"} · Revision {episode.revision}{episode.provider ? ` · Source: ${episode.provider}` : ""}
             </li>)}
           </ul>
           {details.episodes.length > limit && <button onClick={() => setLimit(limit + 20)} className="text-xs underline">Show more episode schedules</button>}

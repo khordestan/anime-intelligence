@@ -58,11 +58,11 @@ FROM linked l JOIN anime a ON a.id=l.anime_id ORDER BY l.relation_type,a.canonic
 	}
 	rows.Close()
 	if err=rows.Err();err!=nil {return out,false,err}
-	rows,err=tx.Query(ctx,`SELECT DISTINCT ON (episode_number,release_track) episode_number,release_track,scheduled_at,actual_released_at,last_verified_at,revision FROM airing_schedule WHERE anime_id=$1 ORDER BY episode_number,release_track,revision DESC`,id)
+	rows,err=tx.Query(ctx,`SELECT DISTINCT ON (a.episode_number,a.release_track) a.episode_number,a.release_track,a.scheduled_at,a.actual_released_at,a.last_verified_at,a.revision,COALESCE(s.provider_key,'') FROM airing_schedule a LEFT JOIN data_sources s ON s.id=a.source_id WHERE a.anime_id=$1 ORDER BY a.episode_number,a.release_track,a.revision DESC`,id)
 	if err!=nil {return out,false,err}
 	for rows.Next() {
 		var episode store.CatalogEpisode
-		if err=rows.Scan(&episode.Number,&episode.Track,&episode.ScheduledAt,&episode.ReleasedAt,&episode.VerifiedAt,&episode.Revision);err!=nil {rows.Close();return out,false,err}
+		if err=rows.Scan(&episode.Number,&episode.Track,&episode.ScheduledAt,&episode.ReleasedAt,&episode.VerifiedAt,&episode.Revision,&episode.Provider);err!=nil {rows.Close();return out,false,err}
 		out.Episodes=append(out.Episodes,episode)
 	}
 	rows.Close()

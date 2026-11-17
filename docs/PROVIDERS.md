@@ -72,3 +72,7 @@ Explicit OVA/ONA formats take precedence over a co-asserted broad anime-film cla
 ## 2026-11-17 TVmaze integration
 
 The bounded adapter and provider-isolated durable worker support are implemented with synthetic tests. The data scope, source/license links, explicit review and upgrade requirements are recorded in [TVmaze integration](TVMAZE.md). TVmaze labels an Animation show, not an automatically verified anime; use only explicitly reviewed season identities. Airdate observations stay unconfirmed schedules. ShareAlike and attribution apply to distributed TVmaze-derived data. Comprehensive catalog/availability coverage and source/host activation remain unfinished.
+
+## Reviewed secondary episode projection
+
+TVmaze schedules can enrich an already mapped canonical title using the explicit [schedules-only import/worker scope](CATALOG_SCHEDULE_AUTHORITY.md). The metadata source remains authoritative, existing episode authority is not transferred, and per-episode provider labels/TVmaze attribution remain visible. Source approval and exact season review remain required; no general metadata arbitration or availability inference is added.

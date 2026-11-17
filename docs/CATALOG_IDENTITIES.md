@@ -40,3 +40,5 @@ Catalog details include a provider/externalId array in the same public snapshot 
 Reapply deployments/runtime-role.sql for SELECT(anime_id,provider,external_id); readiness checks the narrow read grant. No new migration is needed. Relinking/retraction and canonical entity merges remain unsupported. Mapping does not resolve retained relation claims immediately; the next import revalidates resolution and graph continuity.
 
 The common catalog/curator/mapper role guard now fails closed for privileges on unexpected relations, RLS tables, other application schemas, views/materialized views/foreign relations, and executable user-schema SECURITY DEFINER routines. This metadata-only check supplements role provisioning; it does not revoke privileges. New legitimate public catalog tables must be reviewed into the supported table contract before a writer can use them.
+
+Reviewed identities may now be used for explicit [schedules-only imports](CATALOG_SCHEDULE_AUTHORITY.md). That separate operation preserves metadata authority and rejects conflicts with existing episode/track ownership. Identity mapping itself still changes no facts or authority.

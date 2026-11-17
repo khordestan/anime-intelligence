@@ -17,7 +17,9 @@ func run() error {
 	input:=flag.String("input","","Reviewed snapshot JSON file (required)")
 	preview:=flag.Bool("preview",false,"Validate complete database import and roll back all changes")
 	archive:=flag.Bool("archive",false,"Retain reviewed structured observations only when historical storage is permitted")
-	flag.Parse()
+ schedules:=flag.Bool("schedules-only",false,"Import only schedules for pre-mapped canonical titles; preserve all metadata")
+ flag.Parse()
+ if flag.NArg()!=0||(*schedules&&*archive){return feed.ErrInvalid}
 	file,err:=os.Open(*input)
 	if err!=nil {return feed.ErrInvalid}
 	defer file.Close()
@@ -34,7 +36,7 @@ func run() error {
 	conn,err:=pgx.ConnectConfig(ctx,config)
 	if err!=nil {return catalogsync.ErrImport}
 	defer func(){cleanup,stop:=context.WithTimeout(context.Background(),5*time.Second);defer stop();_=conn.Close(cleanup)}()
-	result,err:=catalogsync.ImportWithOptions(ctx,conn,snapshot,now,catalogsync.ImportOptions{Preview:*preview,Archive:*archive})
+	result,err:=catalogsync.ImportWithOptions(ctx,conn,snapshot,now,catalogsync.ImportOptions{Preview:*preview,Archive:*archive,SchedulesOnly:*schedules})
 	if err!=nil {return err}
 	return json.NewEncoder(os.Stdout).Encode(result)
 }

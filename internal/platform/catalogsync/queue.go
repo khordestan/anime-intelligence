@@ -22,6 +22,8 @@ var fetchID = regexp.MustCompile(`^Q[1-9][0-9]{0,11}$`)
 type fetchClaim struct {
  source string
  provider string
+ scope string
+ canonicalID string
  id string
  digest []byte
  interval time.Duration
@@ -38,6 +40,14 @@ func SyncQueuedWikidata(ctx context.Context,conn *pgx.Conn,fetcher Fetcher,ids [
 // SyncQueuedProvider supports only reviewed Wikidata and TVmaze adapters. No
 // dynamic endpoint, arbitrary provider or automatic anime classification is allowed.
 func SyncQueuedProvider(ctx context.Context,conn *pgx.Conn,provider string,fetcher Fetcher,ids []string,interval time.Duration,now time.Time)(bool,error){
+ return SyncQueuedProviderWithOptions(ctx,conn,provider,fetcher,ids,interval,now,ImportOptions{})
+}
+// SyncQueuedProviderWithOptions pins each durable job to its reviewed import
+// scope. Configuration changes never silently promote schedule-only work.
+func SyncQueuedProviderWithOptions(ctx context.Context,conn *pgx.Conn,provider string,fetcher Fetcher,ids []string,interval time.Duration,now time.Time,options ImportOptions)(bool,error){
+ if options.Preview||options.Archive{return false,ErrWorker}
+ scope:="FULL";if options.SchedulesOnly{scope="SCHEDULES"}
+
  if provider!="wikidata"&&provider!="tvmaze"{return false,ErrWorker}
  if fetcher==nil || conn==nil || now.IsZero() || now.Unix()<0 || now.Year()>9999 ||
  interval<time.Hour || interval>7*24*time.Hour || len(ids)==0 || len(ids)>20 {return false,ErrWorker}
@@ -49,7 +59,7 @@ func SyncQueuedProvider(ctx context.Context,conn *pgx.Conn,provider string,fetch
  if err:=conn.QueryRow(ctx,`SELECT pg_try_advisory_lock(742019686)`).Scan(&locked);err!=nil{return false,ErrWorker}
  if !locked{return false,nil}
  defer func(){cleanup,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel();_,_=conn.Exec(cleanup,`SELECT pg_advisory_unlock(742019686)`)}()
- claim,err:=claimFetch(ctx,conn,provider,ordered,interval,now.UTC().Truncate(time.Microsecond))
+ claim,err:=claimFetch(ctx,conn,provider,scope,ordered,interval,now.UTC().Truncate(time.Microsecond))
  if err!=nil{return false,err}
  if claim==nil{return false,nil}
  snapshot,fetchErr:=fetcher.Fetch(ctx,[]string{claim.id})
@@ -101,11 +111,12 @@ func fetchRetry(attempt int)time.Duration{
  return 15*time.Minute*time.Duration(1<<uint(attempt-1))
 }
 
-func claimFetch(ctx context.Context,conn *pgx.Conn,provider string,ids []string,interval time.Duration,now time.Time)(*fetchClaim,error){
+func claimFetch(ctx context.Context,conn *pgx.Conn,provider,scope string,ids []string,interval time.Duration,now time.Time)(*fetchClaim,error){
  tx,err:=conn.Begin(ctx)
  if err!=nil{return nil,ErrWorker}
  defer rollbackFetch(tx)
  if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return nil,ErrWorker}
+ if _,err=tx.Exec(ctx,`SELECT set_config('app.catalog_import_scope',$1,true)`,scope);err!=nil{return nil,ErrWorker}
  var source string
  err=tx.QueryRow(ctx,`SELECT id::text FROM data_sources WHERE provider_key=$1
  AND enabled AND COALESCE(policy_url,'')<>'' FOR UPDATE`,provider).Scan(&source)
@@ -113,11 +124,19 @@ func claimFetch(ctx context.Context,conn *pgx.Conn,provider string,ids []string,
  if err!=nil{return nil,ErrWorker}
  seconds:=int((interval+time.Second-1)/time.Second)
  for _,id:=range ids{
-  _,err=tx.Exec(ctx,`INSERT INTO catalog_fetch_jobs(source_id,external_id,interval_seconds,next_attempt_at,updated_at)
- VALUES($1,$2,$3,$4,$4) ON CONFLICT(source_id,external_id) DO UPDATE
+  _,err=tx.Exec(ctx,`INSERT INTO catalog_fetch_jobs(source_id,external_id,interval_seconds,next_attempt_at,updated_at,import_scope)
+ VALUES($1,$2,$3,$4,$4,$5) ON CONFLICT(source_id,external_id) DO UPDATE
  SET interval_seconds=excluded.interval_seconds
- WHERE catalog_fetch_jobs.interval_seconds<>excluded.interval_seconds`,source,id,seconds,now)
+ WHERE catalog_fetch_jobs.interval_seconds<>excluded.interval_seconds
+ AND catalog_fetch_jobs.import_scope=excluded.import_scope`,source,id,seconds,now,scope)
   if err!=nil{return nil,ErrWorker}
+ }
+ var mismatched bool
+ if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM catalog_fetch_jobs
+ WHERE source_id=$1 AND external_id=ANY($2::text[]) AND import_scope<>$3)`,source,ids,scope).Scan(&mismatched);err!=nil||mismatched{return nil,ErrWorker}
+ if scope=="SCHEDULES"{
+  var mapped int
+  if err=tx.QueryRow(ctx,`SELECT count(*) FROM anime_external_ids WHERE provider=$1 AND external_id=ANY($2::text[])`,provider,ids).Scan(&mapped);err!=nil||mapped!=len(ids){return nil,ErrWorker}
  }
  var next,observed *time.Time
  err=tx.QueryRow(ctx,`SELECT f.next_attempt_at,s.observed_at FROM data_sources d
@@ -129,7 +148,7 @@ func claimFetch(ctx context.Context,conn *pgx.Conn,provider string,ids []string,
  _,err=tx.Exec(ctx,`UPDATE catalog_fetch_jobs SET state='FAILED',lease_digest=NULL,lease_until=NULL,updated_at=$3
  WHERE source_id=$1 AND external_id=ANY($2::text[]) AND state='LEASED' AND lease_until<=$3 AND attempts>=5`,source,ids,now)
  if err!=nil{return nil,ErrWorker}
- claim:=&fetchClaim{source:source,provider:provider}
+ claim:=&fetchClaim{source:source,provider:provider,scope:scope}
  var intervalSeconds int
  err=tx.QueryRow(ctx,`SELECT external_id,interval_seconds,attempts FROM catalog_fetch_jobs
  WHERE source_id=$1 AND external_id=ANY($2::text[]) AND state<>'FAILED'
@@ -138,6 +157,9 @@ func claimFetch(ctx context.Context,conn *pgx.Conn,provider string,ids []string,
  ORDER BY next_attempt_at,external_id LIMIT 1 FOR UPDATE SKIP LOCKED`,source,ids,now).Scan(&claim.id,&intervalSeconds,&claim.attempts)
  if errors.Is(err,pgx.ErrNoRows){if err=tx.Commit(ctx);err!=nil{return nil,ErrWorker};return nil,nil}
  if err!=nil{return nil,ErrWorker}
+ if scope=="SCHEDULES"{
+  if err=tx.QueryRow(ctx,`SELECT anime_id::text FROM anime_external_ids WHERE provider=$1 AND external_id=$2`,provider,claim.id).Scan(&claim.canonicalID);err!=nil{return nil,ErrWorker}
+ }
  secret:=make([]byte,32)
  if _,err=rand.Read(secret);err!=nil{return nil,ErrWorker}
  digest:=sha256.Sum256(secret)
@@ -166,6 +188,7 @@ func completeFetch(ctx context.Context,conn *pgx.Conn,claim fetchClaim,snapshot 
  if err!=nil{return ErrWorker}
  defer rollbackFetch(tx)
  if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return ErrWorker}
+ if _,err=tx.Exec(ctx,`SELECT set_config('app.catalog_import_scope',$1,true)`,claim.scope);err!=nil{return ErrWorker}
  if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(742019684)`);err!=nil{return ErrWorker}
  var source string
  err=tx.QueryRow(ctx,`SELECT id::text FROM data_sources WHERE id=$1 AND provider_key=$2
@@ -173,14 +196,18 @@ func completeFetch(ctx context.Context,conn *pgx.Conn,claim fetchClaim,snapshot 
  if err!=nil{return ErrWorker}
  var id string
  err=tx.QueryRow(ctx,`SELECT external_id FROM catalog_fetch_jobs WHERE source_id=$1 AND external_id=$2
- AND state='LEASED' AND lease_digest=$3 AND lease_until>clock_timestamp() FOR UPDATE`,
- claim.source,claim.id,claim.digest).Scan(&id)
+ AND state='LEASED' AND lease_digest=$3 AND import_scope=$4 AND lease_until>clock_timestamp() FOR UPDATE`,
+ claim.source,claim.id,claim.digest,claim.scope).Scan(&id)
  if err!=nil{return ErrWorker}
- if _,err=applyTx(ctx,tx,snapshot,ImportOptions{});err!=nil{return ErrWorker}
+ if claim.scope=="SCHEDULES"{
+  var mapped string
+  if err=tx.QueryRow(ctx,`SELECT anime_id::text FROM anime_external_ids WHERE provider=$1 AND external_id=$2 AND anime_id=$3 FOR UPDATE`,claim.provider,claim.id,claim.canonicalID).Scan(&mapped);err!=nil{return ErrWorker}
+ }
+ if _,err=applyTx(ctx,tx,snapshot,ImportOptions{SchedulesOnly:claim.scope=="SCHEDULES"});err!=nil{return ErrWorker}
  tag,err:=tx.Exec(ctx,`UPDATE catalog_fetch_jobs SET state='SUCCESS',attempts=0,lease_digest=NULL,
  lease_until=NULL,next_attempt_at=clock_timestamp()+($4::bigint*interval '1 second'),updated_at=clock_timestamp()
- WHERE source_id=$1 AND external_id=$2 AND state='LEASED' AND lease_digest=$3 AND lease_until>clock_timestamp()`,
- claim.source,claim.id,claim.digest,int64(claim.interval/time.Second))
+ WHERE source_id=$1 AND external_id=$2 AND state='LEASED' AND lease_digest=$3 AND import_scope=$5 AND lease_until>clock_timestamp()`,
+ claim.source,claim.id,claim.digest,int64(claim.interval/time.Second),claim.scope)
  if err!=nil||tag.RowsAffected()!=1{return ErrWorker}
  _,err=tx.Exec(ctx,`UPDATE catalog_fetch_state SET outcome='SUCCESS',
  next_attempt_at=clock_timestamp()+interval '1 minute' WHERE source_id=$1`,claim.source)
@@ -199,6 +226,7 @@ func failFetch(conn *pgx.Conn,claim fetchClaim,outcome string,until time.Time)er
  if err!=nil{return ErrWorker}
  defer rollbackFetch(tx)
  if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return ErrWorker}
+ if _,err=tx.Exec(ctx,`SELECT set_config('app.catalog_import_scope',$1,true)`,claim.scope);err!=nil{return ErrWorker}
  var source string
  if err=tx.QueryRow(ctx,`SELECT id::text FROM data_sources WHERE id=$1 FOR UPDATE`,claim.source).Scan(&source);err!=nil{return ErrWorker}
  // Ordinary title failures do not delay other due titles for the title's
@@ -210,8 +238,8 @@ func failFetch(conn *pgx.Conn,claim fetchClaim,outcome string,until time.Time)er
  if err!=nil{return ErrWorker}
  _,err=tx.Exec(ctx,`UPDATE catalog_fetch_jobs SET state=CASE WHEN attempts>=5 THEN 'FAILED' ELSE 'RETRY' END,
  lease_digest=NULL,lease_until=NULL,next_attempt_at=$4,updated_at=clock_timestamp()
- WHERE source_id=$1 AND external_id=$2 AND state='LEASED' AND lease_digest=$3 AND lease_until>clock_timestamp()`,
- claim.source,claim.id,claim.digest,until)
+ WHERE source_id=$1 AND external_id=$2 AND state='LEASED' AND lease_digest=$3 AND import_scope=$5 AND lease_until>clock_timestamp()`,
+ claim.source,claim.id,claim.digest,until,claim.scope)
  if err!=nil{return ErrWorker}
  if err=tx.Commit(ctx);err!=nil{return ErrWorker}
  return nil

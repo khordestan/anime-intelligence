@@ -29,6 +29,7 @@ type CatalogRelation struct {
 	Type string `json:"type"`
 }
 type CatalogEpisode struct {
+ Provider string `json:"provider,omitempty"`
 	Number int `json:"number"`
 	Track string `json:"track"`
 	ScheduledAt *time.Time `json:"scheduledAt,omitempty"`

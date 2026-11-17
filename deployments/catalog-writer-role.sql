@@ -24,3 +24,7 @@ GRANT SELECT,INSERT,UPDATE ON catalog_fetch_state TO anime_catalog_writer;
 
 -- Migration 000016: durable explicit-title jobs; no API/runtime grants.
 GRANT SELECT,INSERT,UPDATE ON catalog_fetch_jobs TO anime_catalog_writer;
+
+-- Migration 000018: public schedule observation watermarks only.
+GRANT SELECT,INSERT ON catalog_schedule_observations TO anime_catalog_writer;
+GRANT UPDATE(observed_at) ON catalog_schedule_observations TO anime_catalog_writer;

@@ -16,7 +16,7 @@ import (
 )
 func main(){
 	logger:=slog.New(slog.NewJSONHandler(os.Stdout,nil))
-	config,err:=catalogjob.ParseProvider(os.Getenv("CATALOG_SYNC_PROVIDER"),os.Getenv("CATALOG_SYNC_IDS"),os.Getenv("CATALOG_SYNC_INTERVAL"),os.Getenv("CATALOG_SYNC_REVIEWED_ANIME_SEASONS")=="1")
+	config,err:=catalogjob.ParseWorker(os.Getenv("CATALOG_SYNC_PROVIDER"),os.Getenv("CATALOG_SYNC_IDS"),os.Getenv("CATALOG_SYNC_INTERVAL"),os.Getenv("CATALOG_SYNC_REVIEWED_ANIME_SEASONS")=="1",os.Getenv("CATALOG_SYNC_SCOPE"))
 	if err!=nil{logger.Error("invalid catalog worker configuration");os.Exit(1)}
 	ctx,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM);defer stop()
 	if len(config.IDs)==0{
@@ -36,7 +36,7 @@ func main(){
 		conn,err:=pgx.ConnectConfig(cycle,settings)
 		if err!=nil{return catalogsync.ErrWorker}
 		defer func(){cleanup,done:=context.WithTimeout(context.Background(),5*time.Second);defer done();_=conn.Close(cleanup)}()
-		_,err=catalogsync.SyncQueuedProvider(cycle,conn,config.Provider,client,config.IDs,config.Interval,time.Now().UTC())
+		_,err=catalogsync.SyncQueuedProviderWithOptions(cycle,conn,config.Provider,client,config.IDs,config.Interval,time.Now().UTC(),catalogsync.ImportOptions{SchedulesOnly:config.SchedulesOnly})
 		return err
 	}
 	logger.Info("catalog queue worker enabled","refresh_interval_seconds",int(config.Interval.Seconds()),"item_count",len(config.IDs))
