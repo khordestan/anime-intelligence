@@ -24,7 +24,7 @@ func TestCatalogStatusFreshnessWithoutPrivateData(t *testing.T) {
 	if _,err:=owner.Exec(ctx,`INSERT INTO catalog_sync_state(source_id,observed_at) SELECT id,$1 FROM data_sources WHERE provider_key='future'`,now.Add(time.Hour));err!=nil {t.Fatal(err)}
 	u,err:=url.Parse(runtimeDSN)
 	if err!=nil {t.Fatal(err)}
-	if _,err=owner.Exec(ctx,`GRANT SELECT ON data_sources,catalog_sync_state,catalog_fetch_state TO `+pgx.Identifier{u.User.Username()}.Sanitize());err!=nil {t.Fatal(err)}
+	if _,err=owner.Exec(ctx,`GRANT SELECT ON data_sources,catalog_sync_state,catalog_fetch_state,catalog_base_metadata TO `+pgx.Identifier{u.User.Username()}.Sanitize());err!=nil {t.Fatal(err)}
 	reader,err:=pgx.Connect(ctx,runtimeDSN)
 	if err!=nil {t.Fatal(err)}
 	defer reader.Close(ctx)
@@ -63,7 +63,7 @@ func TestCatalogStatusPartialFeedsAndMetadataCoverage(t *testing.T){
  }
  u,err:=url.Parse(runtimeDSN)
  if err!=nil{t.Fatal(err)}
- if _,err=owner.Exec(ctx,`GRANT SELECT ON data_sources,catalog_sync_state,catalog_fetch_state TO `+pgx.Identifier{u.User.Username()}.Sanitize());err!=nil{t.Fatal(err)}
+ if _,err=owner.Exec(ctx,`GRANT SELECT ON data_sources,catalog_sync_state,catalog_fetch_state,catalog_base_metadata TO `+pgx.Identifier{u.User.Username()}.Sanitize());err!=nil{t.Fatal(err)}
  reader,err:=pgx.Connect(ctx,runtimeDSN)
  if err!=nil{t.Fatal(err)}
  defer reader.Close(ctx)

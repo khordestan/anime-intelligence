@@ -7,6 +7,7 @@ import (
 
 // CatalogDetails contains public catalog facts only, never account progress.
 type CatalogDetails struct {
+ FieldSources []CatalogFieldSource `json:"fieldSources"`
 	ExternalIDs []CatalogExternalID `json:"externalIds"`
 	Anime Anime `json:"anime"`
 	Provider string `json:"provider,omitempty"`
@@ -19,6 +20,13 @@ type CatalogDetails struct {
 	Studios []string `json:"studios"`
 	Relations []CatalogRelation `json:"relations"`
 	Episodes []CatalogEpisode `json:"episodes"`
+}
+type CatalogFieldSource struct {
+ Field string `json:"field"`
+ Mode string `json:"mode"`
+ Revision int `json:"revision"`
+ Provider string `json:"provider"`
+ ObservedAt *time.Time `json:"observedAt,omitempty"`
 }
 type CatalogExternalID struct {Provider string `json:"provider"`;ExternalID string `json:"externalId"`}
 type CatalogRelation struct {
@@ -41,7 +49,7 @@ type DetailedCatalog interface {
 	CatalogDetails(context.Context,string) (CatalogDetails,bool,error)
 }
 func EmptyCatalogDetails(a Anime) CatalogDetails {
-	return CatalogDetails{Anime:a,ExternalIDs:[]CatalogExternalID{},Synonyms:[]string{},Genres:[]string{},Tags:[]string{},Themes:[]string{},Demographics:[]string{},Studios:[]string{},Relations:[]CatalogRelation{},Episodes:[]CatalogEpisode{}}
+	return CatalogDetails{Anime:a,FieldSources:[]CatalogFieldSource{},ExternalIDs:[]CatalogExternalID{},Synonyms:[]string{},Genres:[]string{},Tags:[]string{},Themes:[]string{},Demographics:[]string{},Studios:[]string{},Relations:[]CatalogRelation{},Episodes:[]CatalogEpisode{}}
 }
 func (s Local) CatalogDetails(_ context.Context,id string) (CatalogDetails,bool,error) {
 	a,ok:=s.Store.GetAnime(id)

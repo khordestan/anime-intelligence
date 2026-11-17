@@ -10,3 +10,6 @@ GRANT SELECT ON data_sources,catalog_sync_state,catalog_metadata,anime,airing_sc
   TO anime_catalog_reader;
 
 GRANT SELECT ON catalog_fetch_state TO anime_catalog_reader;
+
+-- Source-presence diagnostics use primary observations, not resolved choices.
+GRANT SELECT ON catalog_base_metadata TO anime_catalog_reader;

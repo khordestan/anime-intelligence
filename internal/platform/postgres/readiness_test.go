@@ -58,6 +58,11 @@ func TestReadinessRechecksLiveRoleSchemaAndDatabase(t *testing.T) {
 	assertProbe("/readyz",200)
 	u, _ := url.Parse(dsn)
 	role := pgx.Identifier{u.User.Username()}.Sanitize()
+ if _,err:=owner.Exec(ctx,`REVOKE SELECT(mode) ON catalog_field_choices FROM `+role);err!=nil{t.Fatal(err)}
+ assertProbe("/readyz",503)
+ if unsafe,err:=postgres.Open(ctx,dsn);err==nil{unsafe.Close();t.Fatal("startup accepted missing field provenance grants")}
+ if _,err:=owner.Exec(ctx,`GRANT SELECT(mode) ON catalog_field_choices TO `+role);err!=nil{t.Fatal(err)}
+ assertProbe("/readyz",200)
 	if _, err := owner.Exec(ctx, `ALTER ROLE `+role+` BYPASSRLS`); err != nil {
 		t.Fatal(err)
 	}

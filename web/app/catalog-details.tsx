@@ -6,6 +6,7 @@ import CatalogContinuity from "./catalog-continuity";
 import ProviderCredit from "./provider-credit";
 
 type Details = {
+  fieldSources?: { field: string; mode: string; revision: number; provider: string; observedAt?: string }[];
   externalIds?: { provider: string; externalId: string }[];
   anime: { id: string; title: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
   provider?: string; observedAt?: string; genres: string[]; tags: string[]; themes?: string[]; demographics?: string[]; studios: string[]; synonyms: string[];
@@ -51,7 +52,12 @@ export default function CatalogDetails({ client, id, title, onError }: {
           <p className="text-xs">Studios: {details.studios.join(", ") || "Not available"}</p>
           {!!details.synonyms.length && <p className="text-xs text-slate-400">Also known as: {details.synonyms.join(", ")}</p>}
           <p className="text-xs text-slate-500">{details.provider ? `Source: ${details.provider}` : "Starter catalog; source enrichment unavailable"}{details.observedAt ? ` · Observed ${new Date(details.observedAt).toLocaleString()}` : ""}</p>
-          {(details.provider === "tvmaze" || details.episodes.some(episode => episode.provider === "tvmaze")) && <p className="text-xs text-slate-400"><ProviderCredit provider="tvmaze" /></p>}
+          {(details.provider === "tvmaze" || details.episodes.some(episode => episode.provider === "tvmaze") || details.fieldSources?.some(source => source.provider === "tvmaze")) && <p className="text-xs text-slate-400"><ProviderCredit provider="tvmaze" /></p>}
+          {!!details.fieldSources?.length && <ul aria-label="Field sources" className="text-xs text-slate-400">
+            {details.fieldSources.map(source => <li key={source.field}>
+              {source.field}: {source.provider || "Primary source"}{source.observedAt ? ` · Observed ${new Date(source.observedAt).toLocaleString()}` : ""}
+            </li>)}
+          </ul>}
           {!!details.externalIds?.length && <p className="text-xs text-slate-400">Provider IDs: {details.externalIds.map(identity => identity.provider + ": " + identity.externalId).join(" · ")}</p>}
           <button onClick={() => setSpoilers(!spoilers)} className="text-xs text-amber-200 underline">{spoilers ? "Hide synopsis, themes and tags" : "Show synopsis, themes and tags (may contain spoilers)"}</button>
           {spoilers && <div><p className="text-xs text-slate-300">{details.anime.synopsis || "No synopsis available."}</p><p className="mt-2 text-xs text-slate-400">Themes: {details.themes?.join(", ") || "Not available"}</p><p className="mt-2 text-xs text-slate-400">Tags: {otherTags.join(", ") || "Not available"}</p></div>}

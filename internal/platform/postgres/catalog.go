@@ -38,6 +38,16 @@ func (r *Repository) CatalogDetails(ctx context.Context,id string) (store.Catalo
 		if metadata.Demographics!=nil {out.Demographics=metadata.Demographics}
 		if metadata.Studios!=nil {out.Studios=metadata.Studios}
 	}
+ sources,err:=tx.Query(ctx,`SELECT c.field,c.mode,c.revision,COALESCE(s.provider_key,''),c.observed_at
+ FROM catalog_field_choices c LEFT JOIN data_sources s ON s.id=c.source_id WHERE c.anime_id=$1 ORDER BY c.field`,id)
+ if err!=nil{return out,false,err}
+ for sources.Next(){
+  var source store.CatalogFieldSource
+  if err=sources.Scan(&source.Field,&source.Mode,&source.Revision,&source.Provider,&source.ObservedAt);err!=nil{sources.Close();return out,false,err}
+  if source.Mode=="BASE"{source.Provider=out.Provider;source.ObservedAt=out.ObservedAt}
+  out.FieldSources=append(out.FieldSources,source)
+ }
+ sources.Close();if err=sources.Err();err!=nil{return out,false,err}
 	identities,err:=tx.Query(ctx,`SELECT provider,external_id FROM anime_external_ids WHERE anime_id=$1 ORDER BY provider,external_id`,id)
  if err!=nil{return out,false,err}
  for identities.Next(){var identity store.CatalogExternalID;if err=identities.Scan(&identity.Provider,&identity.ExternalID);err!=nil{identities.Close();return out,false,err};out.ExternalIDs=append(out.ExternalIDs,identity)}

@@ -86,6 +86,7 @@ func applyTx(ctx context.Context,tx pgx.Tx,s feed.Snapshot,options ImportOptions
  ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.ObservedAt);err!=nil{return Result{},err}
   return out,nil
  }
+ if _,err=tx.Exec(ctx,`SELECT set_config('app.catalog_metadata_projection','1',true)`);err!=nil{return out,err}
 	for _,title:=range s.Titles {
 		var id string
 		err=tx.QueryRow(ctx,`SELECT anime_id::text FROM anime_external_ids WHERE provider=$1 AND external_id=$2 FOR UPDATE`,s.Provider,title.ExternalID).Scan(&id)
@@ -105,8 +106,14 @@ func applyTx(ctx context.Context,tx pgx.Tx,s feed.Snapshot,options ImportOptions
  WHERE anime_id=$1 AND source_id IS DISTINCT FROM $2::uuid AND episode_number>$3)`,id,source,*title.EpisodeCount).Scan(&conflicts);err!=nil{return out,err}
    if conflicts{return out,ErrConflict}
   }
-		payload,err:=json.Marshal(title)
-		if err!=nil {return out,err}
+  basePayload,err:=json.Marshal(title)
+  if err!=nil{return out,err}
+  if _,err=tx.Exec(ctx,`INSERT INTO catalog_base_metadata(anime_id,source_id,observed_at,payload) VALUES($1,$2,$3,$4)
+ ON CONFLICT(anime_id) DO UPDATE SET source_id=excluded.source_id,observed_at=excluded.observed_at,payload=excluded.payload`,id,source,s.ObservedAt,basePayload);err!=nil{return out,err}
+  effective,err:=projectLabelFields(ctx,tx,id,title)
+  if err!=nil{return out,err}
+  payload,err:=json.Marshal(effective)
+  if err!=nil{return out,err}
 		if _,err=tx.Exec(ctx,`INSERT INTO catalog_metadata(anime_id,source_id,observed_at,payload) VALUES($1,$2,$3,$4)
 ON CONFLICT(anime_id) DO UPDATE SET observed_at=excluded.observed_at,payload=excluded.payload`,id,source,s.ObservedAt,payload);err!=nil {return out,err}
 		if _,err=tx.Exec(ctx,`UPDATE anime SET canonical_title=$2,native_title=NULLIF($3,''),synopsis=NULLIF($4,''),media_type=$5,status=$6,release_year=NULLIF($7,0),season_name=NULLIF($8,''),episode_count=$9,updated_at=now() WHERE id=$1`,

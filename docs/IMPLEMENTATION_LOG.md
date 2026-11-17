@@ -832,3 +832,13 @@ Validation for `fa1e4065008a4e0e4a41afaae3fca593ccb1f009`: all seven [CI jobs](h
 - Provider research found the original manami dataset archived; no aggregate dataset was adopted or downloaded. No real provider content, private watch history, secrets, source/host activation or deployment.
 
 Validation for `9aa30dab242cee2d69ff4ab67caf05b996bc213f`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44062052030) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/44062051958) passed. Database logs confirm all four new schedule-scope groups executed and passed: metadata/per-title baseline preservation, atomic conflict rollback, mode/mapping/acknowledgement fences and retained-work downgrade. Frontend logs confirm all 32 mocked browser tests passed, including both TVmaze-only and mixed-source attribution cases. Backend unit/race/vet/build/vulnerability checks, migration apply/rollback, recovery and both real PostgreSQL/browser suites passed. No local tests were run. This follow-up records verified implementation results only.
+
+## 2026-11-17 — Reviewed label-field source choices
+
+- Added explicit SELECT/BASE decisions for six label fields, with approved exact identities, CAS revisions, current-decision replay, retained audit history, bounded strict manifests and default rollback-only CLI previews.
+- Primary imports atomically retain their latest unprojected facts and reapply selected fields. BASE restoration uses the latest primary value. Existing archives retain original primary facts; filters/aliases/facets/details read the same resolved projection.
+- Added a dedicated field-curator role without canonical-title/schedule/source-approval/account rights; factual workers cannot write decisions. API reads only public provenance columns. Startup/readiness now checks that narrow schema/grant contract.
+- Added a projection compatibility marker/old-binary guard and retained-decision downgrade refusal. Source-presence diagnostics read primary base facts rather than miscrediting secondary labels.
+- Added validation, preview/replay/refresh/restoration/empty-value/query consistency, CAS concurrency, batch/audit rollback, role boundary and downgrade tests; dashboard field provenance preserves spoiler boundaries.
+- Baseline cc3628c0739a53319e68a9d30342bf52ec70852f CI/Security workflows were inspected and passed. Local toolchains/installed web guide unavailable; scoped web/current official client guide checked. Exact new hosted CI pending.
+- No actual source collection, real metadata corpus, private watch history, credentials, source/host activation or deployment.

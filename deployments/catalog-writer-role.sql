@@ -28,3 +28,7 @@ GRANT SELECT,INSERT,UPDATE ON catalog_fetch_jobs TO anime_catalog_writer;
 -- Migration 000018: public schedule observation watermarks only.
 GRANT SELECT,INSERT ON catalog_schedule_observations TO anime_catalog_writer;
 GRANT UPDATE(observed_at) ON catalog_schedule_observations TO anime_catalog_writer;
+
+-- Migration 000019: retain latest primary facts and honor reviewed field choices.
+GRANT SELECT,INSERT,UPDATE ON catalog_base_metadata TO anime_catalog_writer;
+GRANT SELECT ON catalog_field_choices TO anime_catalog_writer;

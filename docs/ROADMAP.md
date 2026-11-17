@@ -56,7 +56,8 @@
 - [ ] Raw source snapshots where licensing permits
 - [x] Reviewed exact provider identity links with audit/replay protection and public lookup/display
 - [x] Explicit reviewed secondary episode-source imports with per-title baselines and preserved metadata authority
-- [ ] Canonical entity merges, correction/retraction and general field-level source arbitration
+- [x] Reviewed label-field choices with retained primary observations, source provenance, restoration and refresh-safe projections
+- [ ] Canonical entity merges, correction/retraction and scalar/prose field arbitration
 - [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
 - [ ] Real evidence corpus and broader reviewed scope coverage
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics

@@ -388,7 +388,7 @@ func restoreSyntheticArchive(t *testing.T, ctx context.Context, archive, ownerDS
 	}
 	t.Cleanup(func() { _ = owner.Close(context.Background()) })
 	var count int
-	if err = owner.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&count); err != nil || count != 18 {
+	if err = owner.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&count); err != nil || count != 19 {
 		t.Fatal("migration ledger not restored", err)
 	}
 	if err = migrations.Apply(ctx, owner); err != nil {

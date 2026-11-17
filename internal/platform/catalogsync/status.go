@@ -82,7 +82,8 @@ count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'studios')='array' THEN js
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'relations')='array' THEN jsonb_array_length(payload->'relations')>0 ELSE false END) AS relations,
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'themes')='array' THEN jsonb_array_length(payload->'themes')>0 ELSE false END) AS themes,
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'demographics')='array' THEN jsonb_array_length(payload->'demographics')>0 ELSE false END) AS demographics
-FROM catalog_metadata GROUP BY source_id
+FROM (SELECT m.anime_id,m.source_id,m.observed_at,COALESCE(b.payload,m.payload) AS payload
+ FROM catalog_metadata m LEFT JOIN catalog_base_metadata b ON b.anime_id=m.anime_id) primary_facts GROUP BY source_id
 )
 SELECT s.provider_key,s.enabled,COALESCE(s.policy_url,'')<>'',st.observed_at,
 COALESCE(m.titles,0),f.last_attempt_at,f.next_attempt_at,f.outcome,f.attempts,
