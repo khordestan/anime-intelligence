@@ -159,6 +159,10 @@ func reviewFields(ctx context.Context,conn *pgx.Conn,s FieldReview,commit bool)(
   effective,err:=projectMetadataFields(ctx,tx,v.AnimeID,base);if err!=nil{return out,err}
   if err=validateResolvedMetadata(ctx,tx,v.AnimeID,effective,baseAt);err!=nil{return out,err}
   switch v.Field{
+  case "title":_,err=tx.Exec(ctx,`UPDATE anime SET canonical_title=$2,updated_at=now() WHERE id=$1`,v.AnimeID,effective.Title)
+  case "nativeTitle":_,err=tx.Exec(ctx,`UPDATE anime SET native_title=NULLIF($2::text,''),updated_at=now() WHERE id=$1`,v.AnimeID,effective.NativeTitle)
+  case "synopsis":_,err=tx.Exec(ctx,`UPDATE anime SET synopsis=NULLIF($2::text,''),updated_at=now() WHERE id=$1`,v.AnimeID,effective.Synopsis)
+  case "status":_,err=tx.Exec(ctx,`UPDATE anime SET status=$2,updated_at=now() WHERE id=$1`,v.AnimeID,effective.Status)
   case "releaseYear":_,err=tx.Exec(ctx,`UPDATE anime SET release_year=NULLIF($2::int,0),updated_at=now() WHERE id=$1`,v.AnimeID,effective.ReleaseYear)
   case "season":_,err=tx.Exec(ctx,`UPDATE anime SET season_name=NULLIF($2::text,''),updated_at=now() WHERE id=$1`,v.AnimeID,effective.Season)
   case "mediaType":_,err=tx.Exec(ctx,`UPDATE anime SET media_type=$2,updated_at=now() WHERE id=$1`,v.AnimeID,effective.MediaType)

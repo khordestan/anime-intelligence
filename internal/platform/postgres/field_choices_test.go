@@ -140,7 +140,7 @@ func TestFieldChoiceConflictsAuditRollbackAndRoleBoundaries(t *testing.T){
  for _,query:=range []string{`SELECT value FROM catalog_field_choices`,`SELECT reference FROM catalog_field_choices`,`SELECT * FROM catalog_field_choice_audits`,`SELECT * FROM catalog_base_metadata`}{
   if _,err=runtime.Exec(ctx,query);err==nil{t.Fatal("API read operator payload",query)}
  }
- for _,query:=range []string{`SELECT email FROM users`,`UPDATE data_sources SET enabled=false`,`UPDATE anime SET canonical_title='Forbidden'`,`INSERT INTO anime(canonical_title) VALUES('Forbidden')`,`DELETE FROM catalog_field_choices`,`UPDATE catalog_field_choice_audits SET payload='{}'`,`UPDATE catalog_base_metadata SET payload='{}'`,`UPDATE airing_schedule SET schedule_status='UNKNOWN'`}{
+ for _,query:=range []string{`SELECT email FROM users`,`UPDATE data_sources SET enabled=false`,`UPDATE anime SET cover_image_url='Forbidden'`,`INSERT INTO anime(canonical_title) VALUES('Forbidden')`,`DELETE FROM catalog_field_choices`,`UPDATE catalog_field_choice_audits SET payload='{}'`,`UPDATE catalog_base_metadata SET payload='{}'`,`UPDATE airing_schedule SET schedule_status='UNKNOWN'`}{
   if _,err=curator.Exec(ctx,query);err==nil{t.Fatal("curator exceeded boundary",query)}
  }
  if _,err=writer.Exec(ctx,`UPDATE catalog_metadata SET payload=payload`);err==nil{t.Fatal("old binary bypassed projection context")}

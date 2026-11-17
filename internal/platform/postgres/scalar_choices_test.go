@@ -101,7 +101,7 @@ func TestScalarTotalsRespectRetainedEpisodesAndBatchAtomicity(t *testing.T){
  db,err:=postgres.Open(ctx,runtimeDSN);if err!=nil{t.Fatal(err)};defer db.Close()
  details,_,err:=db.Repository("").CatalogDetails(ctx,id)
  if err!=nil||details.Anime.EpisodeCount!=2||!details.Anime.EpisodeCountKnown{t.Fatal("failed restore changed resolved count",details,err)}
- for _,query:=range []string{`UPDATE anime SET status='ANNOUNCED'`,`UPDATE anime SET synopsis='Forbidden'`,`UPDATE anime SET canonical_title='Forbidden'`,`UPDATE watch_progress SET episodes_watched=0`}{
+ for _,query:=range []string{`UPDATE anime SET cover_image_url='Forbidden'`,`UPDATE watch_progress SET episodes_watched=0`}{
   if _,err=curator.Exec(ctx,query);err==nil{t.Fatal("scalar curator exceeded boundary",query)}
  }
  down,err:=os.ReadFile("../../../migrations/000020_catalog_scalar_choices.down.sql");if err!=nil{t.Fatal(err)}

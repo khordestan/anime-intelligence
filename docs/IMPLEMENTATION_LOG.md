@@ -857,3 +857,12 @@ Validation for `ce6ec443d39e441c74e85166987958bf41930c01`: all seven [CI jobs](h
 - No provider requests, real metadata corpus, secrets, personal watch history, source/host activation or deployment.
 
 Validation for `df9ca7be8614bf631dbec94576b3ada23a599f3d`: all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44076966584) and both [CodeQL analyses](https://github.com/khordestan/anime-intelligence/actions/runs/44076966571) passed. Database logs confirm both new scalar groups executed and passed (preview/refresh/restoration/public filtering/unknown-zero/replay and retained-episode/batch/refresh/restore/role/downgrade safety). Frontend logs confirm all 36 mocked browser tests passed, including the three scalar unknown/zero/known cases. Backend unit/race/vet/build/vulnerability, migration apply/rollback, recovery and both real PostgreSQL/browser suites passed. No local tests were run. This follow-up records exact-commit implementation validation only.
+
+## 2026-11-17 — Reviewed names, prose and display status
+
+- Extended typed field reviews with title/nativeTitle/synopsis/status strings, bounded UTF-8/control validation, normalized replay, optional empty text, atomic canonical/resolved projection and latest-primary BASE restoration.
+- Primary imports preserve selected names/prose/status while retaining raw observations. Season announcements compare the retained primary status, preventing display choices from inventing or suppressing source transitions. No curation events or episode/identity/private changes.
+- Migration 000021 expands text constraints and refuses destructive downgrade of selected/restored history. Refreshed curator grants add only the four public columns; no new API grants.
+- Added strict string/type/bound tests and real PostgreSQL preview/replay/search/status/provenance/refresh/restore/empty/late-audit rollback and primary-event regressions. Updated former scalar-only privilege tests for the explicitly expanded curator scope. Recovery ledger and explicit up/down CI include migration 000021.
+- Baseline 3ebfc9e705111e68318af452342fa67b1eea50af CI 44077841455 and Security 44077841569 passed on inspection. Local Go/Node unavailable; new exact hosted checks pending.
+- No real metadata, prose copying, personal data, provider calls, source/host activation or deployment.

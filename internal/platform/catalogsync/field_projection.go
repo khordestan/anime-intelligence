@@ -6,6 +6,7 @@ import (
  "strings"
  "time"
  "unicode/utf8"
+ "unicode"
 
  "github.com/jackc/pgx/v5"
  "github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
@@ -38,6 +39,10 @@ func projectMetadataFields(ctx context.Context,tx pgx.Tx,id string,base feed.Tit
    case "releaseYear":base.ReleaseYear=value.(int)
    case "season":base.Season=value.(string)
    case "mediaType":base.MediaType=value.(string)
+   case "title":base.Title=value.(string)
+   case "nativeTitle":base.NativeTitle=value.(string)
+   case "synopsis":base.Synopsis=value.(string)
+   case "status":base.Status=value.(string)
    case "episodeCount":if value==nil{base.EpisodeCount=nil}else{count:=value.(int);base.EpisodeCount=&count}
    }
    continue
@@ -57,13 +62,13 @@ func projectMetadataFields(ctx context.Context,tx pgx.Tx,id string,base feed.Tit
 }
 
 func scalarField(field string)bool{
- switch field{case "releaseYear","season","mediaType","episodeCount":return true}
+ switch field{case "releaseYear","season","mediaType","episodeCount","title","nativeTitle","synopsis","status":return true}
  return false
 }
 // scalarValue accepts explicit JSON types only. null is meaningful solely for
 // an unknown episode total; zero is a separate known-zero total.
 func scalarValue(field string,raw json.RawMessage)(any,bool){
- if len(raw)==0{return nil,false}
+ if len(raw)==0||!utf8.Valid(raw){return nil,false}
  switch field{
  case "releaseYear","episodeCount":
   var number *int
@@ -72,11 +77,18 @@ func scalarValue(field string,raw json.RawMessage)(any,bool){
   if field=="releaseYear"{if *number!=0&&(*number<1900||*number>9999){return nil,false}}
   if field=="episodeCount"&&(*number<0||*number>100000){return nil,false}
   return *number,true
- case "season","mediaType":
+ case "title","nativeTitle","synopsis":
+  var text *string
+  if json.Unmarshal(raw,&text)!=nil||text==nil||!utf8.ValidString(*text)||*text!=strings.TrimSpace(*text){return nil,false}
+  limit:=1024;if field=="synopsis"{limit=65536}
+  if len(*text)>limit||(field=="title"&&*text==""){return nil,false}
+  for _,r:=range *text{if unicode.IsControl(r)&&!(field=="synopsis"&&(r=='\n'||r=='\r'||r=='\t')){return nil,false}}
+  return *text,true
+ case "season","mediaType","status":
   var text *string
   if json.Unmarshal(raw,&text)!=nil||text==nil{return nil,false}
   allowed:=map[string]bool{}
-  if field=="season"{for _,s:=range []string{"","WINTER","SPRING","SUMMER","FALL"}{allowed[s]=true}}else{
+  if field=="status"{for _,s:=range []string{"UNKNOWN","ANNOUNCED","RELEASING","FINISHED","CANCELLED","HIATUS"}{allowed[s]=true}}else if field=="season"{for _,s:=range []string{"","WINTER","SPRING","SUMMER","FALL"}{allowed[s]=true}}else{
    for _,s:=range []string{"TV","MOVIE","OVA","ONA","SPECIAL","MUSIC","UNKNOWN"}{allowed[s]=true}
   }
   return *text,allowed[*text]

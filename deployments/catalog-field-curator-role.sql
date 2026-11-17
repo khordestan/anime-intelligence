@@ -16,3 +16,6 @@ GRANT INSERT ON catalog_field_choice_audits TO anime_catalog_field_curator;
 -- Migration 000020: public scalar projection and retained-episode validation.
 GRANT SELECT ON airing_schedule TO anime_catalog_field_curator;
 GRANT UPDATE(release_year,season_name,media_type,episode_count,updated_at) ON anime TO anime_catalog_field_curator;
+
+-- Migration 000021: reviewed public names, licensed prose and display status.
+GRANT UPDATE(canonical_title,native_title,synopsis,status) ON anime TO anime_catalog_field_curator;
