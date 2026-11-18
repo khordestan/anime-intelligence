@@ -41,6 +41,9 @@ type Entry = {
   totalEpisodes?: number;
   rating?: number;
 };
+type BulkStatusTarget = { id: string; expectedCycle: number };
+const maxBulkStatusEntries = 25;
+
 const statuses = [
   "ALL",
   "PLANNING",
@@ -90,6 +93,8 @@ export default function Home() {
   const [register, setRegister] = useState(false),
     [authBusy, setAuthBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [bulkEntries, setBulkEntries] = useState<BulkStatusTarget[] | null>(null);
+  const [bulkStatus, setBulkStatus] = useState("");
   const [removal, setRemoval] = useState<string | null>(null);
   const accountRevision = useRef(0);
   const refreshRevision = useRef(0);
@@ -101,6 +106,8 @@ export default function Home() {
       setCatalogFilters(emptyCatalogFilters); setCatalogSearchBusy(false); setCatalogSearchError("");
       refreshRevision.current++;
       setRemoval(null);
+      setBulkEntries(null);
+      setBulkStatus("");
       client.setSession(next);
       setSession(next);
       setLibrary([]);
@@ -348,6 +355,36 @@ export default function Home() {
   }
   async function rate(e: Entry, score: number) {
     await mutate("/ratings/" + e.animeId, "PUT", { score });
+  }
+  async function applyBulkStatus() {
+    if (busy || !bulkEntries?.length || !bulkStatus) return;
+    const account = accountRevision.current;
+    setBusy(true);
+    setError("");
+    try {
+      await client.request("/tracker/bulk-status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watchStatus: bulkStatus, entries: bulkEntries }),
+      });
+      if (account !== accountRevision.current) return;
+      setBulkEntries(null);
+      setBulkStatus("");
+      await refresh();
+    } catch (error) {
+      if (account !== accountRevision.current) return;
+      if (error instanceof ApiError && (error.status === 409 || error.status === 404)) {
+        setBulkEntries([]);
+        await refresh();
+        if (account === accountRevision.current) {
+          setError("The selected entries changed. Select them again and retry.");
+        }
+      } else {
+        handleError(error);
+      }
+    } finally {
+      if (account === accountRevision.current) setBusy(false);
+    }
   }
   const canEdit = mode === "local" || !!session?.user.emailVerified;
   const episodes = library.reduce((n, e) => n + e.episodesWatched, 0);
@@ -640,6 +677,30 @@ export default function Home() {
           {!loading && <p role="status" className="text-sm text-slate-400">Showing {filtered.length} of {library.length} library titles.</p>}
           {!loading && filtered.length === 0 && <p className="text-sm text-slate-400">{library.length ? "No library titles match these filters." : "Your library is empty. Add anime from the catalog above."}</p>}
         </div>}
+        {mode === "postgres" && canEdit && library.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+            <button type="button" disabled={busy} className="underline" onClick={() => {
+              setBulkEntries(bulkEntries === null ? [] : null);
+              setBulkStatus("");
+            }}>
+              {bulkEntries === null ? "Edit multiple statuses" : "Cancel bulk edit"}
+            </button>
+            {bulkEntries !== null && (
+              <>
+                <span role="status">{bulkEntries.length} selected (maximum {maxBulkStatusEntries})</span>
+                <select aria-label="Bulk watch status" disabled={busy} value={bulkStatus} onChange={event => setBulkStatus(event.target.value)}
+                  className="rounded-lg border border-white/10 bg-slate-900 p-2">
+                  <option value="">Choose status</option>
+                  {statuses.slice(1).map(status => <option key={status} value={status}>{labels[status]}</option>)}
+                </select>
+                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkStatus}
+                  onClick={() => void applyBulkStatus()} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+                  Apply status to selected
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {error && (
           <p
             role="alert"
@@ -667,6 +728,23 @@ export default function Home() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-semibold">{e.title}</h3>
+                    {mode === "postgres" && canEdit && bulkEntries !== null && (
+                      <label className="mt-2 flex items-center gap-2 text-xs text-slate-300">
+                        <input type="checkbox" aria-label={"Select " + e.title + " for bulk edit"}
+                          checked={bulkEntries.some(target => target.id === e.id)}
+                          disabled={busy || (bulkEntries.length >= maxBulkStatusEntries && !bulkEntries.some(target => target.id === e.id))}
+                          onChange={event => {
+                            const checked = event.target.checked;
+                            setBulkEntries(current => {
+                              if (!current) return current;
+                              if (!checked) return current.filter(target => target.id !== e.id);
+                              if (current.length >= maxBulkStatusEntries || current.some(target => target.id === e.id)) return current;
+                              return [...current, { id: e.id, expectedCycle: e.watchCycle ?? 1 }];
+                            });
+                          }} />
+                        Select for bulk edit
+                      </label>
+                    )}
                     {mode === "postgres" && <p className="mt-1 text-xs text-slate-500">Viewing pass {e.watchCycle ?? 1}</p>}
                     <p className="mt-1 text-xs text-slate-500">
                       {e.episodesWatched}

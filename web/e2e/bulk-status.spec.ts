@@ -1,0 +1,61 @@
+import { expect, test } from "@playwright/test";
+
+test("bulk status edits submit selected viewing passes and recover from conflicts", async ({ page }) => {
+  const entries = [
+    { id: "entry-one", animeId: "anime-one", title: "Synthetic First", watchStatus: "WATCHING", episodesWatched: 1, watchCycle: 2 },
+    { id: "entry-two", animeId: "anime-two", title: "Synthetic Second", watchStatus: "WATCHING", episodesWatched: 2, watchCycle: 1 },
+  ];
+  const calls: unknown[] = [];
+  await page.route("http://localhost:8080/api/v1**", async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    const headers = {
+      "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+    };
+    const send = (body: unknown, status = 200) => route.fulfill({ status, headers, json: body });
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+    if (path === "") return send({ authenticationRequired: true });
+    if (path === "/auth/login") return send({
+      token: "synthetic-test-token",
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+      user: { id: "synthetic-owner", email: "bulk@example.test", emailVerified: true },
+    });
+    if (path === "/tracker") return send({ items: entries });
+    if (path === "/tracker/bulk-status") {
+      expect(request.method()).toBe("PATCH");
+      calls.push(request.postDataJSON());
+      if (calls.length === 1) {
+        entries[0].watchCycle = 3;
+        return send({ error: "rewatch_state_changed" }, 409);
+      }
+      for (const entry of entries) entry.watchStatus = "ON_HOLD";
+      return send({ items: entries });
+    }
+    return send({ items: [] });
+  });
+  await page.goto("/");
+  await page.getByLabel("Email", { exact: true }).fill("bulk@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const library = page.getByRole("region", { name: "My Library" });
+  await library.getByRole("button", { name: "Edit multiple statuses" }).click();
+  const first = library.getByRole("checkbox", { name: "Select Synthetic First for bulk edit" });
+  const second = library.getByRole("checkbox", { name: "Select Synthetic Second for bulk edit" });
+  await first.check();
+  await second.check();
+  await library.getByLabel("Bulk watch status").selectOption("ON_HOLD");
+  const apply = library.getByRole("button", { name: "Apply status to selected" });
+  await apply.click();
+  await expect(library.getByText("The selected entries changed. Select them again and retry.")).toBeVisible();
+  await expect(first).not.toBeChecked();
+  await first.check();
+  await second.check();
+  await apply.click();
+  await expect(library.getByRole("button", { name: "Edit multiple statuses" })).toBeVisible();
+  expect(calls).toEqual([2, 3].map(expectedCycle => ({
+    watchStatus: "ON_HOLD",
+    entries: [{ id: "entry-one", expectedCycle }, { id: "entry-two", expectedCycle: 1 }],
+  })));
+});

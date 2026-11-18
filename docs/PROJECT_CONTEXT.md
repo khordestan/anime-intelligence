@@ -144,3 +144,5 @@ Dashboard catalog searches now use the cursor API for next and previous navigati
 The dashboard offers explicit unfiltered browsing with the same cursor and filter path as search.
 
 The verified PostgreSQL tracker supports atomic bulk status edits for up to 25 owned entries through PATCH /api/v1/tracker/bulk-status. Each edit must match the current viewing pass. Missing, foreign or stale entries roll back the whole operation. See [bulk tracker status](TRACKER_BULK_STATUS.md).
+
+The verified-account dashboard can select and update multiple tracker statuses at once. It sends the viewing passes captured at selection time and refreshes after a stale or missing entry response before asking the user to reselect.

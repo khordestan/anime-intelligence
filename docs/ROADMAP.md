@@ -87,7 +87,8 @@
 - [x] Private tracker notes with conflict detection and dashboard editing
 - [ ] Finer season rating conventions
 - [x] Atomic, viewing-pass-guarded bulk status edit API
-- [ ] Dashboard bulk editing and watch-list import/export
+- [x] Dashboard bulk status editing with stale-entry recovery
+- [ ] Watch-list import/export and additional bulk editing actions
 - [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence

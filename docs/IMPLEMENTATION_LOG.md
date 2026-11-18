@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-18 — Dashboard bulk status editing
+
+Added multi-entry selection and status editing for verified PostgreSQL accounts. The Playwright regression covers stale-pass recovery and successful retry with refreshed viewing passes. Local Node execution is unavailable. Hosted CI is pending.
+
 ## 2026-11-18 — Atomic bulk tracker status edits
 
 Added a verified-owner PostgreSQL API for status-only edits across up to 25 entries. Reused single-entry update logic while holding one product transaction. Added an HTTP/PostgreSQL regression for verification, isolation, duplicates, stale-pass rollback and exact-progress preservation. Local Go execution is unavailable. Hosted CI is pending.
