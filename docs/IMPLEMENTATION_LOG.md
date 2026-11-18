@@ -1,8 +1,12 @@
 # Implementation Log
 
+## 2026-11-18 — Dashboard catalog cursor navigation
+
+Updated filtered catalog searches, next/previous navigation and destination retry to use API cursors. Updated the synthetic Playwright paging regression. Local Node execution is unavailable. Hosted CI verification is pending.
+
 ## 2026-11-18 — Catalog API keyset pagination
 
-Added opt-in catalog cursors with normalized filter binding, exact successor detection and unchanged offset compatibility. Added a hosted PostgreSQL paging regression. Local Go execution is unavailable in this workspace. CI verification is pending.
+Added opt-in catalog cursors with normalized filter binding, exact successor detection and unchanged offset compatibility. Added a hosted PostgreSQL paging regression. Local Go execution is unavailable in this workspace. All seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44297002555) and all three [security jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44297002557) passed for API commit `b857c8e`, including the PostgreSQL traversal regression.
 
 ## 2026-11-18 — Retired provider IDs in the catalog queue
 
