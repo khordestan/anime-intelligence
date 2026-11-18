@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ApiClient, ApiError } from "../lib/api";
+import { downloadJSON } from "../lib/download";
 
 export default function AccountManager({
   client,
@@ -24,19 +25,7 @@ export default function AccountManager({
     try {
       // The shared client rejects late responses after an account switch.
       const data = await client.request<unknown>("/auth/export");
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
-      );
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "anime-intelligence-account.json";
-      document.body.appendChild(anchor);
-      try {
-        anchor.click();
-      } finally {
-        anchor.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
+      downloadJSON("anime-intelligence-account.json", data);
       setNotice(
         "Export downloaded. Keep this file private: it contains your account and library data.",
       );

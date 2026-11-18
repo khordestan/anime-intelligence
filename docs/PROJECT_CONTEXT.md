@@ -146,3 +146,5 @@ The dashboard offers explicit unfiltered browsing with the same cursor and filte
 The verified PostgreSQL tracker supports atomic bulk status edits for up to 25 owned entries through PATCH /api/v1/tracker/bulk-status. Each edit must match the current viewing pass. Missing, foreign or stale entries roll back the whole operation. See [bulk tracker status](TRACKER_BULK_STATUS.md).
 
 The verified-account dashboard can select and update multiple tracker statuses at once. It sends the viewing passes captured at selection time and refreshes after a stale or missing entry response before asking the user to reselect.
+
+Verified PostgreSQL accounts can download a versioned JSON watch-list export of current statuses, aggregate/exact progress and series ratings, excluding account identifiers and private notes. Full account export remains available for the rest of the account data.
