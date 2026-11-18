@@ -86,7 +86,9 @@
 - [ ] Finer season conventions
 - [x] Private tracker notes with conflict detection and dashboard editing
 - [ ] Finer season rating conventions
-- [ ] Import/export and bulk editing
+- [x] Atomic, viewing-pass-guarded bulk status edit API
+- [x] Dashboard bulk status editing with stale-entry recovery
+- [ ] Watch-list import/export and additional bulk editing actions
 - [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence

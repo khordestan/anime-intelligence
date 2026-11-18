@@ -104,13 +104,22 @@ func (r *Repository) updateCycle(ctx context.Context,id string,status *string,ep
 		return store.Entry{}, false, err
 	}
 	defer rollback(tx)
+	entry, found, err := updateCycleEntry(ctx, tx, u.ID, id, status, episodes, expected)
+	if err != nil || !found {
+		return entry, found, err
+	}
+	return entry, true, tx.Commit(ctx)
+}
+
+func updateCycleEntry(ctx context.Context, tx pgx.Tx, ownerID, id string, status *string, episodes *int, expected int) (store.Entry, bool, error) {
 	var animeID string
- var cycle int
- err=tx.QueryRow(ctx,`SELECT watch_cycle FROM user_anime WHERE id=$1 AND user_id=$2 FOR UPDATE`,id,u.ID).Scan(&cycle)
+	var cycle int
+	var err error
+ err=tx.QueryRow(ctx,`SELECT watch_cycle FROM user_anime WHERE id=$1 AND user_id=$2 FOR UPDATE`,id,ownerID).Scan(&cycle)
  if errors.Is(err,pgx.ErrNoRows){return store.Entry{},false,nil}
  if err!=nil{return store.Entry{},false,err}
  if expected!=0&&expected!=cycle{return store.Entry{},true,store.ErrWatchCycleConflict}
-	err = tx.QueryRow(ctx, `UPDATE user_anime SET watch_status=COALESCE($3,watch_status),updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING anime_id::text`, id, u.ID, status).Scan(&animeID)
+	err = tx.QueryRow(ctx, `UPDATE user_anime SET watch_status=COALESCE($3,watch_status),updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING anime_id::text`, id, ownerID, status).Scan(&animeID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return store.Entry{}, false, nil
 	}
@@ -118,16 +127,16 @@ func (r *Repository) updateCycle(ctx context.Context,id string,status *string,ep
 		return store.Entry{}, false, err
 	}
 	if episodes != nil {
-		_, err = tx.Exec(ctx, `INSERT INTO watch_progress(user_id,anime_id,episodes_watched) VALUES($1,$2,$3) ON CONFLICT(user_id,anime_id) DO UPDATE SET episodes_watched=excluded.episodes_watched,watched_episode_numbers=NULL,updated_at=now()`, u.ID, animeID, *episodes)
+		_, err = tx.Exec(ctx, `INSERT INTO watch_progress(user_id,anime_id,episodes_watched) VALUES($1,$2,$3) ON CONFLICT(user_id,anime_id) DO UPDATE SET episodes_watched=excluded.episodes_watched,watched_episode_numbers=NULL,updated_at=now()`, ownerID, animeID, *episodes)
 		if err != nil {
 			return store.Entry{}, false, err
 		}
 	}
-	e, err := scanEntry(tx.QueryRow(ctx, entrySelect+` WHERE ua.id=$1 AND ua.user_id=$2`, id, u.ID))
+	e, err := scanEntry(tx.QueryRow(ctx, entrySelect+` WHERE ua.id=$1 AND ua.user_id=$2`, id, ownerID))
 	if err != nil {
 		return e, false, err
 	}
-	return e, true, tx.Commit(ctx)
+	return e, true, nil
 }
 func (r *Repository) Rate(ctx context.Context, animeID string, score int) (store.Entry, bool, error) {
 	tx, u, err := r.db.productTx(ctx, r.token)

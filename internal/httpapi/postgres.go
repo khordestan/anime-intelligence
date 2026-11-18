@@ -234,6 +234,9 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 	mux.HandleFunc("POST /api/v1/tracker", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).Create(w, r)
 	}))
+	mux.HandleFunc("PATCH /api/v1/tracker/bulk-status", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		tracker.NewHandler(db.Repository(token)).BulkStatus(w, r)
+	}))
 	mux.HandleFunc("PATCH /api/v1/tracker/{id}", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).Update(w, r)
 	}))
