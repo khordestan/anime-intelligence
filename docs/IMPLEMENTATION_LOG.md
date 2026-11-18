@@ -2,7 +2,7 @@
 
 ## 2026-11-18 — Retired provider IDs in the catalog queue
 
-The queue skips reviewed retired provider IDs before inserting or claiming jobs. Admission holds the source row lock also used during retirement, so an existing job blocks retirement and a committed retirement blocks subsequent admission. Added a disposable PostgreSQL regression for retired-only and mixed configurations using a synthetic Wikidata fetcher. Local tests were unavailable in this session. Hosted CI verification is pending.
+The queue skips reviewed retired provider IDs before inserting or claiming jobs. Admission holds the source row lock also used during retirement, so an existing job blocks retirement and a committed retirement blocks subsequent admission. Added a disposable PostgreSQL regression for retired-only and mixed configurations using a synthetic Wikidata fetcher. Local tests were unavailable in this session. For implementation commit `cde7afb`, all seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44291409852) passed, including the new PostgreSQL regression. Both CodeQL jobs passed. [Dependency review](https://github.com/khordestan/anime-intelligence/actions/runs/44291409772/job/134757272964) could not run because GitHub reports the repository dependency graph is unavailable.
 
 ## 2026-11-15 — PostgreSQL row-level security foundation
 
