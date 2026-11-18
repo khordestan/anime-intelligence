@@ -1,8 +1,12 @@
 # Implementation Log
 
+## 2026-11-18 — Unfiltered dashboard catalog browsing
+
+Added explicit Browse catalog mode with the existing cursor navigation, loading and retry controls. The Playwright regression exercises opening and closing browsing with no query or filter. Local Node execution is unavailable. Hosted CI is pending.
+
 ## 2026-11-18 — Dashboard catalog cursor navigation
 
-Updated filtered catalog searches, next/previous navigation and destination retry to use API cursors. Updated the synthetic Playwright paging regression. Local Node execution is unavailable. Hosted CI verification is pending.
+Updated filtered catalog searches, next/previous navigation and destination retry to use API cursors. Updated the synthetic Playwright paging regression. Local Node execution is unavailable. All seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44297477106) and all three [security jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44297477190) passed for dashboard navigation commit `8464d04`, including all 36 mocked browser tests.
 
 ## 2026-11-18 — Catalog API keyset pagination
 

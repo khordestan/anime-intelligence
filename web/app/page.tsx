@@ -72,7 +72,9 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [searchedCatalog, setSearchedCatalog] = useState<Anime[] | null>(null);
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>(emptyCatalogFilters);
+  const [browseCatalog, setBrowseCatalog] = useState(false);
   const hasCatalogFilters = Object.values(catalogFilters).some(Boolean);
+  const showCatalogResults = browseCatalog || Boolean(query.trim()) || hasCatalogFilters;
   const [catalogSearchBusy, setCatalogSearchBusy] = useState(false);
   const [catalogSearchError, setCatalogSearchError] = useState("");
   const [catalogResultLimit, setCatalogResultLimit] = useState(8);
@@ -107,7 +109,7 @@ export default function Home() {
       setEmail("");
       setRegister(false);
       setError("");
-      setQuery("");
+      setQuery(""); setBrowseCatalog(false);
       setFilter("ALL");
       setLibraryQuery(""); setLibraryRating("ALL"); setLibrarySort("DEFAULT"); setLibraryProgress("ALL");
       setBusy(false);
@@ -160,7 +162,7 @@ export default function Home() {
   useEffect(() => {
     const revision = ++catalogSearchRevision.current;
     setSearchedCatalog(null); setCatalogSearchError(""); setCatalogSearchBusy(false); setCatalogResultLimit(8); setCatalogPage({ trail: [] }); retryPage.current=null;
-    if ((!query.trim() && !hasCatalogFilters) || mode === null) return;
+    if (!showCatalogResults || mode === null) return;
     setCatalogSearchBusy(true);
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ q: query.trim(), limit: "100", cursor: "start" });
@@ -171,7 +173,7 @@ export default function Home() {
         .finally(() => { if (revision === catalogSearchRevision.current) setCatalogSearchBusy(false); });
     }, 250);
     return () => { clearTimeout(timer); catalogSearchRevision.current++; };
-  }, [query, mode, client, handleError, catalogFilters, hasCatalogFilters]);
+  }, [query, mode, client, handleError, catalogFilters, showCatalogResults]);
   async function catalogPageRequest(trail: string[]) {
     const cursor = trail.at(-1);
     if (catalogSearchBusy || !cursor) return;
@@ -292,7 +294,7 @@ export default function Home() {
       });
       if (revision !== accountRevision.current) return;
       setRemoval(null);
-      setQuery(""); setCatalogFilters(emptyCatalogFilters);
+      setQuery(""); setBrowseCatalog(false); setCatalogFilters(emptyCatalogFilters);
       await refresh();
     } catch (e) {
       handleError(e);
@@ -325,13 +327,13 @@ export default function Home() {
   }, [library, filter, libraryQuery, libraryRating, librarySort, libraryProgress]);
   const matchingCatalog = useMemo(
     () =>
-      (searchedCatalog ?? (hasCatalogFilters ? [] : catalog))
+      (searchedCatalog ?? (hasCatalogFilters || browseCatalog ? [] : catalog))
         .filter(
           (x) =>
             (searchedCatalog !== null || x.title.toLowerCase().includes(query.toLowerCase())) &&
             !library.some((e) => e.animeId === x.id),
         ),
-    [catalog, searchedCatalog, library, query, hasCatalogFilters],
+    [catalog, searchedCatalog, library, query, hasCatalogFilters, browseCatalog],
   );
   const results = matchingCatalog.slice(0, catalogResultLimit);
   async function add(a: Anime) {
@@ -542,11 +544,14 @@ export default function Home() {
           placeholder="Search starter catalog…"
           className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-violet-400"
         />
+        <button type="button" aria-pressed={browseCatalog} onClick={() => setBrowseCatalog(current => !current)} className="mt-3 text-sm text-violet-200 underline">
+          Browse catalog
+        </button>
         <CatalogFilters key={"catalog-filters:"+(session?.user.id??"public")} client={client} values={catalogFilters} onApply={values => { catalogSearchRevision.current++; setSearchedCatalog(null); setCatalogFilters({ ...values }); }} />
-        {(query || hasCatalogFilters) && catalogSearchBusy && <p role="status" className="mt-3 text-sm text-slate-400">Searching catalog…</p>}
+        {showCatalogResults && catalogSearchBusy && <p role="status" className="mt-3 text-sm text-slate-400">Searching catalog…</p>}
         {catalogSearchError && <p role="alert" className="mt-3 text-sm text-rose-200">{catalogSearchError} <button onClick={() => retryPage.current!==null?void catalogPageRequest(retryPage.current):setCatalogFilters(current => ({ ...current }))} className="underline">Retry catalog search</button></p>}
-        {(query || hasCatalogFilters) && searchedCatalog !== null && !catalogSearchBusy && results.length === 0 && <p className="mt-3 text-sm text-slate-400">No matching anime outside your library.</p>}
-        {(query || hasCatalogFilters) && (
+        {showCatalogResults && searchedCatalog !== null && !catalogSearchBusy && results.length === 0 && <p className="mt-3 text-sm text-slate-400">No matching anime outside your library.</p>}
+        {showCatalogResults && (
           <div className="mt-3 space-y-2">
             {results.map((a) => (
               <div

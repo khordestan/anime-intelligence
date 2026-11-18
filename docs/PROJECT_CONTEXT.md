@@ -140,3 +140,5 @@ Queued catalog workers now exclude reviewed retired provider IDs under the sourc
 The public catalog API supports opt-in keyset pagination for title, newest and oldest ordering in PostgreSQL and local mode. Cursors bind to the normalized query, filters and sort. Offset clients remain compatible. Cursor traversal uses live catalog rows, so edits to sort keys or filters can change membership between requests.
 
 Dashboard catalog searches now use the cursor API for next and previous navigation. The browser holds the current search's cursor trail in component state and retries the same destination after a failed request.
+
+The dashboard offers explicit unfiltered browsing with the same cursor and filter path as search.

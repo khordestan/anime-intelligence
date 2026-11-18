@@ -11,3 +11,5 @@ No private data, schema/grants, source activation or deployment changes. Local a
 ## Dashboard navigation
 
 The dashboard uses the [cursor API](CATALOG_FILTERS.md#cursor-pagination). Previous reuses the earlier page's cursor, and Retry repeats the failed destination without discarding the current page. Starting a new search or applying filters clears the cursor trail. The offset API described above remains available to other clients.
+
+Use Browse catalog to start at the first page without a query or filters. Search and applied filters still narrow the displayed results when browsing is enabled.
