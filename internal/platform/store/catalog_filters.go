@@ -3,6 +3,7 @@ package store
 import (
  "context"
  "errors"
+ "math"
  "strings"
  "sort"
  "unicode/utf8"
@@ -29,6 +30,42 @@ type CatalogFilter struct {
 type FilteredCatalog interface {
  FilterCatalog(context.Context,CatalogFilter,int,int)([]Anime,error)
 }
+// CatalogPosition is the last ordered key from a public catalog page.
+type CatalogPosition struct {
+ YearKey int64
+ Title string
+ ID string
+}
+
+type CursorCatalog interface {
+ CatalogAfter(context.Context, CatalogFilter, int, *CatalogPosition) ([]Anime, error)
+}
+
+func (f CatalogFilter) Position(a Anime) CatalogPosition {
+ key := int64(0)
+ switch f.Sort {
+ case "NEWEST", "OLDEST":
+  key = int64(a.ReleaseYear)
+  if f.Sort == "NEWEST" {
+   key = -key
+  }
+  if a.ReleaseYear == 0 {
+   key = math.MaxInt64
+  }
+ }
+ return CatalogPosition{YearKey: key, Title: a.Title, ID: a.ID}
+}
+
+func (p CatalogPosition) before(other CatalogPosition) bool {
+ if p.YearKey != other.YearKey {
+  return p.YearKey < other.YearKey
+ }
+ if p.Title != other.Title {
+  return p.Title < other.Title
+ }
+ return p.ID < other.ID
+}
+
 func(f CatalogFilter)Normalize()(CatalogFilter,error){
  f.Query=strings.TrimSpace(f.Query)
  f.Genre=strings.TrimSpace(f.Genre);f.Theme=strings.TrimSpace(f.Theme)
@@ -49,7 +86,24 @@ func(f CatalogFilter)HasMetadataFilters()bool{
 }
 // Local has no imported taxonomy. An active source-label filter has no matches.
 func(s Local)FilterCatalog(ctx context.Context,f CatalogFilter,limit,offset int)([]Anime,error){
- f,err:=f.Normalize();if err!=nil||limit<1||limit>100||offset<0||offset>100000{return nil,ErrCatalogFilter}
+ if limit < 1 || limit > 100 || offset < 0 || offset > 100000 {
+  return nil, ErrCatalogFilter
+ }
+ return s.filterCatalog(ctx, f, limit, offset, nil)
+}
+
+func (s Local) CatalogAfter(ctx context.Context, f CatalogFilter, limit int, after *CatalogPosition) ([]Anime, error) {
+ if limit < 1 || limit > 101 {
+  return nil, ErrCatalogFilter
+ }
+ return s.filterCatalog(ctx, f, limit, 0, after)
+}
+
+func (s Local) filterCatalog(ctx context.Context, f CatalogFilter, limit, offset int, after *CatalogPosition) ([]Anime, error) {
+ f, err := f.Normalize()
+ if err != nil {
+  return nil, err
+ }
  if err:=ctx.Err();err!=nil{return nil,err}
  out:=[]Anime{}
  if f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""{return out,nil}
@@ -59,10 +113,14 @@ func(s Local)FilterCatalog(ctx context.Context,f CatalogFilter,limit,offset int)
   if f.MinEpisodes!=nil&&a.EpisodeCount<*f.MinEpisodes{continue};if f.MaxEpisodes!=nil&&a.EpisodeCount>*f.MaxEpisodes{continue}
   if (f.MinYear!=nil||f.MaxYear!=nil)&&a.ReleaseYear==0{continue}
   if f.MinYear!=nil&&a.ReleaseYear<*f.MinYear{continue};if f.MaxYear!=nil&&a.ReleaseYear>*f.MaxYear{continue}
-  out=append(out,a)
+  if after == nil || after.before(f.Position(a)) {
+   out = append(out, a)
+  }
  }
  // Match the PostgreSQL deterministic title/ID ordering before pagination.
- sort.Slice(out,func(i,j int)bool{if f.Sort=="NEWEST"||f.Sort=="OLDEST"{a,b:=out[i].ReleaseYear,out[j].ReleaseYear;if a!=b{if a==0{return false};if b==0{return true};if f.Sort=="NEWEST"{return a>b};return a<b}};if out[i].Title!=out[j].Title{return out[i].Title<out[j].Title};return out[i].ID<out[j].ID})
+ sort.Slice(out, func(i, j int) bool {
+  return f.Position(out[i]).before(f.Position(out[j]))
+ })
  if offset>=len(out){return []Anime{},nil}
  out=out[offset:];if len(out)>limit{out=out[:limit]}
  return out,nil

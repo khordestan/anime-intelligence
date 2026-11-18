@@ -59,4 +59,35 @@ func TestPublicCatalogFiltersCombineSourcedCategoriesAndPagination(t *testing.T)
  w:=httptest.NewRecorder();h.ServeHTTP(w,httptest.NewRequest("GET","/api/v1/anime?"+query.Encode(),nil))
  var body struct{Items []store.Anime `json:"items"`;Count int `json:"count"`}
  if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&body)!=nil||body.Count!=1||len(body.Items)!=1||body.Items[0].Title!="Synthetic Filter Alpha"||w.Header().Get("Cache-Control")!="no-store"{t.Fatal("anonymous filtered catalog",w.Code,w.Body.String())}
+
+ for _, order := range []string{"TITLE", "NEWEST", "OLDEST"} {
+  query := url.Values{"q": {"Synthetic Filter"}, "sort": {order}, "limit": {"1"}, "cursor": {"start"}}
+  expected, err := repo.FilterCatalog(ctx, store.CatalogFilter{Query: "Synthetic Filter", Sort: order}, 100, 0)
+  if err != nil {
+   t.Fatal(err)
+  }
+  for i, want := range expected {
+   page := httptest.NewRecorder()
+   h.ServeHTTP(page, httptest.NewRequest("GET", "/api/v1/anime?"+query.Encode(), nil))
+   var payload struct {
+    Items []store.Anime
+    NextCursor string
+   }
+   if page.Code != 200 || json.Unmarshal(page.Body.Bytes(), &payload) != nil ||
+    len(payload.Items) != 1 || payload.Items[0].ID != want.ID ||
+    (payload.NextCursor != "") != (i < len(expected)-1) {
+    t.Fatalf("%s page %d: status=%d body=%s", order, i, page.Code, page.Body.String())
+   }
+   query.Set("cursor", payload.NextCursor)
+   if i == 0 {
+    changed := httptest.NewRecorder()
+    query.Set("genre", "Action")
+    h.ServeHTTP(changed, httptest.NewRequest("GET", "/api/v1/anime?"+query.Encode(), nil))
+    query.Del("genre")
+    if changed.Code != 400 {
+     t.Fatalf("cursor accepted changed filters: %d", changed.Code)
+    }
+   }
+  }
+ }
 }

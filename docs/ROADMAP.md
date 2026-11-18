@@ -71,7 +71,8 @@
 - [x] Combined sourced-category/format/status/year/quarter catalog filters with explicit dashboard controls and bounded result expansion
 - [x] Bounded available-value facets and explicit dashboard label discovery
 - [x] Offset navigation hints and dashboard filtered paging with retry
-- [ ] Stable cursor pagination and broader catalog navigation
+- [x] Stable cursor pagination for the public catalog API
+- [ ] Dashboard cursor navigation and broader catalog browsing
 - [ ] Reviewed franchise curation/retractions and finer season conventions
 
 ## Milestone 3 — Tracker completeness
