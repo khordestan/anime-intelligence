@@ -1,8 +1,12 @@
 # Implementation Log
 
+## 2026-11-18 — Atomic bulk tracker status edits
+
+Added a verified-owner PostgreSQL API for status-only edits across up to 25 entries. Reused single-entry update logic while holding one product transaction. Added an HTTP/PostgreSQL regression for verification, isolation, duplicates, stale-pass rollback and exact-progress preservation. Local Go execution is unavailable. Hosted CI is pending.
+
 ## 2026-11-18 — Unfiltered dashboard catalog browsing
 
-Added explicit Browse catalog mode with the existing cursor navigation, loading and retry controls. The Playwright regression exercises opening and closing browsing with no query or filter. Local Node execution is unavailable. Hosted CI is pending.
+Added explicit Browse catalog mode with the existing cursor navigation, loading and retry controls. The Playwright regression exercises opening and closing browsing with no query or filter. Local Node execution is unavailable. All seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44298014862) and all three [security jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44298015076) passed for browse commit `fd4511f`.
 
 ## 2026-11-18 — Dashboard catalog cursor navigation
 

@@ -142,3 +142,5 @@ The public catalog API supports opt-in keyset pagination for title, newest and o
 Dashboard catalog searches now use the cursor API for next and previous navigation. The browser holds the current search's cursor trail in component state and retries the same destination after a failed request.
 
 The dashboard offers explicit unfiltered browsing with the same cursor and filter path as search.
+
+The verified PostgreSQL tracker supports atomic bulk status edits for up to 25 owned entries through PATCH /api/v1/tracker/bulk-status. Each edit must match the current viewing pass. Missing, foreign or stale entries roll back the whole operation. See [bulk tracker status](TRACKER_BULK_STATUS.md).
