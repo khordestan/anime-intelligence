@@ -122,6 +122,25 @@ func claimFetch(ctx context.Context,conn *pgx.Conn,provider,scope string,ids []s
  AND enabled AND COALESCE(policy_url,'')<>'' FOR UPDATE`,provider).Scan(&source)
  if errors.Is(err,pgx.ErrNoRows){return nil,ErrSource}
  if err!=nil{return nil,ErrWorker}
+ // Retraction locks this same source row before checking for jobs.
+ // Keep stale configured IDs from recreating work after retirement.
+ var activeIDs []string
+ err = tx.QueryRow(ctx, `SELECT ARRAY(
+  SELECT configured.external_id
+  FROM unnest($1::text[]) WITH ORDINALITY AS configured(external_id, position)
+  WHERE NOT EXISTS (
+   SELECT 1 FROM catalog_identity_retractions r
+   WHERE r.provider=$2 AND r.external_id=configured.external_id
+  )
+  ORDER BY configured.position
+ )`, ids, provider).Scan(&activeIDs)
+ if err != nil {
+  return nil, ErrWorker
+ }
+ if len(activeIDs) == 0 {
+  return nil, nil
+ }
+ ids = activeIDs
  seconds:=int((interval+time.Second-1)/time.Second)
  for _,id:=range ids{
   _,err=tx.Exec(ctx,`INSERT INTO catalog_fetch_jobs(source_id,external_id,interval_seconds,next_attempt_at,updated_at,import_scope)

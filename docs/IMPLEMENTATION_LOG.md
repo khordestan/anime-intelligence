@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-18 — Retired provider IDs in the catalog queue
+
+The queue skips reviewed retired provider IDs before inserting or claiming jobs. Admission holds the source row lock also used during retirement, so an existing job blocks retirement and a committed retirement blocks subsequent admission. Added a disposable PostgreSQL regression for retired-only and mixed configurations using a synthetic Wikidata fetcher. Local tests were unavailable in this session. Hosted CI verification is pending.
+
 ## 2026-11-15 — PostgreSQL row-level security foundation
 
 Implemented:
