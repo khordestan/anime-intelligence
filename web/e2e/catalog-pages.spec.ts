@@ -9,7 +9,12 @@ test("catalog pages preserve filters and retry the failed destination",async({pa
  if(path==="")return send({authenticationRequired:false});
  if(path==="/tracker")return send({items:[]});
  if(path==="/anime"){
-  if(!u.searchParams.has("mediaType"))return send({items:[]});
+  if(!u.searchParams.has("mediaType")) {
+   if(u.searchParams.get("cursor")==="start" && u.searchParams.get("q")==="") {
+    return send({items:[{id:"10000000-0000-4000-8000-000000000001",title:"Synthetic Browsable Title",mediaType:"TV"}]});
+   }
+   return send({items:[]});
+  }
   expect(u.searchParams.get("mediaType")).toBe("TV");
   const cursor=u.searchParams.get("cursor")??"";cursors.push(cursor);
   if(cursor==="page-two"&&attempts++===0)return send({},500);
@@ -18,6 +23,11 @@ test("catalog pages preserve filters and retry the failed destination",async({pa
  return send({},404);
  });
  await page.goto("/");
+ const browse = page.getByRole("button", { name: "Browse catalog", exact: true });
+ await browse.click();
+ await expect(page.getByText("Synthetic Browsable Title", { exact: true })).toBeVisible();
+ await browse.click();
+ await expect(page.getByText("Synthetic Browsable Title", { exact: true })).toHaveCount(0);
  await page.getByRole("button",{name:"Catalog filters",exact:true}).click();
  await page.getByLabel("Catalog format",{exact:true}).selectOption("TV");
  await page.getByRole("button",{name:"Apply catalog filters",exact:true}).click();
