@@ -72,7 +72,8 @@
 - [x] Bounded available-value facets and explicit dashboard label discovery
 - [x] Offset navigation hints and dashboard filtered paging with retry
 - [x] Stable cursor pagination for the public catalog API
-- [ ] Dashboard cursor navigation and broader catalog browsing
+- [x] Dashboard cursor navigation with destination retry
+- [ ] Broader catalog browsing
 - [ ] Reviewed franchise curation/retractions and finer season conventions
 
 ## Milestone 3 — Tracker completeness

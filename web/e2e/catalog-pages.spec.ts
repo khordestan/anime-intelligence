@@ -1,6 +1,6 @@
 import {test,expect} from "@playwright/test";
 test("catalog pages preserve filters and retry the failed destination",async({page})=>{
- let attempts=0;const offsets:string[]=[];
+ let attempts=0;const cursors:string[]=[];
  const headers={"Access-Control-Allow-Origin":"http://127.0.0.1:3000","Access-Control-Allow-Headers":"Authorization, Content-Type"};
  await page.route("http://localhost:8080/api/v1**",async route=>{
  const u=new URL(route.request().url()),path=u.pathname.replace("/api/v1","");
@@ -11,9 +11,9 @@ test("catalog pages preserve filters and retry the failed destination",async({pa
  if(path==="/anime"){
   if(!u.searchParams.has("mediaType"))return send({items:[]});
   expect(u.searchParams.get("mediaType")).toBe("TV");
-  const offset=u.searchParams.get("offset")??"0";offsets.push(offset);
-  if(offset==="100"&&attempts++===0)return send({},500);
-  return send({items:[{id:"10000000-0000-4000-8000-000000000001",title:offset==="0"?"Synthetic First Page":"Synthetic Second Page",mediaType:"TV"}],...(offset==="0"?{nextOffset:100}:{previousOffset:0})});
+  const cursor=u.searchParams.get("cursor")??"";cursors.push(cursor);
+  if(cursor==="page-two"&&attempts++===0)return send({},500);
+  return send({items:[{id:"10000000-0000-4000-8000-000000000001",title:cursor==="start"?"Synthetic First Page":"Synthetic Second Page",mediaType:"TV"}],...(cursor==="start"?{nextCursor:"page-two"}:{})});
  }
  return send({},404);
  });
@@ -29,5 +29,5 @@ test("catalog pages preserve filters and retry the failed destination",async({pa
  await expect(page.getByText("Synthetic Second Page",{exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Previous catalog page",exact:true}).click();
  await expect(page.getByText("Synthetic First Page",{exact:true})).toBeVisible();
- expect(offsets).toEqual(["0","100","100","0"]);
+ expect(cursors).toEqual(["start","page-two","page-two","start"]);
 });

@@ -138,3 +138,5 @@ Reviewed unused identity retraction is implemented through cmd/catalog-retract a
 Queued catalog workers now exclude reviewed retired provider IDs under the source row lock before scheduling or claiming jobs. Mixed configurations continue processing eligible IDs. This worker upgrade requires migration 000022 and the existing refreshed writer grants. Dormant jobs still block retirement.
 
 The public catalog API supports opt-in keyset pagination for title, newest and oldest ordering in PostgreSQL and local mode. Cursors bind to the normalized query, filters and sort. Offset clients remain compatible. Cursor traversal uses live catalog rows, so edits to sort keys or filters can change membership between requests.
+
+Dashboard catalog searches now use the cursor API for next and previous navigation. The browser holds the current search's cursor trail in component state and retries the same destination after a failed request.
