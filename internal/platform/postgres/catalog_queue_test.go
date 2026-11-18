@@ -11,6 +11,7 @@ import (
 
  "github.com/jackc/pgx/v5"
  "github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
+ "github.com/khordestan/anime-intelligence/internal/platform/catalogidentity"
  "github.com/khordestan/anime-intelligence/internal/platform/catalogsync"
  "github.com/khordestan/anime-intelligence/internal/providers/wikidata"
 )
@@ -196,4 +197,39 @@ func TestCatalogQueueAtomicImportAndLeaseFences(t *testing.T){
   var state string
   if err:=owner.QueryRow(ctx,`SELECT state FROM catalog_fetch_jobs`).Scan(&state);err!=nil||state!="RETRY"{t.Fatal("cancellation stranded lease",state,err)}
  })
+}
+
+func TestCatalogQueueSkipsReviewedRetiredIDs(t *testing.T) {
+ owner, writer, _, runtimeDSN := queuedDB(t)
+ ctx := context.Background()
+ approveQueue(t, owner)
+ const animeID = "10000000-0000-4000-8000-000000000001"
+ var mappingID string
+ err := owner.QueryRow(ctx, `INSERT INTO anime_external_ids(anime_id,provider,external_id)
+ VALUES($1,'wikidata','Q1') RETURNING id::text`, animeID).Scan(&mappingID)
+ if err != nil {
+  t.Fatal(err)
+ }
+ retractor, _ := identityRetractor(t, owner, runtimeDSN)
+ now := time.Now().UTC()
+ review := catalogidentity.RetractionReview{
+  Version: 1, Provider: "wikidata", ReviewedAt: now,
+  Reference: "https://example.test/retired-queue-id",
+  Retractions: []catalogidentity.Retraction{{ExternalID: "Q1", AnimeID: animeID, ExpectedMappingID: mappingID}},
+ }
+ if _, err := catalogidentity.Retract(ctx, retractor, review, now, true); err != nil {
+  t.Fatal(err)
+ }
+
+ fetcher := &queuedFetcher{}
+ if did, err := catalogsync.SyncQueuedWikidata(ctx, writer, fetcher, []string{"Q1"}, time.Hour, now); err != nil || did || len(fetcher.calls) != 0 {
+  t.Fatalf("retired-only cycle: did=%v err=%v calls=%v", did, err, fetcher.calls)
+ }
+ if did, err := catalogsync.SyncQueuedWikidata(ctx, writer, fetcher, []string{"Q1", "Q2"}, time.Hour, now); err != nil || !did || len(fetcher.calls) != 1 || fetcher.calls[0] != "Q2" {
+  t.Fatalf("mixed cycle: did=%v err=%v calls=%v", did, err, fetcher.calls)
+ }
+ var jobs int
+ if err := owner.QueryRow(ctx, "SELECT count(*) FROM catalog_fetch_jobs WHERE external_id='Q1'").Scan(&jobs); err != nil || jobs != 0 {
+  t.Fatalf("retired job rows: count=%d err=%v", jobs, err)
+ }
 }

@@ -4,7 +4,7 @@ The worker schedules durable per-title jobs for explicitly configured Wikidata Q
 
 ## Upgrade and configuration
 
-1. Apply migration **000016** and reapply deployments/catalog-writer-role.sql before updating the worker. The API still requires its existing migration 000015/security contract; no new API/runtime grants are added.
+1. Apply migrations through **000022** and reapply deployments/catalog-writer-role.sql before updating the worker. The API still requires its existing migration 000015/security contract; no new API/runtime grants are added.
 2. Provision the dedicated writer role with its password out of band. CheckWriter rejects elevated/table-owner roles, role memberships and private-data access. Do not use API or administrator credentials.
 3. Independently review the CC0 factual scope in PROVIDERS.md and register provider_key=wikidata with a nonempty reviewed policy_url and enabled=true. Only the administrator may approve a source; the queue cannot enable it.
 4. Supply CATALOG_DATABASE_URL (DATABASE_URL is never a fallback), CATALOG_SYNC_IDS (up to twenty distinct supported Q IDs) and optionally CATALOG_SYNC_INTERVAL (default 24h, minimum 1h, maximum 7d).
@@ -14,7 +14,7 @@ The writer has public catalog insert/read/update permissions, without DELETE, ow
 
 ## Durable per-title lifecycle
 
-Each configured ID has one row in catalog_fetch_jobs. Scheduling inserts a missing row and updates its refresh interval without overriding its due time, retry budget, lease or terminal failure. Removing an ID from configuration makes its retained job dormant; it is not deleted or processed. Re-adding it resumes the retained state. Changing the interval affects future completions and does not bring an already scheduled job forward.
+Each eligible configured ID has one row in catalog_fetch_jobs. The worker skips reviewed retired IDs before scheduling or claiming work. When every configured ID is retired, the cycle performs no fetch. Existing dormant jobs still block retirement. Scheduling inserts a missing row and updates its refresh interval without overriding its due time, retry budget, lease or terminal failure. Removing an ID from configuration makes its retained job dormant; it is not deleted or processed. Re-adding it resumes the retained state. Changing the interval affects future completions and does not bring an already scheduled job forward.
 
 At most one due title is claimed per cycle in due-time/ID order. The shared session advisory lock coordinates legacy and queued collectors on this database. Source approval is checked at admission and again before import. No source/job row transaction remains open during HTTP. A job receives a three-minute lease with a random digest and consumes one of five claims, including claims lost to crashes. Provider admission is committed before HTTP and prevents another request for at least that lease window after a crash.
 
