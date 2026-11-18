@@ -88,7 +88,8 @@
 - [ ] Finer season rating conventions
 - [x] Atomic, viewing-pass-guarded bulk status edit API
 - [x] Dashboard bulk status editing with stale-entry recovery
-- [ ] Watch-list import/export and additional bulk editing actions
+- [x] Versioned current watch-list export and dashboard download
+- [ ] Watch-list import and additional bulk editing actions
 - [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence

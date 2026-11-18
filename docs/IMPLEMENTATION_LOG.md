@@ -1,8 +1,12 @@
 # Implementation Log
 
+## 2026-11-18 — Versioned watch-list export
+
+Added a current-state watch-list JSON attachment and dashboard download. Added a disposable PostgreSQL regression for owner scope, verification and exact versus aggregate episode progress. Documented cursor pagination, bulk status and watch-list export in OpenAPI. Local Go and Node execution are unavailable. Hosted CI is pending.
+
 ## 2026-11-18 — Dashboard bulk status editing
 
-Added multi-entry selection and status editing for verified PostgreSQL accounts. The Playwright regression covers stale-pass recovery and successful retry with refreshed viewing passes. Local Node execution is unavailable. Hosted CI is pending.
+Added multi-entry selection and status editing for verified PostgreSQL accounts. The Playwright regression covers stale-pass recovery and successful retry with refreshed viewing passes. Local Node execution is unavailable. All seven [CI jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44299413773) and all three [security jobs](https://github.com/khordestan/anime-intelligence/actions/runs/44299413711) passed for dashboard commit `cf7c94d`, including all 37 mocked browser tests.
 
 ## 2026-11-18 — Atomic bulk tracker status edits
 
