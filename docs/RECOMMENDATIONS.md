@@ -25,3 +25,5 @@ The output gives recall@k and reciprocal rank@k per case and the mean across cas
 ```json
 {"version":1,"cases":[{"id":"example","preferences":{"synthetic.feature":{"weight":1,"confidence":1}},"candidates":[{"animeId":"synthetic-title","title":"Synthetic title","features":[{"key":"synthetic.feature","value":1,"confidence":1}]}],"relevant":["synthetic-title"]}]}
 ```
+
+Candidate retrieval only uses feature keys that can contribute to the compatibility score under the default blend. Neutral or zero-confidence signals can still appear in the profile when applicable.

@@ -43,3 +43,21 @@ func TestStableTiesUseFeatureKeysAndCanonicalIDs(t *testing.T){
 	},nil,Options{})
 	if len(got)!=2||got[0].AnimeID!="a"||got[0].Evidence[0].FeatureKey!="a"{t.Fatal("unstable ties",got)}
 }
+
+func TestPersonalMatchFeatureKeysExcludeNeutralSignals(t *testing.T) {
+	profile := TasteProfile{
+		Explicit: map[string]Preference{
+			"neutral": {Weight: 0, Confidence: 1},
+			"mixed": {Weight: 0, Confidence: 1},
+			"unreliable": {Weight: 1, Confidence: 0},
+		},
+		Inferred: map[string]Preference{
+			"mixed": {Weight: 1, Confidence: 1},
+			"inferred": {Weight: -1, Confidence: 1},
+		},
+	}
+	keys := PersonalMatchFeatureKeys(profile)
+	if len(keys) != 2 || keys[0] != "inferred" || keys[1] != "mixed" {
+		t.Fatalf("scoring feature keys = %v", keys)
+	}
+}

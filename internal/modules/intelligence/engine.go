@@ -124,15 +124,7 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 	if options.Limit > 100 {
 		options.Limit = 100
 	}
-	if options.ExplicitWeight <= 0 || options.InferredWeight < 0 {
-		options.ExplicitWeight, options.InferredWeight = 0.7, 0.3
-	}
-	if len(profile.Explicit) == 0 {
-		options.ExplicitWeight, options.InferredWeight = 0, 1
-	}
-	if len(profile.Inferred) == 0 {
-		options.ExplicitWeight, options.InferredWeight = 1, 0
-	}
+	options = preferenceWeights(profile, options)
 
 	seen := make(map[string]struct{}, len(candidates))
 	result := make([]Recommendation, 0, len(candidates))
@@ -199,6 +191,38 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 		result = result[:options.Limit]
 	}
 	return result
+}
+
+// PersonalMatchFeatureKeys returns features that can contribute to ranking with the default weights.
+func PersonalMatchFeatureKeys(profile TasteProfile) []string {
+	options := preferenceWeights(profile, Options{})
+	keys := make([]string, 0, len(profile.Explicit)+len(profile.Inferred))
+	for key := range profile.Explicit {
+		preference, _ := combinedPreference(profile, key, options)
+		if preference.Weight != 0 && preference.Confidence > 0 {
+			keys = append(keys, key)
+		}
+	}
+	for key, preference := range profile.Inferred {
+		if _, declared := profile.Explicit[key]; !declared && preference.Weight != 0 && preference.Confidence > 0 {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func preferenceWeights(profile TasteProfile, options Options) Options {
+	if options.ExplicitWeight <= 0 || options.InferredWeight < 0 {
+		options.ExplicitWeight, options.InferredWeight = 0.7, 0.3
+	}
+	if len(profile.Explicit) == 0 {
+		options.ExplicitWeight, options.InferredWeight = 0, 1
+	}
+	if len(profile.Inferred) == 0 {
+		options.ExplicitWeight, options.InferredWeight = 1, 0
+	}
+	return options
 }
 
 func combinedPreference(profile TasteProfile, key string, options Options) (Preference, bool) {

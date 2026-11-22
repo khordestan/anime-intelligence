@@ -148,8 +148,8 @@ JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECL
 		if p,ok:=profile.Inferred[key];ok{signal.Inferred=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence,RatingCount:profile.InferredRatingCounts[key]}}
 		out.Profile=append(out.Profile,signal)
 	}
-	if len(keys) != 0 {
-		candidates, err := recommendationCandidates(ctx, tx, u.ID, keys, out.CandidateLimit)
+	if scoringKeys := intelligence.PersonalMatchFeatureKeys(profile); len(scoringKeys) != 0 {
+		candidates, err := recommendationCandidates(ctx, tx, u.ID, scoringKeys, out.CandidateLimit)
 		if err != nil {
 			return out, err
 		}
@@ -162,11 +162,7 @@ const eligibleRecommendationObservation = `f.active AND NOT f.spoiler_sensitive 
 	AND o.scope='SERIES' AND o.spoiler_level='NONE' AND o.observed_at<=now() AND o.confidence>0
 	AND jsonb_typeof(o.evidence->'reference')='string' AND length(btrim(o.evidence->>'reference')) BETWEEN 1 AND 2048`
 
-func recommendationCandidates(ctx context.Context, tx pgx.Tx, ownerID string, profileKeys map[string]bool, limit int) ([]intelligence.Candidate, error) {
-	keys := make([]string, 0, len(profileKeys))
-	for key := range profileKeys {
-		keys = append(keys, key)
-	}
+func recommendationCandidates(ctx context.Context, tx pgx.Tx, ownerID string, keys []string, limit int) ([]intelligence.Candidate, error) {
 	rows, err := tx.Query(ctx, `WITH supported AS (
 		SELECT o.anime_id, count(DISTINCT o.feature_id) AS overlap
 		FROM anime_feature_observations o JOIN anime_features f ON f.id=o.feature_id
