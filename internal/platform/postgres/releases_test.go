@@ -87,7 +87,7 @@ func TestReleaseRoutesAuthorization(t *testing.T) {
 		w:=httptest.NewRecorder();h.ServeHTTP(w,r);return w
 	}
 	const id="10000000-0000-4000-8000-000000000001"
-	for _,spec:=range [][2]string{{"GET","/api/v1/follows"},{"PUT","/api/v1/follows/"+id},{"DELETE","/api/v1/follows/"+id},{"GET","/api/v1/notifications"},{"PATCH","/api/v1/notifications/"+id+"/read"},{"PATCH","/api/v1/notifications/read-all"}} {
+	for _,spec:=range [][2]string{{"GET","/api/v1/follows"},{"PUT","/api/v1/follows/"+id},{"DELETE","/api/v1/follows/"+id},{"GET","/api/v1/notifications"},{"GET","/api/v1/notifications/summary"},{"PATCH","/api/v1/notifications/"+id+"/read"},{"PATCH","/api/v1/notifications/read-all"}} {
 		if w:=call(spec[0],spec[1],"","{}");w.Code!=401 {t.Fatal("unprotected alert route",spec,w.Code)}
 		if w:=call(spec[0],spec[1],s.Token,"{}");w.Code!=403 {t.Fatal("unverified alert route",spec,w.Code,w.Body.String())}
 	}
@@ -114,6 +114,10 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
  a,b:=db.Repository(one.Token),db.Repository(two.Token)
  page,err:=a.NotificationHistory(ctx,"")
  if err!=nil||len(page.Items)!=100||page.NextCursor==""||page.UnreadCount!=225{t.Fatal("first page",len(page.Items),err)}
+ summary, err := a.NotificationSummary(ctx)
+ if err != nil || summary.UnreadCount != 225 || len(summary.Items) != 0 || summary.NextCursor != "" || summary.Materialization == nil {
+  t.Fatalf("notification summary: %+v err=%v", summary, err)
+ }
  firstCursor:=page.NextCursor
  seen:=map[string]bool{}
  for _,n:=range page.Items{seen[n.ID]=true}

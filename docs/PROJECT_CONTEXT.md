@@ -178,3 +178,5 @@ Offline Personal Match fixtures can enable overlap-based retrieval with a config
 The inbox shows the owner's total unread in-app alerts across stored pages, using the same snapshot as the current page. Pending release events are reported separately by the existing materialization status.
 
 Visible dashboards check for release alerts every minute even with the panel collapsed and show an unread badge. Hidden tabs and history views pause scheduled polling.
+
+Collapsed polling uses the owner-scoped notification summary endpoint, which materializes the latest bounded batch and returns counts without notification text.

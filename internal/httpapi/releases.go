@@ -47,6 +47,14 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 		if !found {authError(w,404,"follow_not_found");return}
 		w.WriteHeader(204)
 	}))
+	mux.HandleFunc("GET /api/v1/notifications/summary", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		page, err := db.Repository(token).NotificationSummary(r.Context())
+		if err != nil {
+			releaseError(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]any{"unreadCount": page.UnreadCount, "materialization": page.Materialization})
+	}))
 	mux.HandleFunc("GET /api/v1/notifications",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		query := r.URL.Query()
 		var unreadOnly bool

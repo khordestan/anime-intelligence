@@ -58,7 +58,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
     setMessage("");
     try {
       if (collapsed) {
-        const page = await client.request<{ unreadCount?: number }>("/notifications?unreadOnly=true");
+        const page = await client.request<{ unreadCount?: number }>("/notifications/summary");
         if (alive.current && current === revision.current) setUnreadCount(page.unreadCount ?? null);
       } else {
         await read(current, pageCursor, onlyUnread);

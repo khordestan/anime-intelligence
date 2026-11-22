@@ -54,3 +54,5 @@ Use GET /api/v1/notifications?unreadOnly=true for an unread-only view across all
 Notification pages include `unreadCount`, the number of the caller's unread in-app notices across all materialized pages. It is computed from the same database snapshot as the page, regardless of filters or cursors, and excludes release events awaiting materialization.
 
 The dashboard pauses scheduled polling while its tab is hidden or a history page is selected. This delivers badges while the dashboard is visible. Delivery when the app is closed still requires a background channel.
+
+GET /api/v1/notifications/summary performs the same bounded latest-page materialization and returns only the unread total and materialization status. Collapsed dashboard polling uses this endpoint and does not download individual notifications.
