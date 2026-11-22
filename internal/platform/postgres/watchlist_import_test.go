@@ -39,6 +39,12 @@ func TestWatchListImportAddsMissingTitlesAtomically(t *testing.T) {
 	if _, err := repo.ImportWatchList(ctx, invalid); !errors.Is(err, postgres.ErrWatchListCatalog) {
 		t.Fatalf("invalid catalog identity: %v", err)
 	}
+	if _, err := repo.PreviewWatchList(ctx, invalid); !errors.Is(err, postgres.ErrWatchListCatalog) {
+		t.Fatalf("preview accepted unknown catalog identity: %v", err)
+	}
+	if out, err := repo.PreviewWatchList(ctx, data); err != nil || out.Added != 2 || out.Skipped != 1 {
+		t.Fatalf("preview: %+v err=%v", out, err)
+	}
 	current, err := repo.ExportWatchList(ctx)
 	if err != nil || len(current.Entries) != 1 {
 		t.Fatalf("invalid upload persisted changes: %+v err=%v", current, err)

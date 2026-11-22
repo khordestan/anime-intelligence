@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Watch-list import preview API
+
+Added a preview of estimated additions and skips, sharing validation with import. Extended the PostgreSQL regression to verify counts, rejected unknown IDs and absence of tracker writes. Hosted CI is pending.
+
 ## 2026-11-22 — Watch-list import in the dashboard
 
 Added a JSON file picker, explicit import action, success counts and catalog-mismatch feedback. Account changes reset the selected file and fence upload results. Added a mocked browser regression. Hosted CI is pending.

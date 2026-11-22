@@ -24,6 +24,14 @@ const watchListRows = `jsonb_to_recordset($1::jsonb) AS x(
 	"watchedEpisodeNumbers" integer[], rating integer)`
 
 func (r *Repository) ImportWatchList(ctx context.Context, list WatchListExport) (WatchListImportResult, error) {
+	return r.processWatchList(ctx, list, false)
+}
+
+func (r *Repository) PreviewWatchList(ctx context.Context, list WatchListExport) (WatchListImportResult, error) {
+	return r.processWatchList(ctx, list, true)
+}
+
+func (r *Repository) processWatchList(ctx context.Context, list WatchListExport, preview bool) (WatchListImportResult, error) {
 	if list.Version != 1 || list.Entries == nil || len(list.Entries) > 10000 {
 		return WatchListImportResult{}, ErrWatchListImport
 	}
@@ -72,13 +80,31 @@ func (r *Repository) ImportWatchList(ctx context.Context, list WatchListExport) 
 	}
 	var valid bool
 	var added []string
-	err = tx.QueryRow(ctx, `WITH input AS MATERIALIZED (
+	const input = `WITH input AS MATERIALIZED (
 		SELECT x.*, a.id IS NOT NULL AND (a.episode_count IS NULL OR
 			COALESCE(x."watchedEpisodeNumbers"[cardinality(x."watchedEpisodeNumbers")], 0) <= a.episode_count) AS valid
 		FROM `+watchListRows+` LEFT JOIN anime a ON a.id=x."animeId"
 	), validation AS (
 		SELECT COALESCE(bool_and(valid), true) AS valid FROM input
-	), inserted AS (
+	)`
+	if preview {
+		var count int
+		err = tx.QueryRow(ctx, input+` SELECT validation.valid, (
+			SELECT count(*) FROM input WHERE NOT EXISTS (
+				SELECT 1 FROM user_anime WHERE user_id=$2 AND anime_id=input."animeId"
+			) ) FROM validation`, payload, owner.ID).Scan(&valid, &count)
+		if err != nil {
+			return WatchListImportResult{}, err
+		}
+		if !valid {
+			return WatchListImportResult{}, ErrWatchListCatalog
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return WatchListImportResult{}, err
+		}
+		return WatchListImportResult{Added: count, Skipped: len(list.Entries) - count}, nil
+	}
+	err = tx.QueryRow(ctx, input+`, inserted AS (
 		INSERT INTO user_anime(user_id,anime_id,watch_status)
 		SELECT $2, "animeId", "watchStatus" FROM input
 		WHERE (SELECT valid FROM validation) ORDER BY "animeId"
