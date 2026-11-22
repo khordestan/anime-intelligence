@@ -53,6 +53,11 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
       latestChecks++;
       try { return await respond({ items, nextCursor: history ? "older-page" : "", materialization: { created: backlog && latestChecks === 1 ? 100 : 0, hasMore: backlog && latestChecks === 1 } }); } catch { return; }
     }
+    if (path === "/notifications/read-all") {
+      const unread = (notices.get(token) ?? []).filter(notice => !notice.readAt);
+      for (const notice of unread) notice.readAt = new Date().toISOString();
+      return respond({ updated: unread.length });
+    }
     if (path === "/notifications/notice-one/read") {
       for (const notice of notices.get(token) ?? []) notice.readAt = new Date().toISOString();
       return route.fulfill({ status: 204, headers });
@@ -151,4 +156,16 @@ test("release catch-up is separate from history and clears after the next checke
   await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
   await expect(panel.getByText("No release notifications yet.", { exact: true })).toBeVisible();
   await expect(pending).toHaveCount(0);
+});
+
+test("marking all release alerts read refreshes the current list", async ({ page }) => {
+  const api = await mockReleases(page);
+  await page.goto("/");
+  await login(page, "release-bulk-read@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  await expect(panel.getByText("Unread", { exact: true })).toHaveCount(1);
+  await panel.getByRole("button", { name: "Mark all alerts as read", exact: true }).click();
+  await expect(panel.getByText("Unread", { exact: true })).toHaveCount(0);
+  expect(api.calls.filter(call => call.path === "/notifications/read-all").map(call => call.method)).toEqual(["PATCH"]);
 });
