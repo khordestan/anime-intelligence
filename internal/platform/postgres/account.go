@@ -51,7 +51,11 @@ func (d *DB) exportAccountSnapshot(ctx context.Context, token string) (AccountEx
 	} {
 		var data []byte
 		// The identifiers come only from this fixed server-owned allowlist.
-		err = tx.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(to_jsonb(item) ORDER BY item.id),'[]'::jsonb) FROM (SELECT * FROM `+pgx.Identifier{table.name}.Sanitize()+` WHERE user_id=$1) item`, u.ID).Scan(&data)
+		orderKey := "id"
+		if table.name == "personal_match_dismissals" {
+			orderKey = "anime_id"
+		}
+		err = tx.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(to_jsonb(item) ORDER BY item.`+pgx.Identifier{orderKey}.Sanitize()+`),'[]'::jsonb) FROM (SELECT * FROM `+pgx.Identifier{table.name}.Sanitize()+` WHERE user_id=$1) item`, u.ID).Scan(&data)
 		if err != nil {
 			return AccountExport{}, err
 		}

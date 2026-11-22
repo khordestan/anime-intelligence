@@ -84,6 +84,9 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT SELECT (id,provider_key) ON data_sources TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _, err = owner.Exec(ctx, `GRANT INSERT,UPDATE,DELETE ON user_follows TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE ON notifications TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON domain_events TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _, err = owner.Exec(ctx, `GRANT SELECT ON anime_features,anime_feature_observations TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE,DELETE ON user_preferences TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
+	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,DELETE ON personal_match_dismissals TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT ON watch_cycles TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _,err=owner.Exec(ctx,`GRANT SELECT(anime_id,provider,external_id) ON anime_external_ids TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
  if _,err=owner.Exec(ctx,`GRANT SELECT(anime_id,field,revision,mode,source_id,observed_at) ON catalog_field_choices TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
@@ -523,7 +526,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("deleted account session accepted", err)
 		}
 	}
-	for _, table := range []string{"users", "auth_sessions", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "user_follows", "notifications"} {
+	for _, table := range []string{"users", "auth_sessions", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications"} {
 		field := "user_id"
 		if table == "users" {
 			field = "id"
