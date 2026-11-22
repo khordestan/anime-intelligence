@@ -49,8 +49,8 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if ok,err:=b.SetFeaturePreference(ctx,"synthetic.power",&negative);err!=nil||!ok{t.Fatal(err)}
 	if ok,err:=a.SetFeaturePreference(ctx,"synthetic.secret",&positive);err!=nil||ok{t.Fatal("spoiler feature accepted",err)}
 	// Titles without eligible evidence must not exhaust the candidate budget.
-	if _, err = owner.Exec(ctx, `INSERT INTO anime(canonical_title)
-		SELECT '000 Synthetic unevidenced ' || i FROM generate_series(1, 510) AS i`); err != nil {
+	if _, err = owner.Exec(ctx, `INSERT INTO anime(id,canonical_title)
+		SELECT ('00000000-0000-4000-8000-' || lpad(i::text,12,'0'))::uuid, '000 Synthetic unevidenced ' || i FROM generate_series(1, 510) AS i`); err != nil {
 		t.Fatal(err)
 	}
 	page,err=a.PersonalMatches(ctx,20)
@@ -61,6 +61,26 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if len(other.Profile)!=1||other.Profile[0].Declared==nil||other.Profile[0].Declared.Weight != -1||other.Profile[0].Inferred!=nil{t.Fatal("foreign profile leaked",other.Profile)}
 	encoded,_:=json.Marshal(page)
 	if strings.Contains(string(encoded),"example.test")||strings.Contains(string(encoded),two.User.ID)||strings.Contains(string(encoded),"synthetic.secret"){t.Fatal("private/raw/spoiler evidence exposed")}
+	if _, err := owner.Exec(ctx, `INSERT INTO anime_features(feature_key,display_name,category)
+		VALUES ('synthetic.neutral','Synthetic neutral','SYNTHETIC')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.Exec(ctx, `INSERT INTO anime_feature_observations(anime_id,feature_id,value,confidence,source_kind,evidence,scope,spoiler_level)
+		SELECT a.id,f.id,1,1,'CURATED','{"reference":"https://example.test/fixture"}','SERIES','NONE'
+		FROM anime a CROSS JOIN anime_features f
+		WHERE a.canonical_title LIKE '000 Synthetic unevidenced %' AND f.feature_key='synthetic.neutral'`); err != nil {
+		t.Fatal(err)
+	}
+	neutral := 0.0
+	if ok, err := a.SetFeaturePreference(ctx, "synthetic.neutral", &neutral); err != nil || !ok {
+		t.Fatalf("declare neutral: %v", err)
+	}
+	if page, err := a.PersonalMatches(ctx, 20); err != nil || len(page.Items) != 2 || page.Items[0].AnimeID != strong {
+		t.Fatalf("neutral-only candidates crowded out ranked titles: %v err=%v", page, err)
+	}
+	if _, err := a.SetFeaturePreference(ctx, "synthetic.neutral", nil); err != nil {
+		t.Fatal(err)
+	}
 	if _,err=a.SetFeaturePreference(ctx,"synthetic.power",nil);err!=nil{t.Fatal(err)}
 	page,err=a.PersonalMatches(ctx,20)
 	if err!=nil||len(page.Items)!=0{t.Fatal("cleared preference retained",page,err)}

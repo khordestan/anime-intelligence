@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Candidate budget excludes neutral signals
+
+Derived retrieval keys from the same default preference weighting as the scorer. Added Go and PostgreSQL regressions covering neutral-only candidates competing for the bounded candidate pool. Hosted CI is pending.
+
 ## 2026-11-22 — Offline Personal Match evaluation
 
 Added a versioned, bounded JSON evaluator with recall and reciprocal rank against a deterministic title baseline. Added a synthetic regression for held-out judgments and rated-title exclusion. Hosted CI is pending.
