@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Offline Personal Match evaluation
+
+Added a versioned, bounded JSON evaluator with recall and reciprocal rank against a deterministic title baseline. Added a synthetic regression for held-out judgments and rated-title exclusion. Hosted CI is pending.
+
 ## 2026-11-22 — Unread release alerts
 
 Added server-side unread filtering before cursor pagination and a dashboard toggle. Extended PostgreSQL ownership/history and mocked browser tests. Hosted CI is pending.

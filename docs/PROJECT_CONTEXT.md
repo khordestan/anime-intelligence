@@ -166,3 +166,5 @@ Personal Match shows the number of the owner's ratings contributing eligible evi
 Verified users can mark all materialized in-app release alerts as read, including older pages, without changing notifications for any other owner.
 
 The release alerts panel supports unread-only filtering on both latest and historical pages, with the same owner scope and materialization rules as the normal inbox.
+
+Run go run ./cmd/evaluate-personal-match with a reviewed or synthetic JSON fixture on standard input to compare Personal Match with title ordering on explicit held-out judgments. Evaluation runs offline with no account or catalog connection.
