@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function mockMatches(page: Page, hold = false) {
   let issued = 0;
+  const dismissed = new Set<string>();
   const preferences = new Map<string, number | null>();
   const calls: { path: string; token: string; body: unknown }[] = [];
   let release = () => {};
@@ -28,8 +29,14 @@ async function mockMatches(page: Page, hold = false) {
       preferences.set(token, request.method() === "DELETE" ? null : request.postDataJSON().weight);
       return route.fulfill({ status: 204, headers });
     }
+    if (path === "/recommendations/dismissals") return respond({ items: dismissed.has(token) ? [{ animeId: "synthetic-match", title: "Synthetic account match" }] : [] });
+    if (path === "/recommendations/dismissals/synthetic-match") {
+      if (request.method() === "DELETE") dismissed.delete(token);
+      else dismissed.add(token);
+      return route.fulfill({ status: 204, headers });
+    }
     if (path === "/recommendations") {
-      const items = preferences.get(token) === null ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
+      const items = preferences.get(token) === null || dismissed.has(token) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
       if (hold && token.endsWith("1")) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
       try { return await respond({ items, profile: items.length ? [{ key: "synthetic.mystery", declared: { weight: preferences.get(token), confidence: 1 }, inferred: { weight: 0.5, confidence: 0.25 } }] : [] }); } catch { return; }
     }
@@ -73,4 +80,20 @@ test("late Personal Match results do not cross accounts", async ({ page }) => {
   await expect(page.getByText(/No supported matches yet/)).toBeVisible();
   await expect(page.getByText("Synthetic account match", { exact: false })).toHaveCount(0);
   await expect(page.getByText(/Rating-derived signal:/)).toHaveCount(0);
+});
+
+test("Personal Match can restore a hidden title from the saved list", async ({ page }) => {
+  await mockMatches(page);
+  await page.goto("/");
+  await login(page, "match-restore@example.test");
+  const panel = page.getByRole("region", { name: "Personal Match", exact: true });
+  await panel.getByRole("button", { name: "Personal Match settings", exact: true }).click();
+  await panel.getByLabel("Preference Synthetic mystery", { exact: true }).fill("1");
+  await panel.getByRole("button", { name: "Save preference Synthetic mystery", exact: true }).click();
+  await panel.getByRole("button", { name: "Hide match Synthetic account match", exact: true }).click();
+  await expect(panel.getByText("Match hidden.", { exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Manage hidden matches", exact: true }).click();
+  await panel.getByRole("button", { name: "Restore match Synthetic account match", exact: true }).click();
+  await expect(panel.getByText("Match restored.", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Hide match Synthetic account match", exact: true })).toBeVisible();
 });

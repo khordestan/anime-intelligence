@@ -5,30 +5,35 @@ import { ApiClient } from "../lib/api";
 
 type Preference = { key: string; name: string; category: string; weight: number | null };
 type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number } };
+type HiddenMatch = { animeId: string; title: string };
+type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
 export default function PersonalMatches({ client, onError }: { client: ApiClient; onError: (error: unknown) => void }) {
   const [open, setOpen] = useState(false);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [lastDismissed, setLastDismissed] = useState<Match | null>(null);
+  const [lastDismissed, setLastDismissed] = useState<HiddenMatch | null>(null);
+  const [hidden, setHidden] = useState<HiddenMatches | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [profile, setProfile] = useState<Signal[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const alive = useRef(true), revision = useRef(0);
   useEffect(() => { alive.current = true; return () => { alive.current = false; revision.current++; }; }, []);
-  async function read(current: number) {
-    const [p, m] = await Promise.all([
+  async function read(current: number, includeHidden = hidden !== null) {
+    const [p, m, h] = await Promise.all([
       client.request<{ items: Preference[] }>("/preferences"),
       client.request<{ items: Match[]; profile?: Signal[] }>("/recommendations"),
+      includeHidden ? client.request<HiddenMatches>("/recommendations/dismissals") : Promise.resolve(null),
     ]);
     if (!alive.current || current !== revision.current) return;
+    setHidden(h);
     setPreferences(p.items); setMatches(m.items); setProfile(m.profile ?? []);
   }
-  async function load() {
+  async function load(includeHidden = hidden !== null) {
     const current = ++revision.current;
     setOpen(true); setBusy(true); setMessage("");
-    try { await read(current); }
+    try { await read(current, includeHidden); }
     catch (error) { if (alive.current && current === revision.current) { setMessage("Could not load Personal Match. Try again."); onError(error); } }
     finally { if (alive.current && current === revision.current) setBusy(false); }
   }
@@ -53,7 +58,7 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
     } catch (error) { if (alive.current && current === revision.current) { setMessage("Could not save preference. Try again."); onError(error); } }
     finally { if (alive.current && current === revision.current) setBusy(false); }
   }
-  async function setDismissed(match: Match, dismissed: boolean) {
+  async function setDismissed(match: HiddenMatch, dismissed: boolean) {
     const current = ++revision.current;
     setBusy(true); setMessage("");
     try {
@@ -68,6 +73,24 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
     } catch (error) {
       if (alive.current && current === revision.current) {
         setMessage("Could not finish updating Personal Match. Try refreshing.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
+  }
+  async function loadMoreHidden(after: string) {
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    try {
+      const page = await client.request<HiddenMatches>("/recommendations/dismissals?after=" + encodeURIComponent(after));
+      if (alive.current && current === revision.current) {
+        setHidden(existing => existing ? { ...page, items: [...existing.items, ...page.items] } : page);
+      }
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not load hidden matches. Try again.");
         onError(error);
       }
     } finally {
@@ -102,7 +125,26 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
         </li>)}
       </ul>
       <h3 className="mt-5 font-semibold">Personal matches</h3>
+      <button type="button" disabled={busy} aria-expanded={hidden !== null}
+        onClick={() => { if (hidden) setHidden(null); else void load(true); }}
+        className="mt-2 mr-4 text-xs underline disabled:opacity-50">{hidden ? "Close hidden matches" : "Manage hidden matches"}</button>
       {lastDismissed && <button type="button" disabled={busy} onClick={() => void setDismissed(lastDismissed, false)} className="mt-2 text-xs underline disabled:opacity-50">Undo hiding {lastDismissed.title}</button>}
+      {hidden && (
+        <section aria-label="Hidden Personal Matches" className="mt-3 rounded-xl bg-white/5 p-3">
+          {hidden.items.length === 0 && <p className="text-sm text-slate-400">No hidden matches.</p>}
+          <ul className="space-y-2">
+            {hidden.items.map(match => (
+              <li key={match.animeId} className="flex items-center justify-between gap-3 text-sm">
+                <span>{match.title}</span>
+                <button type="button" disabled={busy} aria-label={"Restore match " + match.title}
+                  onClick={() => void setDismissed(match, false)} className="text-xs underline disabled:opacity-50">Restore</button>
+              </li>
+            ))}
+          </ul>
+          {hidden.nextCursor && <button type="button" disabled={busy} onClick={() => void loadMoreHidden(hidden.nextCursor!)}
+            className="mt-2 text-xs underline disabled:opacity-50">Load more hidden matches</button>}
+        </section>
+      )}
       {!busy && matches.length === 0 && <p className="mt-2 text-sm text-slate-400">No supported matches yet. Curated catalog evidence and your preferences or ratings are needed.</p>}
       <ul className="mt-3 space-y-3" aria-label="Personal match results">
         {matches.map(match => <li key={match.animeId} className="rounded-xl bg-white/5 p-3">

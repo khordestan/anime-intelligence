@@ -251,3 +251,47 @@ func (r *Repository) SetPersonalMatchDismissed(ctx context.Context, animeID stri
 	}
 	return true, tx.Commit(ctx)
 }
+
+type DismissedMatch struct {
+	AnimeID string `json:"animeId"`
+	Title string `json:"title"`
+}
+
+type DismissedMatchPage struct {
+	Items []DismissedMatch `json:"items"`
+	NextCursor string `json:"nextCursor,omitempty"`
+}
+
+func (r *Repository) PersonalMatchDismissals(ctx context.Context, after string) (DismissedMatchPage, error) {
+	out := DismissedMatchPage{Items: []DismissedMatch{}}
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	tx, owner, err := r.db.productTx(ctx, r.token)
+	if err != nil {
+		return out, err
+	}
+	defer rollback(tx)
+	rows, err := tx.Query(ctx, `SELECT d.anime_id::text,a.canonical_title
+		FROM personal_match_dismissals d JOIN anime a ON a.id=d.anime_id
+		WHERE d.user_id=$1 AND (NULLIF($2,'') IS NULL OR d.anime_id>NULLIF($2,'')::uuid)
+		ORDER BY d.anime_id LIMIT 51`, owner.ID, after)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item DismissedMatch
+		if err := rows.Scan(&item.AnimeID, &item.Title); err != nil {
+			return out, err
+		}
+		out.Items = append(out.Items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	if len(out.Items) > 50 {
+		out.Items = out.Items[:50]
+		out.NextCursor = out.Items[49].AnimeID
+	}
+	return out, tx.Commit(ctx)
+}

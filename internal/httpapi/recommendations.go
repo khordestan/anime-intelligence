@@ -36,6 +36,19 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 	})}
 	mux.HandleFunc("PUT /api/v1/preferences/{key}",change(false))
 	mux.HandleFunc("DELETE /api/v1/preferences/{key}",change(true))
+	mux.HandleFunc("GET /api/v1/recommendations/dismissals", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		after := r.URL.Query().Get("after")
+		if after != "" && !validSessionID(after) {
+			authError(w, 400, "invalid_dismissal_cursor")
+			return
+		}
+		page, err := db.Repository(token).PersonalMatchDismissals(r.Context(), after)
+		if err != nil {
+			matchError(w, err)
+			return
+		}
+		writeJSON(w, 200, page)
+	}))
 	setDismissed := func(dismissed bool) http.HandlerFunc {
 		return protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 			id := r.PathValue("id")

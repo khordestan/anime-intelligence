@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Manage saved Personal Match dismissals
+
+Added cursor-based owner-scoped dismissal listing and a dashboard restore action. Added PostgreSQL and mocked browser regressions. Hosted CI is pending.
+
 ## 2026-11-22 — Personal Match dismissals
 
 Added reversible owner-scoped title dismissals with forced RLS, account export, and dashboard hide/undo. Extended PostgreSQL tests for owner isolation and restoration. Hosted CI is pending.
