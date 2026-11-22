@@ -436,6 +436,20 @@ paths:
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
         "404": { description: Missing, inactive or spoiler-sensitive feature }
+  /api/v1/recommendations/dismissals:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List the caller's hidden Personal Matches
+      parameters:
+        - in: query
+          name: after
+          schema: { type: string, format: uuid }
+          description: Optional nextCursor from the previous page.
+      responses:
+        "200": { description: Up to 50 items with animeId and title and an optional nextCursor }
+        "400": { description: Invalid cursor }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/recommendations/dismissals/{id}:
     parameters:
       - in: path
