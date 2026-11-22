@@ -476,6 +476,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
     SELECT accounts.uid,$3,'PERSONAL_MATCH',0.75,'synthetic-test-v1' FROM (VALUES($1::uuid),($2::uuid)) accounts(uid)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO recommendation_feedback(recommendation_id,user_id,feedback)
     SELECT id,user_id,'INTERESTED' FROM recommendations WHERE user_id=$1 OR user_id=$2`, []any{one.User.ID, two.User.ID}},
+		{`INSERT INTO personal_match_dismissals(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO user_follows(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO notifications(user_id,title,body) VALUES($1,'Synthetic notice','Synthetic content'),($2,'Synthetic notice','Synthetic content')`, []any{one.User.ID, two.User.ID}},
 	} {
@@ -491,7 +492,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 9 {
+	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 10 {
 		t.Fatal("export contract failed")
 	}
 	encoded, err := json.Marshal(exported)
@@ -503,7 +504,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("export leaked another account or credential field")
 		}
 	}
-	for _, key := range []string{"tracker", "watchCycles", "ratings", "progress", "preferences", "recommendations", "feedback", "follows", "notifications"} {
+	for _, key := range []string{"tracker", "watchCycles", "ratings", "progress", "preferences", "recommendations", "feedback", "personalMatchDismissals", "follows", "notifications"} {
 		var rows []map[string]any
 		if err = json.Unmarshal(exported.Data[key], &rows); err != nil || len(rows) != 1 {
 			t.Fatalf("export %s: %v", key, err)
