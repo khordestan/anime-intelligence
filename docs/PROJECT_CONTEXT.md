@@ -160,3 +160,5 @@ Verified PostgreSQL clients can PATCH /api/v1/tracker/bulk-rating with a score f
 My Library can rate multiple series through the same selection and stale-viewing-pass handling used for bulk status edits.
 
 Personal Match retrieves up to 500 untracked titles with current eligible curated evidence overlapping the owner's declared or rating-derived profile keys. Candidates are ordered by overlap count and canonical ID before the established scoring step. The recommendation request has a five-second deadline.
+
+Personal Match shows the number of the owner's ratings contributing eligible evidence to each inferred feature, without exposing which titles contributed in the profile payload.

@@ -28,6 +28,7 @@ type Preference struct {
 type TasteProfile struct {
 	Explicit map[string]Preference
 	Inferred map[string]Preference
+	InferredRatingCounts map[string]int
 }
 
 type Candidate struct {
@@ -62,6 +63,7 @@ func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) Taste
 	profile := TasteProfile{
 		Explicit: make(map[string]Preference, len(explicit)),
 		Inferred: make(map[string]Preference),
+		InferredRatingCounts: make(map[string]int),
 	}
 	for key, preference := range explicit {
 		key = strings.TrimSpace(key)
@@ -74,9 +76,11 @@ func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) Taste
 	type accumulator struct {
 		sum       float64
 		magnitude float64
+		ratingCount int
+		lastRating int
 	}
 	acc := map[string]accumulator{}
-	for _, item := range rated {
+	for index, item := range rated {
 		if item.Score < 1 || item.Score > 5 {
 			continue
 		}
@@ -92,6 +96,10 @@ func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) Taste
 			current := acc[key]
 			current.sum += signal * feature.Value * feature.Confidence
 			current.magnitude += math.Abs(signal) * feature.Confidence
+			if current.lastRating != index+1 {
+				current.ratingCount++
+				current.lastRating = index+1
+			}
 			acc[key] = current
 		}
 	}
@@ -103,6 +111,7 @@ func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) Taste
 		if math.Abs(weight) < 0.05 {
 			continue
 		}
+		profile.InferredRatingCounts[key] = current.ratingCount
 		profile.Inferred[key] = Preference{Weight: weight, Confidence: clamp(current.magnitude/float64(maxInt(1, len(rated))), 0, 1)}
 	}
 	return profile

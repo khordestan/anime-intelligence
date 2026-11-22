@@ -403,7 +403,7 @@ paths:
           name: limit
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
-        "200": { description: Items with animeId, title, score, algorithmVersion and up to four feature-key evidence records; response includes candidate/rating caps and bounded declared/inferred profile signals }
+        "200": { description: Items with animeId, title, score, algorithmVersion and up to four feature-key evidence records; response includes candidate/rating caps and bounded declared/inferred profile signals with contributing rating counts for inferred signals }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/tracker:

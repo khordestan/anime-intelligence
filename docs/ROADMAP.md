@@ -111,7 +111,8 @@
 ## Milestone 5 — Taste intelligence
 - [x] Owner-scoped declared preferences and bounded runtime rating-derived profile signals
 - [ ] Richer profile analytics and feedback learning
-- [ ] Explainable analytics
+- [x] Explain inferred feature signals with contributing rating counts
+- [ ] Broader explainable analytics
 - [x] Deterministic Personal Match ranking core (pure Go, explainable, unit-tested)
 - [x] Verified-owner PostgreSQL Personal Match API with conservative curated non-spoiler evidence
 - [x] Preference editing and evidence-backed Personal Match dashboard

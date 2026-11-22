@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 
 type Preference = { key: string; name: string; category: string; weight: number | null };
-type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number } };
+type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number } };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
 export default function PersonalMatches({ client, onError }: { client: ApiClient; onError: (error: unknown) => void }) {
   const [open, setOpen] = useState(false);
@@ -72,7 +72,7 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
               className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" />
           </label>
           <p className="mt-1 text-xs text-slate-500">{p.category}</p>
-          {inferred.has(p.key) && <p className="mt-1 text-xs text-slate-400">Rating-derived signal: {inferred.get(p.key)!.weight > 0 ? "prefers" : inferred.get(p.key)!.weight < 0 ? "avoids" : "neutral toward"} this feature · strength {inferred.get(p.key)!.confidence.toFixed(2)}</p>}
+          {inferred.has(p.key) && <p className="mt-1 text-xs text-slate-400">Rating-derived signal: {inferred.get(p.key)!.weight > 0 ? "prefers" : inferred.get(p.key)!.weight < 0 ? "avoids" : "neutral toward"} this feature · strength {inferred.get(p.key)!.confidence.toFixed(2)}{inferred.get(p.key)!.ratingCount != null && <span> · {inferred.get(p.key)!.ratingCount} supporting ratings</span>}</p>}
           <div className="mt-2 flex gap-3">
             <button disabled={busy} aria-label={"Save preference " + p.name} onClick={() => void save(p)} className="text-xs text-violet-200 underline disabled:opacity-50">Save preference</button>
             <button disabled={busy} aria-label={"Reset preference " + p.name} onClick={() => void save(p, true)} className="text-xs underline disabled:opacity-50">Reset preference</button>
