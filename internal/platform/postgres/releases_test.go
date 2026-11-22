@@ -113,7 +113,7 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
  if _,err=owner.Exec(ctx,`INSERT INTO notifications(user_id,channel,title,body,created_at) VALUES($1,'IN_APP','Foreign history','Foreign synthetic notice',$2)`,two.User.ID,at);err!=nil{t.Fatal(err)}
  a,b:=db.Repository(one.Token),db.Repository(two.Token)
  page,err:=a.NotificationHistory(ctx,"")
- if err!=nil||len(page.Items)!=100||page.NextCursor==""{t.Fatal("first page",len(page.Items),err)}
+ if err!=nil||len(page.Items)!=100||page.NextCursor==""||page.UnreadCount!=225{t.Fatal("first page",len(page.Items),err)}
  firstCursor:=page.NextCursor
  seen:=map[string]bool{}
  for _,n:=range page.Items{seen[n.ID]=true}
@@ -141,7 +141,7 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
  repeated,err:=a.NotificationHistory(ctx,firstCursor)
  if err!=nil||repeated.Items[0].ID!=id||repeated.Items[0].ReadAt==nil{t.Fatal("read moved boundary",err)}
  unread, err := a.FilterNotificationHistory(ctx, firstCursor, true)
- if err != nil || unread.Materialization != nil || len(unread.Items) != 100 {
+ if err != nil || unread.Materialization != nil || len(unread.Items) != 100 || unread.UnreadCount != 225 {
   t.Fatalf("unread history: %+v err=%v", unread, err)
  }
  for _, item := range unread.Items {
@@ -156,7 +156,7 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
   t.Fatalf("mark all replay: updated=%d err=%v", updated, err)
  }
  unread, err = a.FilterNotificationHistory(ctx, "", true)
- if err != nil || len(unread.Items) != 0 || unread.NextCursor != "" {
+ if err != nil || len(unread.Items) != 0 || unread.NextCursor != "" || unread.UnreadCount != 0 {
   t.Fatalf("unread inbox after mark-all: %+v err=%v", unread, err)
  }
  history, err := a.NotificationHistory(ctx, firstCursor)
@@ -169,7 +169,7 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
   }
  }
  foreign, err := b.NotificationHistory(ctx, "")
- if err != nil || len(foreign.Items) != 1 {
+ if err != nil || len(foreign.Items) != 1 || foreign.UnreadCount != 1 {
   t.Fatalf("foreign notification history: %+v err=%v", foreign, err)
  }
  for _, item := range foreign.Items {

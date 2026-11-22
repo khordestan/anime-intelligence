@@ -16,6 +16,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const [follows, setFollows] = useState<Follow[]>([]);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const unreadFilter = useRef(false);
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [cursor, setCursor] = useState("");
   const [nextCursor, setNextCursor] = useState("");
@@ -38,13 +39,14 @@ export default function ReleaseAlerts({ client, library, onError }: {
     const query = params.toString();
     const [f, n] = await Promise.all([
       client.request<{ items: Follow[] }>("/follows"),
-      client.request<{ items: Notice[]; nextCursor?: string; materialization?: { created: number; hasMore: boolean } }>("/notifications" + (query ? "?" + query : "")),
+      client.request<{ items: Notice[]; unreadCount?: number; nextCursor?: string; materialization?: { created: number; hasMore: boolean } }>("/notifications" + (query ? "?" + query : "")),
     ]);
     if (!alive.current || current !== revision.current) return;
     unreadFilter.current = onlyUnread;
     setUnreadOnly(onlyUnread);
     setFollows(f.items);
     setNotices(n.items);
+    setUnreadCount(n.unreadCount ?? null);
     setCursor(pageCursor); setNextCursor(n.nextCursor ?? "");
     setCatchingUp(!pageCursor && n.materialization?.hasMore === true);
   }, [client]);
@@ -140,7 +142,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
           })}
         </ul>
         <h3 className="mt-5 font-medium">{cursor ? "Notification history" : "Recent notifications"}</h3>
-        {notices.length > 0 && (
+        {unreadCount !== null && <p className="mt-2 text-sm text-slate-400">Unread alerts: {unreadCount}</p>}
+        {(unreadCount === null ? notices.length > 0 : unreadCount > 0) && (
           <button type="button" disabled={busy} onClick={() => void mutate("/notifications/read-all", "PATCH")}
             className="mt-2 text-xs underline disabled:opacity-50">Mark all alerts as read</button>
         )}

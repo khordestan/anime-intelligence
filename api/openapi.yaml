@@ -338,7 +338,7 @@ paths:
           schema: { type: boolean, default: false }
           description: Filter existing notices before applying the cursor and page limit.
       responses:
-        "200": { description: Owned items with id/title/body/createdAt/optional readAt, count, limit=100 and nextCursor (empty at end) }
+        "200": { description: Owned items with id/title/body/createdAt/optional readAt, count, account-wide unreadCount, limit=100 and nextCursor (empty at end) }
         "400": { description: Invalid notification cursor }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }

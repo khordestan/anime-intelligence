@@ -51,7 +51,7 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
         await new Promise<void>(resolve => { release = resolve; });
       }
       latestChecks++;
-      try { return await respond({ items, nextCursor: history ? "older-page" : "", materialization: { created: backlog && latestChecks === 1 ? 100 : 0, hasMore: backlog && latestChecks === 1 } }); } catch { return; }
+      try { return await respond({ items, unreadCount: (notices.get(token) ?? []).filter(notice => !notice.readAt).length, nextCursor: history ? "older-page" : "", materialization: { created: backlog && latestChecks === 1 ? 100 : 0, hasMore: backlog && latestChecks === 1 } }); } catch { return; }
     }
     if (path === "/notifications/read-all") {
       const unread = (notices.get(token) ?? []).filter(notice => !notice.readAt);
@@ -165,8 +165,10 @@ test("marking all release alerts read refreshes the current list", async ({ page
   const panel = page.getByRole("region", { name: "Release alerts", exact: true });
   await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
   await expect(panel.getByText("Unread", { exact: true })).toHaveCount(1);
+  await expect(panel.getByText("Unread alerts: 1", { exact: true })).toBeVisible();
   await panel.getByRole("button", { name: "Mark all alerts as read", exact: true }).click();
   await expect(panel.getByText("Unread", { exact: true })).toHaveCount(0);
+  await expect(panel.getByText("Unread alerts: 0", { exact: true })).toBeVisible();
   expect(api.calls.filter(call => call.path === "/notifications/read-all").map(call => call.method)).toEqual(["PATCH"]);
 });
 
