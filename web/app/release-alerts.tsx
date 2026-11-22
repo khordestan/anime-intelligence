@@ -50,15 +50,21 @@ export default function ReleaseAlerts({ client, library, onError }: {
     setCursor(pageCursor); setNextCursor(n.nextCursor ?? "");
     setCatchingUp(!pageCursor && n.materialization?.hasMore === true);
   }, [client]);
-  const refresh = useCallback(async (pageCursor = "", onlyUnread = unreadFilter.current) => {
+  const refresh = useCallback(async (pageCursor = "", onlyUnread = unreadFilter.current, collapsed = false) => {
     if (inFlight.current) return;
     inFlight.current = true;
     const current = ++revision.current;
     setBusy(true);
     setMessage("");
-    try { await read(current, pageCursor, onlyUnread); }
-    catch (error) {
-      if (alive.current && current === revision.current) {
+    try {
+      if (collapsed) {
+        const page = await client.request<{ unreadCount?: number }>("/notifications?unreadOnly=true");
+        if (alive.current && current === revision.current) setUnreadCount(page.unreadCount ?? null);
+      } else {
+        await read(current, pageCursor, onlyUnread);
+      }
+    } catch (error) {
+      if (!collapsed && alive.current && current === revision.current) {
         setMessage("Could not refresh release alerts. Try again.");
         onError(error);
       }
@@ -68,11 +74,13 @@ export default function ReleaseAlerts({ client, library, onError }: {
         setBusy(false);
       }
     }
-  }, [read, onError]);
+  }, [client, read, onError]);
   useEffect(() => {
-    if (!open || cursor) return;
-    void refresh();
-    const timer = setInterval(() => void refresh(), 60_000);
+    if (cursor) return;
+    if (open) void refresh();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void refresh("", unreadFilter.current, !open);
+    }, 60_000);
     return () => clearInterval(timer);
   }, [open, refresh, cursor]);
   async function mutate(path: string, method: string, body?: object) {
@@ -110,9 +118,12 @@ export default function ReleaseAlerts({ client, library, onError }: {
         className="text-sm text-violet-200 underline">
         {open ? "Hide release alerts" : "Manage release alerts"}
       </button>
+      {!open && unreadCount !== null && unreadCount > 0 && (
+        <span role="status" className="ml-3 text-xs text-violet-200">Unread alerts: {unreadCount}</span>
+      )}
       {open && <div id="release-alert-panel" className="mt-4">
         <h2 className="font-semibold">Release alerts</h2>
-        <p className="mt-2 text-sm text-slate-400">Checks every minute while this panel is open on the latest page. Episode notices require confirmed releases; linked-season follows also include new announcements. Scheduled times can change.</p>
+        <p className="mt-2 text-sm text-slate-400">Checks every minute while this dashboard tab is visible and you are on the latest page. Episode notices require confirmed releases; linked-season follows also include new announcements. Scheduled times can change.</p>
         <button disabled={busy} onClick={() => void refresh()} className="mt-3 text-sm underline disabled:opacity-50">{cursor ? "Back to latest alerts" : "Refresh alerts"}</button>
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
         {!cursor && catchingUp && <p className="mt-2 text-sm text-amber-200">More release alerts are waiting. Refresh alerts to continue catching up; each check adds up to 100 notifications.</p>}
