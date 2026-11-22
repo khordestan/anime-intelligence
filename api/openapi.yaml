@@ -323,6 +323,29 @@ paths:
         "400": { description: Invalid UTC date/window }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
+  /api/v1/notifications/summary:
+    get:
+      summary: Poll counts for owned release notifications
+      description: Materializes at most 100 eligible new notices and returns the caller's unread count and the materialization status. The response contains no notice bodies.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Counts for the verified owner
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [unreadCount, materialization]
+                properties:
+                  unreadCount: { type: integer, minimum: 0 }
+                  materialization:
+                    type: object
+                    required: [created, hasMore]
+                    properties:
+                      created: { type: integer, minimum: 0, maximum: 100 }
+                      hasMore: { type: boolean }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/notifications:
     get:
       summary: Poll owned in-app release notifications

@@ -40,6 +40,9 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
       follows.set(token, request.method() === "DELETE" ? [] : [{ animeId: anime, title: "Synthetic Release Sky", track: request.postDataJSON().track, scope: request.postDataJSON().scope }]);
       return route.fulfill({ status: 204, headers });
     }
+    if (path === "/notifications/summary") {
+      return respond({ unreadCount: (notices.get(token) ?? []).filter(notice => !notice.readAt).length });
+    }
     if (path === "/notifications") {
       if (history && url.searchParams.has("cursor")) {
         if (!historyFailed) { historyFailed = true; return respond({ error: "synthetic_retry" }, 500); }
@@ -197,6 +200,7 @@ test("visible dashboard checks for unread release alerts with its panel collapse
   await expect(panel.getByRole("button", { name: "Manage release alerts", exact: true })).toBeVisible();
   await page.clock.fastForward(61_000);
   await expect(panel.getByText("Unread alerts: 1", { exact: true })).toBeVisible();
-  expect(api.calls.filter(call => call.path === "/notifications").map(call => call.method)).toEqual(["GET"]);
+  expect(api.calls.filter(call => call.path === "/notifications/summary").map(call => call.method)).toEqual(["GET"]);
+  expect(api.calls.some(call => call.path === "/notifications")).toBe(false);
   expect(api.calls.some(call => call.path === "/follows")).toBe(false);
 });

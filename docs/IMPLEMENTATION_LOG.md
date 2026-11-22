@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Compact release-alert polling
+
+Added a verified-owner notification summary endpoint for collapsed panels. It reuses bounded materialization and does not select notification text. Added PostgreSQL authorization and summary coverage and updated the browser regression. Hosted CI is pending.
+
 ## 2026-11-22 — Release badges with the panel collapsed
 
 Extended visible-dashboard polling to display an unread badge when the alerts panel is collapsed. Added a clock-controlled browser regression. Hosted CI is pending.

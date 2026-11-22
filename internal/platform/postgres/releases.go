@@ -126,6 +126,16 @@ func (r *Repository) NotificationHistory(ctx context.Context,cursor string) (Not
 
 // FilterNotificationHistory applies the unread filter before the page limit.
 func (r *Repository) FilterNotificationHistory(ctx context.Context, cursor string, unreadOnly bool) (NotificationPage, error) {
+	return r.readNotificationPage(ctx, cursor, unreadOnly, 101)
+}
+
+// NotificationSummary materializes the latest batch and counts unread notices
+// without selecting any notification text.
+func (r *Repository) NotificationSummary(ctx context.Context) (NotificationPage, error) {
+	return r.readNotificationPage(ctx, "", false, 0)
+}
+
+func (r *Repository) readNotificationPage(ctx context.Context, cursor string, unreadOnly bool, pageLimit int) (NotificationPage, error) {
 	out:=NotificationPage{Items:[]Notification{}}
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return out,err}
@@ -178,9 +188,9 @@ SELECT (SELECT count(*) FROM inserted),(SELECT count(*) FROM eligible)>100`,u.ID
 		SELECT id,title,body,read_at,created_at FROM notifications
 		WHERE user_id=$1 AND channel='IN_APP' AND (NOT $4::boolean OR read_at IS NULL)
 		  AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
-		ORDER BY created_at DESC,id DESC LIMIT 101
+		ORDER BY created_at DESC,id DESC LIMIT $5
 	) page ON true
-	ORDER BY page.created_at DESC,page.id DESC`, u.ID, before, beforeID, unreadOnly)
+	ORDER BY page.created_at DESC,page.id DESC`, u.ID, before, beforeID, unreadOnly, pageLimit)
 	if err != nil {
 		return out, err
 	}
