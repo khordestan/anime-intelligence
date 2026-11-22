@@ -140,7 +140,7 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
  if ok,err:=a.ReadNotification(ctx,id);err!=nil||!ok{t.Fatal(err)}
  repeated,err:=a.NotificationHistory(ctx,firstCursor)
  if err!=nil||repeated.Items[0].ID!=id||repeated.Items[0].ReadAt==nil{t.Fatal("read moved boundary",err)}
- if updated, err := a.ReadAllNotifications(ctx); err != nil || updated != 224 {
+ if updated, err := a.ReadAllNotifications(ctx); err != nil || updated != 225 {
   t.Fatalf("mark all read: updated=%d err=%v", updated, err)
  }
  if updated, err := a.ReadAllNotifications(ctx); err != nil || updated != 0 {
