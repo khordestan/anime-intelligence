@@ -152,3 +152,5 @@ Verified PostgreSQL accounts can download a versioned JSON watch-list export of 
 Verified PostgreSQL clients can POST a v1 watch list to /api/v1/tracker/import. The batch validates catalog IDs and episode selections, adds missing titles atomically, and reports added and skipped counts. Existing tracker records retain their current status, rating and progress. Limits are 16 MiB and 10,000 entries.
 
 My Library includes an explicit file selection and submit control for watch-list import and reports the added and skipped titles after a successful upload.
+
+Verified PostgreSQL clients can send the same versioned file to POST /api/v1/tracker/import/preview to validate catalog references and see current added/skipped estimates. The preview performs no tracker writes. Import revalidates independently.

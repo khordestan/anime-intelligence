@@ -94,6 +94,7 @@ export default function Home() {
   const [register, setRegister] = useState(false),
     [authBusy, setAuthBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [watchListPreview, setWatchListPreview] = useState<{ added: number; skipped: number } | null>(null);
   const [watchListFile, setWatchListFile] = useState<File | null>(null);
   const [showWatchListImport, setShowWatchListImport] = useState(false);
   const [bulkEntries, setBulkEntries] = useState<BulkStatusTarget[] | null>(null);
@@ -112,6 +113,7 @@ export default function Home() {
       setBulkEntries(null);
       setBulkStatus("");
       setWatchListFile(null);
+      setWatchListPreview(null);
       setShowWatchListImport(false);
       client.setSession(next);
       setSession(next);
@@ -361,9 +363,9 @@ export default function Home() {
   async function rate(e: Entry, score: number) {
     await mutate("/ratings/" + e.animeId, "PUT", { score });
   }
-  async function uploadWatchList(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function uploadWatchList(preview: boolean) {
     if (busy || !watchListFile) return;
+    setWatchListPreview(null);
     if (watchListFile.size > 16 * 1024 * 1024) {
       setError("Choose a watch-list file of 16 MiB or less.");
       return;
@@ -375,12 +377,16 @@ export default function Home() {
     try {
       const body = await watchListFile.text();
       if (account !== accountRevision.current) return;
-      const result = await client.request<{ added: number; skipped: number }>("/tracker/import", {
+      const result = await client.request<{ added: number; skipped: number }>(preview ? "/tracker/import/preview" : "/tracker/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
       });
       if (account !== accountRevision.current) return;
+      if (preview) {
+        setWatchListPreview(result);
+        return;
+      }
       setWatchListFile(null);
       setShowWatchListImport(false);
       await refresh();
@@ -691,6 +697,7 @@ export default function Home() {
             <button type="button" disabled={busy} aria-expanded={showWatchListImport} onClick={() => {
               setShowWatchListImport(current => !current);
               setWatchListFile(null);
+              setWatchListPreview(null);
             }} className="text-sm text-violet-200 underline disabled:opacity-50">
               {showWatchListImport ? "Cancel watch-list import" : "Import watch list"}
             </button>
@@ -703,13 +710,23 @@ export default function Home() {
           </button>
         </div>
         {mode === "postgres" && canEdit && showWatchListImport && (
-          <form onSubmit={event => void uploadWatchList(event)} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
+          <form onSubmit={event => { event.preventDefault(); void uploadWatchList(false); }} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
             <label>
               Anime Intelligence watch-list JSON
               <input type="file" accept=".json,application/json" disabled={busy} required
-                onChange={event => setWatchListFile(event.target.files?.[0] ?? null)}
+                onChange={event => {
+                  setWatchListFile(event.target.files?.[0] ?? null);
+                  setWatchListPreview(null);
+                }}
                 className="mt-1 block" />
             </label>
+            <button type="button" disabled={busy || !watchListFile} onClick={() => void uploadWatchList(true)}
+              className="text-violet-200 underline disabled:opacity-50">
+              Preview import
+            </button>
+            {watchListPreview && (
+              <p role="status">Would add {watchListPreview.added}. Would skip {watchListPreview.skipped} already in your library.</p>
+            )}
             <button type="submit" disabled={busy || !watchListFile} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
               Import new titles
             </button>
