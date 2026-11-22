@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Mark all release alerts read
+
+Added a verified-owner bulk read action for existing in-app release notices and exposed it in the dashboard. Extended PostgreSQL tests for authorization, history, isolation and idempotency. Hosted CI is pending.
+
 ## 2026-11-22 — Rating support for inferred taste signals
 
 Added per-feature contributing rating counts in the owner-scoped recommendation profile and the dashboard. Extended the PostgreSQL inference regression. Hosted CI is pending.

@@ -87,7 +87,7 @@ func TestReleaseRoutesAuthorization(t *testing.T) {
 		w:=httptest.NewRecorder();h.ServeHTTP(w,r);return w
 	}
 	const id="10000000-0000-4000-8000-000000000001"
-	for _,spec:=range [][2]string{{"GET","/api/v1/follows"},{"PUT","/api/v1/follows/"+id},{"DELETE","/api/v1/follows/"+id},{"GET","/api/v1/notifications"},{"PATCH","/api/v1/notifications/"+id+"/read"}} {
+	for _,spec:=range [][2]string{{"GET","/api/v1/follows"},{"PUT","/api/v1/follows/"+id},{"DELETE","/api/v1/follows/"+id},{"GET","/api/v1/notifications"},{"PATCH","/api/v1/notifications/"+id+"/read"},{"PATCH","/api/v1/notifications/read-all"}} {
 		if w:=call(spec[0],spec[1],"","{}");w.Code!=401 {t.Fatal("unprotected alert route",spec,w.Code)}
 		if w:=call(spec[0],spec[1],s.Token,"{}");w.Code!=403 {t.Fatal("unverified alert route",spec,w.Code,w.Body.String())}
 	}
@@ -140,6 +140,30 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
  if ok,err:=a.ReadNotification(ctx,id);err!=nil||!ok{t.Fatal(err)}
  repeated,err:=a.NotificationHistory(ctx,firstCursor)
  if err!=nil||repeated.Items[0].ID!=id||repeated.Items[0].ReadAt==nil{t.Fatal("read moved boundary",err)}
+ if updated, err := a.ReadAllNotifications(ctx); err != nil || updated != 224 {
+  t.Fatalf("mark all read: updated=%d err=%v", updated, err)
+ }
+ if updated, err := a.ReadAllNotifications(ctx); err != nil || updated != 0 {
+  t.Fatalf("mark all replay: updated=%d err=%v", updated, err)
+ }
+ history, err := a.NotificationHistory(ctx, firstCursor)
+ if err != nil || len(history.Items) == 0 {
+  t.Fatalf("history after bulk read: %+v err=%v", history, err)
+ }
+ for _, item := range history.Items {
+  if item.ReadAt == nil {
+   t.Fatalf("older notice remained unread: %s", item.ID)
+  }
+ }
+ foreign, err := b.NotificationHistory(ctx, "")
+ if err != nil || len(foreign.Items) != 1 {
+  t.Fatalf("foreign notification history: %+v err=%v", foreign, err)
+ }
+ for _, item := range foreign.Items {
+  if item.ReadAt != nil {
+   t.Fatalf("foreign notice marked read: %s", item.ID)
+  }
+ }
  h:=httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard,nil)),db)
  for _,spec:=range []struct{cursor string;status int}{{"?",400},{firstCursor,200}}{
   r:=httptest.NewRequest("GET","/api/v1/notifications?cursor="+spec.cursor,nil)
