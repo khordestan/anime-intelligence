@@ -15,3 +15,13 @@ Without supported evidence the result is empty. No real user history or fabricat
 Verified PostgreSQL accounts can open Personal Match settings to edit/reset declared feature weights and inspect supported matches with feature-key evidence. Empty evidence is stated explicitly. Inputs and results stay in memory; keyed remounts, unmount guards and session/request revisions prevent late results crossing accounts. The panel distinguishes declared input from own-rating-derived direction/strength, explains that scores and strengths are not probabilities, and shows computation limits. It never calls an LLM.
 
 Consistent preference/ranking reads retry at most three times for PostgreSQL serialization/deadlock conflicts, rechecking session/owner/verification on every attempt. Cancellation and other failures are not retried. Mutations are not part of this retry wrapper. This avoids transient failures when a concurrent session-row update invalidates a repeatable-read snapshot.
+
+## Offline ranking evaluation
+
+Run `go run ./cmd/evaluate-personal-match -k 10 < fixture.json` to compare Personal Match against ascending title order with canonical ID as the tie-breaker. Each case supplies its training ratings, preferences, candidates, optional exclusions, and held-out relevant candidate IDs. Already-rated and explicitly excluded titles cannot appear in either ranking or in the relevance labels. The evaluator uses the same ranking engine and accepts a preselected candidate set, so it measures ranking within that set. Catalog retrieval quality requires a separate evaluation.
+
+The output gives recall@k and reciprocal rank@k per case and the mean across cases. Recall divides relevant hits by the number of relevant candidates. Reciprocal rank is the inverse of the first relevant result position within k, or zero if no relevant result appears. Use reviewed or synthetic fixtures without account identifiers or real watch histories.
+
+```json
+{"version":1,"cases":[{"id":"example","preferences":{"synthetic.feature":{"weight":1,"confidence":1}},"candidates":[{"animeId":"synthetic-title","title":"Synthetic title","features":[{"key":"synthetic.feature","value":1,"confidence":1}]}],"relevant":["synthetic-title"]}]}
+```

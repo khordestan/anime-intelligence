@@ -119,7 +119,8 @@
 - [x] Candidate retrieval by profile overlap with eligible curated evidence
 - [ ] Richer curated evidence coverage and retrieval evaluation
 - [ ] Personal Match, Global Essentials and Discovery lanes
-- [ ] Feedback learning and offline evaluation
+- [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline
+- [ ] Feedback learning and representative evaluation datasets
 
 ## Milestone 6 — AI and discovery
 - [ ] Tool-constrained AI analyst
