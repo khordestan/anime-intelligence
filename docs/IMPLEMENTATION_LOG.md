@@ -1,8 +1,12 @@
 # Implementation Log
 
+## 2026-11-22 — Watch-list import API
+
+Added add-only import of the versioned watch-list format with verified ownership, atomic catalog validation and idempotent replays. Added a PostgreSQL regression for authorization, rollback, progress and ratings. Hosted CI is pending.
+
 ## 2026-11-18 — Versioned watch-list export
 
-Added a current-state watch-list JSON attachment and dashboard download. Added a disposable PostgreSQL regression for owner scope, verification and exact versus aggregate episode progress. Documented cursor pagination, bulk status and watch-list export in OpenAPI. Local Go and Node execution are unavailable. Hosted CI is pending.
+Added a current-state watch-list JSON attachment and dashboard download. Added a disposable PostgreSQL regression for owner scope, verification and exact versus aggregate episode progress. Documented cursor pagination, bulk status and watch-list export in OpenAPI. Local Go and Node execution are unavailable. The [CI](https://github.com/khordestan/anime-intelligence/actions/runs/44300158006) and [security](https://github.com/khordestan/anime-intelligence/actions/runs/44300158012) workflows passed for export commit `2870a05`.
 
 ## 2026-11-18 — Dashboard bulk status editing
 
