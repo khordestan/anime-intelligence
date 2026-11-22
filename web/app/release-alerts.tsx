@@ -132,6 +132,10 @@ export default function ReleaseAlerts({ client, library, onError }: {
           })}
         </ul>
         <h3 className="mt-5 font-medium">{cursor ? "Notification history" : "Recent notifications"}</h3>
+        {notices.length > 0 && (
+          <button type="button" disabled={busy} onClick={() => void mutate("/notifications/read-all", "PATCH")}
+            className="mt-2 text-xs underline disabled:opacity-50">Mark all alerts as read</button>
+        )}
         {cursor && <p className="mt-2 text-sm text-slate-400">Automatic refresh is paused while viewing history. Return to the latest page to check for new releases.</p>}
         {!busy && notices.length === 0 && <p className="mt-2 text-sm text-slate-400">No release notifications yet.</p>}
         <ul className="mt-3 space-y-3" aria-label="Release notifications">

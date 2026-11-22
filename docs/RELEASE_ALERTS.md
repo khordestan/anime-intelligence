@@ -42,3 +42,7 @@ The latest-page query selects at most 101 distinct eligible events in occurrence
 hasMore describes eligibility at this poll's query snapshot, not an exact backlog count or a promise about later arrivals. created counts successful new inserts, not unread/returned notices. nextCursor continues to mean older already materialized history; it is independent of pending events. History pages omit materialization and never drain the backlog. All status is owner scoped and verified-email protected.
 
 The dashboard displays a catch-up notice on the latest page when hasMore is true. Manual Refresh alerts or the existing one-minute polling continues with another bounded batch. It does not loop immediately or create a background delivery channel. Successful polls replace the status; failed refreshes preserve the previous page/status for retry. History hides the catch-up notice and account changes reset it.
+
+## Marking all alerts read
+
+PATCH /api/v1/notifications/read-all marks the caller's existing unread in-app notices read across all pages and returns the number updated. Repeating it after all existing notices are read returns zero. The endpoint only updates materialized notices. The dashboard refreshes the current page after the action.

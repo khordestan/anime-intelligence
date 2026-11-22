@@ -162,3 +162,5 @@ My Library can rate multiple series through the same selection and stale-viewing
 Personal Match retrieves up to 500 untracked titles with current eligible curated evidence overlapping the owner's declared or rating-derived profile keys. Candidates are ordered by overlap count and canonical ID before the established scoring step. The recommendation request has a five-second deadline.
 
 Personal Match shows the number of the owner's ratings contributing eligible evidence to each inferred feature, without exposing which titles contributed in the profile payload.
+
+Verified users can mark all materialized in-app release alerts as read, including older pages, without changing notifications for any other owner.

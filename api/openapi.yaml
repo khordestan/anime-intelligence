@@ -338,6 +338,22 @@ paths:
         "400": { description: Invalid notification cursor }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
+  /api/v1/notifications/read-all:
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Mark all existing in-app release alerts read
+      responses:
+        "200":
+          description: Number of unread notices updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated]
+                properties:
+                  updated: { type: integer, minimum: 0 }
+        "401": { description: Missing or invalid session }
+        "403": { description: Email verification required }
   /api/v1/notifications/{id}/read:
     patch:
       summary: Idempotently mark an owned notification read

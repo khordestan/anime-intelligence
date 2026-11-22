@@ -186,3 +186,22 @@ func (r *Repository) ReadNotification(ctx context.Context,id string) (bool,error
 	return tag.RowsAffected()>0,tx.Commit(ctx)
 }
 
+
+func (r *Repository) ReadAllNotifications(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	tx, owner, err := r.db.productTx(ctx, r.token)
+	if err != nil {
+		return 0, err
+	}
+	defer rollback(tx)
+	tag, err := tx.Exec(ctx, `UPDATE notifications SET read_at=now()
+		WHERE user_id=$1 AND channel='IN_APP' AND read_at IS NULL`, owner.ID)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
