@@ -3,6 +3,7 @@ package intelligence
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 )
@@ -22,6 +23,8 @@ type EvaluationCase struct {
 }
 
 type RankingMetrics struct {
+	NDCG float64 `json:"ndcg"`
+	FillRate float64 `json:"fillRate"`
 	Recall float64 `json:"recall"`
 	ReciprocalRank float64 `json:"reciprocalRank"`
 }
@@ -59,12 +62,20 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 			return EvaluationReport{}, fmt.Errorf("case %d: %w", index+1, err)
 		}
 		report.Cases = append(report.Cases, result)
+		report.PersonalMatch.NDCG += result.PersonalMatch.NDCG
+		report.PersonalMatch.FillRate += result.PersonalMatch.FillRate
+		report.TitleBaseline.NDCG += result.TitleBaseline.NDCG
+		report.TitleBaseline.FillRate += result.TitleBaseline.FillRate
 		report.PersonalMatch.Recall += result.PersonalMatch.Recall
 		report.PersonalMatch.ReciprocalRank += result.PersonalMatch.ReciprocalRank
 		report.TitleBaseline.Recall += result.TitleBaseline.Recall
 		report.TitleBaseline.ReciprocalRank += result.TitleBaseline.ReciprocalRank
 	}
 	n := float64(len(report.Cases))
+	report.PersonalMatch.NDCG /= n
+	report.PersonalMatch.FillRate /= n
+	report.TitleBaseline.NDCG /= n
+	report.TitleBaseline.FillRate /= n
 	report.PersonalMatch.Recall /= n
 	report.PersonalMatch.ReciprocalRank /= n
 	report.TitleBaseline.Recall /= n
@@ -127,23 +138,29 @@ func evaluateCase(item EvaluationCase, k int) (CaseEvaluation, error) {
 	}
 	return CaseEvaluation{
 		ID: item.ID,
-		PersonalMatch: rankingMetrics(personalIDs, relevant),
-		TitleBaseline: rankingMetrics(baselineIDs, relevant),
+		PersonalMatch: rankingMetrics(personalIDs, relevant, k),
+		TitleBaseline: rankingMetrics(baselineIDs, relevant, k),
 	}, nil
 }
 
-func rankingMetrics(ids []string, relevant map[string]struct{}) RankingMetrics {
-	var result RankingMetrics
+func rankingMetrics(ids []string, relevant map[string]struct{}, k int) RankingMetrics {
+	result := RankingMetrics{FillRate: float64(len(ids)) / float64(k)}
+	var gain, idealGain float64
+	for i := range min(k, len(relevant)) {
+		idealGain += 1 / math.Log2(float64(i+2))
+	}
 	var hits int
 	for i, id := range ids {
 		if _, ok := relevant[id]; !ok {
 			continue
 		}
 		hits++
+		gain += 1 / math.Log2(float64(i+2))
 		if hits == 1 {
 			result.ReciprocalRank = 1 / float64(i+1)
 		}
 	}
 	result.Recall = float64(hits) / float64(len(relevant))
+	result.NDCG = gain / idealGain
 	return result
 }

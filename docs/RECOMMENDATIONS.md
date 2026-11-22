@@ -27,3 +27,5 @@ The output gives recall@k and reciprocal rank@k per case and the mean across cas
 ```
 
 Candidate retrieval only uses feature keys that can contribute to the compatibility score under the default blend. Neutral or zero-confidence signals can still appear in the profile when applicable.
+
+The evaluator also reports binary nDCG@k and fill rate for both rankings. nDCG gives more credit to relevant titles near the top and normalizes by the ideal order at the same cutoff. Fill rate is the number of returned titles divided by k, so a result set with insufficient eligible evidence can be distinguished from a full list with poor relevance.

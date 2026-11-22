@@ -170,3 +170,5 @@ The release alerts panel supports unread-only filtering on both latest and histo
 Run go run ./cmd/evaluate-personal-match with a reviewed or synthetic JSON fixture on standard input to compare Personal Match with title ordering on explicit held-out judgments. Evaluation runs offline with no account or catalog connection.
 
 Personal Match retrieval excludes features with zero effective weight or confidence from the candidate overlap budget. Profile values remain available to explain the user's declared and inferred inputs.
+
+Offline Personal Match evaluation reports nDCG and top-k fill rate alongside recall and reciprocal rank, per case and as means over the suite.

@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Ranking quality and result fill metrics
+
+Extended the offline evaluator with binary nDCG and top-k fill rate. Regression coverage includes a relevant hit at rank two and a no-evidence ranking. Hosted CI is pending.
+
 ## 2026-11-22 — Candidate budget excludes neutral signals
 
 Derived retrieval keys from the same default preference weighting as the scorer. Added Go and PostgreSQL regressions covering neutral-only candidates competing for the bounded candidate pool. Hosted CI is pending.
