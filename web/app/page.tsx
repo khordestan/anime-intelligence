@@ -98,6 +98,7 @@ export default function Home() {
   const [watchListFile, setWatchListFile] = useState<File | null>(null);
   const [showWatchListImport, setShowWatchListImport] = useState(false);
   const [bulkEntries, setBulkEntries] = useState<BulkStatusTarget[] | null>(null);
+  const [bulkRating, setBulkRating] = useState("");
   const [bulkStatus, setBulkStatus] = useState("");
   const [removal, setRemoval] = useState<string | null>(null);
   const accountRevision = useRef(0);
@@ -112,6 +113,7 @@ export default function Home() {
       setRemoval(null);
       setBulkEntries(null);
       setBulkStatus("");
+      setBulkRating("");
       setWatchListFile(null);
       setWatchListPreview(null);
       setShowWatchListImport(false);
@@ -422,20 +424,23 @@ export default function Home() {
       if (account === accountRevision.current) setBusy(false);
     }
   }
-  async function applyBulkStatus() {
-    if (busy || !bulkEntries?.length || !bulkStatus) return;
+  async function applyBulkEdit(action: "status" | "rating") {
+    const value = action === "status" ? bulkStatus : bulkRating;
+    if (busy || !bulkEntries?.length || !value) return;
+    const change = action === "status" ? { watchStatus: value } : { score: Number(value) };
     const account = accountRevision.current;
     setBusy(true);
     setError("");
     try {
-      await client.request("/tracker/bulk-status", {
+      await client.request("/tracker/bulk-" + action, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ watchStatus: bulkStatus, entries: bulkEntries }),
+        body: JSON.stringify({ ...change, entries: bulkEntries }),
       });
       if (account !== accountRevision.current) return;
       setBulkEntries(null);
       setBulkStatus("");
+      setBulkRating("");
       await refresh();
     } catch (error) {
       if (account !== accountRevision.current) return;
@@ -785,8 +790,9 @@ export default function Home() {
             <button type="button" disabled={busy} className="underline" onClick={() => {
               setBulkEntries(bulkEntries === null ? [] : null);
               setBulkStatus("");
+              setBulkRating("");
             }}>
-              {bulkEntries === null ? "Edit multiple statuses" : "Cancel bulk edit"}
+              {bulkEntries === null ? "Edit multiple entries" : "Cancel bulk edit"}
             </button>
             {bulkEntries !== null && (
               <>
@@ -797,8 +803,18 @@ export default function Home() {
                   {statuses.slice(1).map(status => <option key={status} value={status}>{labels[status]}</option>)}
                 </select>
                 <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkStatus}
-                  onClick={() => void applyBulkStatus()} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+                  onClick={() => void applyBulkEdit("status")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
                   Apply status to selected
+                </button>
+                <select aria-label="Bulk series rating" disabled={busy} value={bulkRating}
+                  onChange={event => setBulkRating(event.target.value)}
+                  className="rounded-lg border border-white/10 bg-slate-900 p-2">
+                  <option value="">Choose series rating</option>
+                  {[1, 2, 3, 4, 5].map(score => <option key={score} value={score}>{score} / 5</option>)}
+                </select>
+                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkRating}
+                  onClick={() => void applyBulkEdit("rating")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+                  Apply rating to selected
                 </button>
               </>
             )}

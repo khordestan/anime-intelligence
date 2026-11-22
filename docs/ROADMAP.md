@@ -92,7 +92,8 @@
 - [x] Atomic, add-only watch-list import API
 - [x] Dashboard watch-list import
 - [x] Atomic bulk series ratings API
-- [ ] Dashboard bulk ratings and further bulk actions
+- [x] Dashboard bulk series ratings
+- [ ] Further bulk editing actions
 - [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence

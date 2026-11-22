@@ -2,7 +2,7 @@
 
 ## 2026-11-22 — Atomic bulk series ratings
 
-Added a verified-owner bulk series ratings API using the same bounded batch transaction and viewing-pass guards as bulk status. Extended PostgreSQL coverage for isolation, rollback, persistence and preserved progress. Hosted CI is pending.
+Added a verified-owner bulk series ratings API using the same bounded batch transaction and viewing-pass guards as bulk status. Extended PostgreSQL coverage for isolation, rollback, persistence and preserved progress. The dashboard uses the existing library selection and adds a separate series rating action. Extended the browser regression to verify its request. Hosted CI is pending.
 
 ## 2026-11-22 — Watch-list import preview API
 

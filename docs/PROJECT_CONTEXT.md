@@ -156,3 +156,5 @@ My Library includes an explicit file selection and submit control for watch-list
 Verified PostgreSQL clients can send the same versioned file to POST /api/v1/tracker/import/preview to validate catalog references and see current added/skipped estimates. The preview performs no tracker writes. Import revalidates independently.
 
 Verified PostgreSQL clients can PATCH /api/v1/tracker/bulk-rating with a score from 1 to 5 and up to 25 entry IDs with their current viewing passes. The batch reuses the tracker transaction and series-rating write, returns updated entries in request order, and rolls back if a target is stale or unavailable.
+
+My Library can rate multiple series through the same selection and stale-viewing-pass handling used for bulk status edits.

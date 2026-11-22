@@ -6,6 +6,7 @@ test("bulk status edits submit selected viewing passes and recover from conflict
     { id: "entry-two", animeId: "anime-two", title: "Synthetic Second", watchStatus: "WATCHING", episodesWatched: 2, watchCycle: 1 },
   ];
   const calls: unknown[] = [];
+  const ratingCalls: unknown[] = [];
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -23,6 +24,11 @@ test("bulk status edits submit selected viewing passes and recover from conflict
       user: { id: "synthetic-owner", email: "bulk@example.test", emailVerified: true },
     });
     if (path === "/tracker") return send({ items: entries });
+    if (path === "/tracker/bulk-rating") {
+      expect(request.method()).toBe("PATCH");
+      ratingCalls.push(request.postDataJSON());
+      return send({ items: entries });
+    }
     if (path === "/tracker/bulk-status") {
       expect(request.method()).toBe("PATCH");
       calls.push(request.postDataJSON());
@@ -40,7 +46,7 @@ test("bulk status edits submit selected viewing passes and recover from conflict
   await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   const library = page.getByRole("region", { name: "My Library" });
-  await library.getByRole("button", { name: "Edit multiple statuses" }).click();
+  await library.getByRole("button", { name: "Edit multiple entries" }).click();
   const first = library.getByRole("checkbox", { name: "Select Synthetic First for bulk edit" });
   const second = library.getByRole("checkbox", { name: "Select Synthetic Second for bulk edit" });
   await first.check();
@@ -53,9 +59,15 @@ test("bulk status edits submit selected viewing passes and recover from conflict
   await first.check();
   await second.check();
   await apply.click();
-  await expect(library.getByRole("button", { name: "Edit multiple statuses" })).toBeVisible();
+  await expect(library.getByRole("button", { name: "Edit multiple entries" })).toBeVisible();
   expect(calls).toEqual([2, 3].map(expectedCycle => ({
     watchStatus: "ON_HOLD",
     entries: [{ id: "entry-one", expectedCycle }, { id: "entry-two", expectedCycle: 1 }],
   })));
+  await library.getByRole("button", { name: "Edit multiple entries" }).click();
+  await second.check();
+  await library.getByLabel("Bulk series rating").selectOption("4");
+  await library.getByRole("button", { name: "Apply rating to selected" }).click();
+  await expect(library.getByRole("button", { name: "Edit multiple entries" })).toBeVisible();
+  expect(ratingCalls).toEqual([{ score: 4, entries: [{ id: "entry-two", expectedCycle: 1 }] }]);
 });
