@@ -1,8 +1,12 @@
 # Implementation Log
 
+## 2026-11-22 — Evidence-based Personal Match candidate retrieval
+
+Retrieve candidates with eligible evidence overlapping the caller's taste profile before applying the candidate cap. Extended the PostgreSQL regression with 510 alphabetically earlier titles without evidence. Hosted CI is pending.
+
 ## 2026-11-22 — Atomic bulk series ratings
 
-Added a verified-owner bulk series ratings API using the same bounded batch transaction and viewing-pass guards as bulk status. Extended PostgreSQL coverage for isolation, rollback, persistence and preserved progress. The dashboard uses the existing library selection and adds a separate series rating action. Extended the browser regression to verify its request. Hosted CI is pending.
+Added a verified-owner bulk series ratings API using the same bounded batch transaction and viewing-pass guards as bulk status. Extended PostgreSQL coverage for isolation, rollback, persistence and preserved progress. The dashboard uses the existing library selection and adds a separate series rating action. Extended the browser regression to verify its request. All ten checks passed on [PR #21](https://github.com/khordestan/anime-intelligence/pull/21), including the PostgreSQL bulk-edit regression.
 
 ## 2026-11-22 — Watch-list import preview API
 

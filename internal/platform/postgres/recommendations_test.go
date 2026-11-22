@@ -48,6 +48,11 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if ok,err:=a.SetFeaturePreference(ctx,"synthetic.power",&positive);err!=nil||!ok{t.Fatal(err)}
 	if ok,err:=b.SetFeaturePreference(ctx,"synthetic.power",&negative);err!=nil||!ok{t.Fatal(err)}
 	if ok,err:=a.SetFeaturePreference(ctx,"synthetic.secret",&positive);err!=nil||ok{t.Fatal("spoiler feature accepted",err)}
+	// Titles without eligible evidence must not exhaust the candidate budget.
+	if _, err = owner.Exec(ctx, `INSERT INTO anime(canonical_title)
+		SELECT '000 Synthetic unevidenced ' || i FROM generate_series(1, 510) AS i`); err != nil {
+		t.Fatal(err)
+	}
 	page,err=a.PersonalMatches(ctx,20)
 	if err!=nil||len(page.Items)!=2||page.Items[0].AnimeID!=strong||page.Items[1].AnimeID!=weak||len(page.Items[0].Evidence)!=1{t.Fatal("positive evidence/exclusion",page,err)}
 	other,err:=b.PersonalMatches(ctx,20)

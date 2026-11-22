@@ -158,3 +158,5 @@ Verified PostgreSQL clients can send the same versioned file to POST /api/v1/tra
 Verified PostgreSQL clients can PATCH /api/v1/tracker/bulk-rating with a score from 1 to 5 and up to 25 entry IDs with their current viewing passes. The batch reuses the tracker transaction and series-rating write, returns updated entries in request order, and rolls back if a target is stale or unavailable.
 
 My Library can rate multiple series through the same selection and stale-viewing-pass handling used for bulk status edits.
+
+Personal Match retrieves up to 500 untracked titles with current eligible curated evidence overlapping the owner's declared or rating-derived profile keys. Candidates are ordered by overlap count and canonical ID before the established scoring step. The recommendation request has a five-second deadline.
