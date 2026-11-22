@@ -436,6 +436,29 @@ paths:
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
         "404": { description: Missing, inactive or spoiler-sensitive feature }
+  /api/v1/recommendations/dismissals/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Hide a catalog title from Personal Match
+      responses:
+        "204": { description: Dismissal active }
+        "400": { description: Invalid catalog ID }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Catalog title not found }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Restore a catalog title to Personal Match eligibility
+      responses:
+        "204": { description: Dismissal absent }
+        "400": { description: Invalid catalog ID }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/recommendations:
     get:
       summary: Evidence-backed Personal Match ranking for the verified owner

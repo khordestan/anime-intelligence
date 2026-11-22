@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Personal Match dismissals
+
+Added reversible owner-scoped title dismissals with forced RLS, account export, and dashboard hide/undo. Extended PostgreSQL tests for owner isolation and restoration. Hosted CI is pending.
+
 ## 2026-11-22 — Compact release-alert polling
 
 Added a verified-owner notification summary endpoint for collapsed panels. It reuses bounded materialization and does not select notification text. Added PostgreSQL authorization and summary coverage and updated the browser regression. Hosted CI is pending.

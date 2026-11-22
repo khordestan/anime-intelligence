@@ -180,3 +180,5 @@ The inbox shows the owner's total unread in-app alerts across stored pages, usin
 Visible dashboards check for release alerts every minute even with the panel collapsed and show an unread badge. Hidden tabs and history views pause scheduled polling.
 
 Collapsed polling uses the owner-scoped notification summary endpoint, which materializes the latest bounded batch and returns counts without notification text.
+
+Migration 000023 adds verified-owner Personal Match dismissals. Dismissed titles are excluded before applying the candidate cap. The dashboard can undo its latest hide, and the API can restore any dismissed title by canonical ID. Account export includes dismissals and account deletion cascades them. Apply migrations and reapply deployments/runtime-role.sql before starting the updated runtime.

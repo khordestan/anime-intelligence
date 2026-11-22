@@ -81,6 +81,23 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if _, err := a.SetFeaturePreference(ctx, "synthetic.neutral", nil); err != nil {
 		t.Fatal(err)
 	}
+	for range 2 {
+		if found, err := a.SetPersonalMatchDismissed(ctx, strong, true); err != nil || !found {
+			t.Fatalf("dismiss matched title: found=%v err=%v", found, err)
+		}
+	}
+	if page, err := a.PersonalMatches(ctx, 20); err != nil || len(page.Items) != 1 || page.Items[0].AnimeID != weak {
+		t.Fatalf("dismissed match returned: %+v err=%v", page, err)
+	}
+	if page, err := b.PersonalMatches(ctx, 20); err != nil || len(page.Items) != 2 {
+		t.Fatalf("another owner's match was dismissed: %+v err=%v", page, err)
+	}
+	if _, err := a.SetPersonalMatchDismissed(ctx, strong, false); err != nil {
+		t.Fatal(err)
+	}
+	if page, err := a.PersonalMatches(ctx, 20); err != nil || len(page.Items) != 2 || page.Items[0].AnimeID != strong {
+		t.Fatalf("match not restored: %+v err=%v", page, err)
+	}
 	if _,err=a.SetFeaturePreference(ctx,"synthetic.power",nil);err!=nil{t.Fatal(err)}
 	page,err=a.PersonalMatches(ctx,20)
 	if err!=nil||len(page.Items)!=0{t.Fatal("cleared preference retained",page,err)}
@@ -103,7 +120,7 @@ func TestRecommendationRoutesRejectOwnerOverrides(t *testing.T){
 		r:=httptest.NewRequest(method,path,strings.NewReader(body));if token!=""{r.Header.Set("Authorization","Bearer "+token)}
 		w:=httptest.NewRecorder();h.ServeHTTP(w,r);return w
 	}
-	for _,spec:=range [][2]string{{"GET","/api/v1/recommendations"},{"GET","/api/v1/preferences"},{"PUT","/api/v1/preferences/missing"},{"DELETE","/api/v1/preferences/missing"}}{
+	for _,spec:=range [][2]string{{"GET","/api/v1/recommendations"},{"PUT","/api/v1/recommendations/dismissals/10000000-0000-4000-8000-000000000001"},{"DELETE","/api/v1/recommendations/dismissals/10000000-0000-4000-8000-000000000001"},{"GET","/api/v1/preferences"},{"PUT","/api/v1/preferences/missing"},{"DELETE","/api/v1/preferences/missing"}}{
 		if w:=call(spec[0],spec[1],"",`{"weight":1}`);w.Code!=401{t.Fatal("unprotected route",w.Code)}
 		if w:=call(spec[0],spec[1],s.Token,`{"weight":1}`);w.Code!=403{t.Fatal("unverified route",w.Code)}
 	}

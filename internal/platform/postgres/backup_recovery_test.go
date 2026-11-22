@@ -435,7 +435,7 @@ func assertRestoredIsolation(t *testing.T, ctx context.Context, db *postgres.DB,
 		t.Fatal("connect restored unscoped role")
 	}
 	defer raw.Close(ctx)
-	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "user_follows", "notifications"} {
+	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications"} {
 		var n int
 		if err = raw.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("restored unscoped RLS failed for %s", table)

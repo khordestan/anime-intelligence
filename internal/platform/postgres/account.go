@@ -47,7 +47,7 @@ func (d *DB) exportAccountSnapshot(ctx context.Context, token string) (AccountEx
 	for _, table := range []struct{ key, name string }{
 		{"tracker", "user_anime"}, {"watchCycles", "watch_cycles"}, {"ratings", "user_ratings"}, {"progress", "watch_progress"},
 		{"preferences", "user_preferences"}, {"recommendations", "recommendations"},
-		{"feedback", "recommendation_feedback"}, {"follows", "user_follows"}, {"notifications", "notifications"},
+		{"feedback", "recommendation_feedback"}, {"personalMatchDismissals", "personal_match_dismissals"}, {"follows", "user_follows"}, {"notifications", "notifications"},
 	} {
 		var data []byte
 		// The identifiers come only from this fixed server-owned allowlist.
