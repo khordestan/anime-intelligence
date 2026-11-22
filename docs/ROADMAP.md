@@ -89,7 +89,8 @@
 - [x] Atomic, viewing-pass-guarded bulk status edit API
 - [x] Dashboard bulk status editing with stale-entry recovery
 - [x] Versioned current watch-list export and dashboard download
-- [ ] Watch-list import and additional bulk editing actions
+- [x] Atomic, add-only watch-list import API
+- [ ] Dashboard watch-list import and additional bulk editing actions
 - [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence

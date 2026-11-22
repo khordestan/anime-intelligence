@@ -229,6 +229,9 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 			fn(w, r, token, user)
 		})
 	}
+	mux.HandleFunc("POST /api/v1/tracker/import", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		importWatchList(w, r, db.Repository(token))
+	}))
 	mux.HandleFunc("GET /api/v1/tracker/export", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		export, err := db.Repository(token).ExportWatchList(r.Context())
 		switch {
