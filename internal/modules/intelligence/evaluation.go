@@ -9,6 +9,7 @@ import (
 )
 
 type EvaluationSuite struct {
+	CandidateLimit int `json:"candidateLimit,omitempty"`
 	Version int `json:"version"`
 	Cases []EvaluationCase `json:"cases"`
 }
@@ -29,13 +30,21 @@ type RankingMetrics struct {
 	ReciprocalRank float64 `json:"reciprocalRank"`
 }
 
+type RetrievalMetrics struct {
+	CandidateCount int `json:"candidateCount"`
+	Recall float64 `json:"recall"`
+}
+
 type CaseEvaluation struct {
+	Retrieval *RetrievalMetrics `json:"retrieval,omitempty"`
 	ID string `json:"id"`
 	PersonalMatch RankingMetrics `json:"personalMatch"`
 	TitleBaseline RankingMetrics `json:"titleBaseline"`
 }
 
 type EvaluationReport struct {
+	CandidateLimit int `json:"candidateLimit,omitempty"`
+	MeanRetrievalRecall *float64 `json:"meanRetrievalRecall,omitempty"`
 	AlgorithmVersion string `json:"algorithmVersion"`
 	K int `json:"k"`
 	Cases []CaseEvaluation `json:"cases"`
@@ -44,24 +53,36 @@ type EvaluationReport struct {
 }
 
 // EvaluatePersonalMatch evaluates explicit positive judgments at k. Both
-// rankings receive the same candidate set and exclude already-rated titles.
+// rankings exclude already-rated titles. An optional stage caps Personal Match
+// candidates before ranking to measure the recall cost of retrieval.
 func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, error) {
 	if suite.Version != 1 || len(suite.Cases) == 0 || len(suite.Cases) > 100 || k < 1 || k > 100 {
 		return EvaluationReport{}, errors.New("expected a v1 evaluation suite with 1–100 cases and k between 1 and 100")
 	}
-	report := EvaluationReport{AlgorithmVersion: PersonalMatchAlgorithmVersion, K: k}
+	if suite.CandidateLimit < 0 || suite.CandidateLimit > 500 {
+		return EvaluationReport{}, errors.New("candidateLimit must be between 0 and 500")
+	}
+	maxCandidates := 500
+	if suite.CandidateLimit > 0 {
+		maxCandidates = 2000
+	}
+	report := EvaluationReport{AlgorithmVersion: PersonalMatchAlgorithmVersion, K: k, CandidateLimit: suite.CandidateLimit}
+	var retrievalRecall float64
 	caseIDs := make(map[string]struct{}, len(suite.Cases))
 	for index, item := range suite.Cases {
 		_, duplicate := caseIDs[item.ID]
-		if duplicate || strings.TrimSpace(item.ID) == "" || len(item.Candidates) > 500 || len(item.Rated) > 1000 {
+		if duplicate || strings.TrimSpace(item.ID) == "" || len(item.Candidates) > maxCandidates || len(item.Rated) > 1000 {
 			return EvaluationReport{}, fmt.Errorf("invalid case ID or fixture size at case %d", index+1)
 		}
 		caseIDs[item.ID] = struct{}{}
-		result, err := evaluateCase(item, k)
+		result, err := evaluateCase(item, k, suite.CandidateLimit)
 		if err != nil {
 			return EvaluationReport{}, fmt.Errorf("case %d: %w", index+1, err)
 		}
 		report.Cases = append(report.Cases, result)
+		if result.Retrieval != nil {
+			retrievalRecall += result.Retrieval.Recall
+		}
 		report.PersonalMatch.NDCG += result.PersonalMatch.NDCG
 		report.PersonalMatch.FillRate += result.PersonalMatch.FillRate
 		report.TitleBaseline.NDCG += result.TitleBaseline.NDCG
@@ -72,6 +93,10 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 		report.TitleBaseline.ReciprocalRank += result.TitleBaseline.ReciprocalRank
 	}
 	n := float64(len(report.Cases))
+	if suite.CandidateLimit > 0 {
+		mean := retrievalRecall / n
+		report.MeanRetrievalRecall = &mean
+	}
 	report.PersonalMatch.NDCG /= n
 	report.PersonalMatch.FillRate /= n
 	report.TitleBaseline.NDCG /= n
@@ -83,7 +108,7 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 	return report, nil
 }
 
-func evaluateCase(item EvaluationCase, k int) (CaseEvaluation, error) {
+func evaluateCase(item EvaluationCase, k, candidateLimit int) (CaseEvaluation, error) {
 	excluded := make(map[string]struct{}, len(item.Excluded)+len(item.Rated))
 	for _, id := range item.Excluded {
 		excluded[id] = struct{}{}
@@ -121,7 +146,19 @@ func evaluateCase(item EvaluationCase, k int) (CaseEvaluation, error) {
 		return CaseEvaluation{}, errors.New("at least one relevant candidate is required")
 	}
 	profile := BuildTasteProfile(item.Rated, item.Preferences)
-	ranked := RankPersonalMatches(profile, eligible, nil, Options{Limit: k})
+	rankingCandidates := eligible
+	var retrieval *RetrievalMetrics
+	if candidateLimit > 0 {
+		rankingCandidates = retrieveEvaluationCandidates(profile, eligible, candidateLimit)
+		var hits int
+		for _, candidate := range rankingCandidates {
+			if _, ok := relevant[candidate.AnimeID]; ok {
+				hits++
+			}
+		}
+		retrieval = &RetrievalMetrics{CandidateCount: len(rankingCandidates), Recall: float64(hits) / float64(len(relevant))}
+	}
+	ranked := RankPersonalMatches(profile, rankingCandidates, nil, Options{Limit: k})
 	personalIDs := make([]string, 0, len(ranked))
 	for _, match := range ranked {
 		personalIDs = append(personalIDs, match.AnimeID)
@@ -138,6 +175,7 @@ func evaluateCase(item EvaluationCase, k int) (CaseEvaluation, error) {
 	}
 	return CaseEvaluation{
 		ID: item.ID,
+		Retrieval: retrieval,
 		PersonalMatch: rankingMetrics(personalIDs, relevant, k),
 		TitleBaseline: rankingMetrics(baselineIDs, relevant, k),
 	}, nil
@@ -162,5 +200,42 @@ func rankingMetrics(ids []string, relevant map[string]struct{}, k int) RankingMe
 	}
 	result.Recall = float64(hits) / float64(len(relevant))
 	result.NDCG = gain / idealGain
+	return result
+}
+
+// Fixtures supply current eligible evidence. This mirrors the PostgreSQL
+// overlap order without reproducing the database's evidence eligibility checks.
+func retrieveEvaluationCandidates(profile TasteProfile, eligible []Candidate, limit int) []Candidate {
+	keys := make(map[string]bool)
+	for _, key := range PersonalMatchFeatureKeys(profile) {
+		keys[key] = true
+	}
+	type supportedCandidate struct {
+		candidate Candidate
+		overlap int
+	}
+	supported := make([]supportedCandidate, 0, len(eligible))
+	for _, candidate := range eligible {
+		seen := make(map[string]bool)
+		for _, feature := range candidate.Features {
+			if keys[feature.Key] && validUnit(feature.Value) && validUnit(feature.Confidence) && feature.Confidence > 0 {
+				seen[feature.Key] = true
+			}
+		}
+		if len(seen) > 0 {
+			supported = append(supported, supportedCandidate{candidate: candidate, overlap: len(seen)})
+		}
+	}
+	sort.Slice(supported, func(i, j int) bool {
+		if supported[i].overlap == supported[j].overlap {
+			return supported[i].candidate.AnimeID < supported[j].candidate.AnimeID
+		}
+		return supported[i].overlap > supported[j].overlap
+	})
+	count := min(limit, len(supported))
+	result := make([]Candidate, 0, count)
+	for _, item := range supported[:count] {
+		result = append(result, item.candidate)
+	}
 	return result
 }

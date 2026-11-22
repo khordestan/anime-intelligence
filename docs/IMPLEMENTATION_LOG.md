@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Recommendation retrieval evaluation
+
+Added opt-in evaluation of the evidence-overlap stage and candidate cap, with per-case retrieval counts and macro recall. Added a regression that exercises cap loss, neutral evidence and disabled retrieval mode. Hosted CI is pending.
+
 ## 2026-11-22 — Ranking quality and result fill metrics
 
 Extended the offline evaluator with binary nDCG and top-k fill rate. Regression coverage includes a relevant hit at rank two and a no-evidence ranking. Hosted CI is pending.

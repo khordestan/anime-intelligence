@@ -117,7 +117,8 @@
 - [x] Verified-owner PostgreSQL Personal Match API with conservative curated non-spoiler evidence
 - [x] Preference editing and evidence-backed Personal Match dashboard
 - [x] Candidate retrieval by profile overlap with eligible curated evidence
-- [ ] Richer curated evidence coverage and retrieval evaluation
+- [x] Offline retrieval-cap evaluation on held-out judgments
+- [ ] Richer curated evidence coverage and representative retrieval evaluation
 - [ ] Personal Match, Global Essentials and Discovery lanes
 - [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline
 - [ ] Feedback learning and representative evaluation datasets

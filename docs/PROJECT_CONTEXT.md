@@ -172,3 +172,5 @@ Run go run ./cmd/evaluate-personal-match with a reviewed or synthetic JSON fixtu
 Personal Match retrieval excludes features with zero effective weight or confidence from the candidate overlap budget. Profile values remain available to explain the user's declared and inferred inputs.
 
 Offline Personal Match evaluation reports nDCG and top-k fill rate alongside recall and reciprocal rank, per case and as means over the suite.
+
+Offline Personal Match fixtures can enable overlap-based retrieval with a configurable cap and report held-out recall before ranking. This measures fixture retrieval separately from top-k ranking quality.

@@ -37,3 +37,38 @@ func TestEvaluatePersonalMatchUsesHeldOutJudgments(t *testing.T) {
 		t.Fatal("training title accepted as a held-out judgment")
 	}
 }
+
+func TestEvaluatePersonalMatchMeasuresRetrievalLossSeparately(t *testing.T) {
+	first := FeatureValue{Key: "first", Value: 1, Confidence: 1}
+	second := FeatureValue{Key: "second", Value: .1, Confidence: 1}
+	suite := EvaluationSuite{Version: 1, CandidateLimit: 1, Cases: []EvaluationCase{{
+		ID: "retrieval",
+		Preferences: map[string]Preference{
+			"first": {Weight: 1, Confidence: 1},
+			"second": {Weight: 1, Confidence: 1},
+			"neutral": {Weight: 0, Confidence: 1},
+		},
+		Candidates: []Candidate{
+			{AnimeID: "1", Title: "Alphabetically first", Features: []FeatureValue{first, second}},
+			{AnimeID: "2", Title: "Held-out relevant", Features: []FeatureValue{first}},
+			{AnimeID: "0", Title: "Neutral evidence only", Features: []FeatureValue{{Key: "neutral", Value: 1, Confidence: 1}}},
+		},
+		Relevant: []string{"2"},
+	}}}
+	report, err := EvaluatePersonalMatch(suite, 2)
+	if err != nil || len(report.Cases) != 1 || report.MeanRetrievalRecall == nil || *report.MeanRetrievalRecall != 0 ||
+		report.Cases[0].Retrieval == nil || report.Cases[0].Retrieval.CandidateCount != 1 || report.PersonalMatch.FillRate != .5 {
+		t.Fatalf("capped report=%+v err=%v", report, err)
+	}
+	suite.CandidateLimit = 2
+	report, err = EvaluatePersonalMatch(suite, 2)
+	if err != nil || report.MeanRetrievalRecall == nil || *report.MeanRetrievalRecall != 1 ||
+		report.Cases[0].Retrieval.CandidateCount != 2 || report.PersonalMatch.ReciprocalRank != 1 {
+		t.Fatalf("expanded report=%+v err=%v", report, err)
+	}
+	suite.CandidateLimit = 0
+	report, err = EvaluatePersonalMatch(suite, 2)
+	if err != nil || report.MeanRetrievalRecall != nil || report.Cases[0].Retrieval != nil {
+		t.Fatalf("default report=%+v err=%v", report, err)
+	}
+}
