@@ -94,6 +94,8 @@ export default function Home() {
   const [register, setRegister] = useState(false),
     [authBusy, setAuthBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [watchListFile, setWatchListFile] = useState<File | null>(null);
+  const [showWatchListImport, setShowWatchListImport] = useState(false);
   const [bulkEntries, setBulkEntries] = useState<BulkStatusTarget[] | null>(null);
   const [bulkStatus, setBulkStatus] = useState("");
   const [removal, setRemoval] = useState<string | null>(null);
@@ -109,6 +111,8 @@ export default function Home() {
       setRemoval(null);
       setBulkEntries(null);
       setBulkStatus("");
+      setWatchListFile(null);
+      setShowWatchListImport(false);
       client.setSession(next);
       setSession(next);
       setLibrary([]);
@@ -356,6 +360,45 @@ export default function Home() {
   }
   async function rate(e: Entry, score: number) {
     await mutate("/ratings/" + e.animeId, "PUT", { score });
+  }
+  async function uploadWatchList(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || !watchListFile) return;
+    if (watchListFile.size > 16 * 1024 * 1024) {
+      setError("Choose a watch-list file of 16 MiB or less.");
+      return;
+    }
+    const account = accountRevision.current;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const body = await watchListFile.text();
+      if (account !== accountRevision.current) return;
+      const result = await client.request<{ added: number; skipped: number }>("/tracker/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      if (account !== accountRevision.current) return;
+      setWatchListFile(null);
+      setShowWatchListImport(false);
+      await refresh();
+      if (account === accountRevision.current) {
+        setNotice(`Watch list imported. Added ${result.added}. Skipped ${result.skipped} already in your library.`);
+      }
+    } catch (error) {
+      if (account !== accountRevision.current) return;
+      if (error instanceof ApiError && error.status === 400) {
+        setError("Choose a valid Anime Intelligence watch-list export.");
+      } else if (error instanceof ApiError && error.status === 422) {
+        setError("Some titles or episode selections do not match this catalog.");
+      } else {
+        handleError(error);
+      }
+    } finally {
+      if (account === accountRevision.current) setBusy(false);
+    }
   }
   async function downloadWatchList() {
     if (busy) return;
@@ -644,6 +687,14 @@ export default function Home() {
               Download watch list
             </button>
           )}
+          {mode === "postgres" && canEdit && (
+            <button type="button" disabled={busy} aria-expanded={showWatchListImport} onClick={() => {
+              setShowWatchListImport(current => !current);
+              setWatchListFile(null);
+            }} className="text-sm text-violet-200 underline disabled:opacity-50">
+              {showWatchListImport ? "Cancel watch-list import" : "Import watch list"}
+            </button>
+          )}
           <button
             onClick={() => void refresh()}
             className="text-sm text-slate-400 underline"
@@ -651,6 +702,19 @@ export default function Home() {
             Refresh
           </button>
         </div>
+        {mode === "postgres" && canEdit && showWatchListImport && (
+          <form onSubmit={event => void uploadWatchList(event)} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
+            <label>
+              Anime Intelligence watch-list JSON
+              <input type="file" accept=".json,application/json" disabled={busy} required
+                onChange={event => setWatchListFile(event.target.files?.[0] ?? null)}
+                className="mt-1 block" />
+            </label>
+            <button type="submit" disabled={busy || !watchListFile} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+              Import new titles
+            </button>
+          </form>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           {statuses.map((s) => (
             <button

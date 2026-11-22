@@ -150,3 +150,5 @@ The verified-account dashboard can select and update multiple tracker statuses a
 Verified PostgreSQL accounts can download a versioned JSON watch-list export of current statuses, aggregate/exact progress and series ratings, excluding account identifiers and private notes. Full account export remains available for the rest of the account data.
 
 Verified PostgreSQL clients can POST a v1 watch list to /api/v1/tracker/import. The batch validates catalog IDs and episode selections, adds missing titles atomically, and reports added and skipped counts. Existing tracker records retain their current status, rating and progress. Limits are 16 MiB and 10,000 entries.
+
+My Library includes an explicit file selection and submit control for watch-list import and reports the added and skipped titles after a successful upload.

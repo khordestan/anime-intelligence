@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Watch-list import in the dashboard
+
+Added a JSON file picker, explicit import action, success counts and catalog-mismatch feedback. Account changes reset the selected file and fence upload results. Added a mocked browser regression. Hosted CI is pending.
+
 ## 2026-11-22 — Watch-list import API
 
 Added add-only import of the versioned watch-list format with verified ownership, atomic catalog validation and idempotent replays. Added a PostgreSQL regression for authorization, rollback, progress and ratings. Hosted CI is pending.
