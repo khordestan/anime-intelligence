@@ -23,6 +23,7 @@ type FeaturePreference struct {
 type PreferenceSignal struct {
 	Weight float64 `json:"weight"`
 	Confidence float64 `json:"confidence"`
+	RatingCount int `json:"ratingCount,omitempty"`
 }
 type FeatureTaste struct {
 	Key string `json:"key"`
@@ -144,7 +145,7 @@ JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECL
 	for _,key:=range ordered{
 		signal:=FeatureTaste{Key:key}
 		if p,ok:=profile.Explicit[key];ok{signal.Declared=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence}}
-		if p,ok:=profile.Inferred[key];ok{signal.Inferred=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence}}
+		if p,ok:=profile.Inferred[key];ok{signal.Inferred=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence,RatingCount:profile.InferredRatingCounts[key]}}
 		out.Profile=append(out.Profile,signal)
 	}
 	if len(keys) != 0 {

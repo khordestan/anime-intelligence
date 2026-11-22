@@ -66,7 +66,7 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if err!=nil||len(page.Items)!=0{t.Fatal("cleared preference retained",page,err)}
 	if _,ok,err:=a.Rate(ctx,watched,5);err!=nil||!ok{t.Fatal(err)}
 	page,err=a.PersonalMatches(ctx,1)
-	if err!=nil||len(page.Items)!=1||page.Items[0].AnimeID!=strong||len(page.Profile)!=1||page.Profile[0].Declared!=nil||page.Profile[0].Inferred==nil||page.Profile[0].Inferred.Weight<=0{t.Fatal("own rating inference",page,err)}
+	if err!=nil||len(page.Items)!=1||page.Items[0].AnimeID!=strong||len(page.Profile)!=1||page.Profile[0].Declared!=nil||page.Profile[0].Inferred==nil||page.Profile[0].Inferred.Weight<=0||page.Profile[0].Inferred.RatingCount!=1{t.Fatal("own rating inference",page,err)}
 	prefs,err:=b.FeaturePreferences(ctx)
 	if err!=nil{t.Fatal(err)}
 	found:=false

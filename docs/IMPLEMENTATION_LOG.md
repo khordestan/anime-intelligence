@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Rating support for inferred taste signals
+
+Added per-feature contributing rating counts in the owner-scoped recommendation profile and the dashboard. Extended the PostgreSQL inference regression. Hosted CI is pending.
+
 ## 2026-11-22 — Evidence-based Personal Match candidate retrieval
 
 Retrieve candidates with eligible evidence overlapping the caller's taste profile before applying the candidate cap. Extended the PostgreSQL regression with 510 alphabetically earlier titles without evidence. Hosted CI is pending.
