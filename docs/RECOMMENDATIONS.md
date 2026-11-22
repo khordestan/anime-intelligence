@@ -37,3 +37,7 @@ Set `candidateLimit` on the v1 suite to a value from 1 to 500 to evaluate the re
 PUT /api/v1/recommendations/dismissals/{animeId} hides a canonical catalog title from the verified caller's Personal Match. DELETE on the same resource restores eligibility. Both operations are idempotent. The dashboard can undo its latest hide during the current session. Migration 000023 and refreshed runtime grants are required.
 
 GET /api/v1/recommendations/dismissals lists the verified caller's hidden titles in catalog UUID order, up to 50 per page. Pass `nextCursor` as `after` to continue. The dashboard's Manage hidden matches control lists and restores these saved titles.
+
+## Discovery
+
+GET /api/v1/recommendations/discovery returns untracked, unhidden titles for the verified caller. It works before any preferences or ratings are available. Titles are ordered by the number of distinct positive features supported by their latest eligible curated observations, with canonical ID as a stable tie-breaker. Evidence counts describe catalog coverage. The endpoint defaults to 20 titles and accepts limits from 1 to 50. Hiding or restoring a title affects its eligibility in both Personal Match and Discovery.

@@ -295,3 +295,54 @@ func (r *Repository) PersonalMatchDismissals(ctx context.Context, after string) 
 	}
 	return out, tx.Commit(ctx)
 }
+
+type DiscoveryTitle struct {
+	AnimeID string `json:"animeId"`
+	Title string `json:"title"`
+	EvidenceCount int `json:"evidenceCount"`
+}
+
+// DiscoverTitles offers eligible catalog titles even before a taste profile exists.
+func (r *Repository) DiscoverTitles(ctx context.Context, limit int) ([]DiscoveryTitle, error) {
+	if limit < 1 || limit > 50 {
+		limit = 20
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return retrySnapshotRead(ctx, func() ([]DiscoveryTitle, error) {
+		tx, owner, err := r.verifiedSnapshotTx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defer rollback(tx)
+		rows, err := tx.Query(ctx, `WITH latest AS (
+			SELECT DISTINCT ON (o.anime_id,o.feature_id) o.anime_id,o.feature_id,o.value
+			FROM anime_feature_observations o JOIN anime_features f ON f.id=o.feature_id
+			WHERE `+eligibleRecommendationObservation+`
+			  AND NOT EXISTS (SELECT 1 FROM user_anime ua WHERE ua.user_id=$1 AND ua.anime_id=o.anime_id)
+			  AND NOT EXISTS (SELECT 1 FROM personal_match_dismissals d WHERE d.user_id=$1 AND d.anime_id=o.anime_id)
+			ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC
+		), supported AS (
+			SELECT anime_id,count(*) AS feature_count FROM latest WHERE value>0 GROUP BY anime_id
+		)
+		SELECT a.id::text,a.canonical_title,s.feature_count
+		FROM supported s JOIN anime a ON a.id=s.anime_id
+		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		items := []DiscoveryTitle{}
+		for rows.Next() {
+			var item DiscoveryTitle
+			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount); err != nil {
+				return nil, err
+			}
+			items = append(items, item)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+		return items, tx.Commit(ctx)
+	})
+}

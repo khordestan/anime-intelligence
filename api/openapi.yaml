@@ -473,6 +473,18 @@ paths:
         "400": { description: Invalid catalog ID }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
+  /api/v1/recommendations/discovery:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Discover untracked titles with curated evidence
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200": { description: Items with animeId, title and positive curated evidenceCount }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/recommendations:
     get:
       summary: Evidence-backed Personal Match ranking for the verified owner

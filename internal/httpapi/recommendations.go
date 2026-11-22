@@ -70,6 +70,15 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 	}
 	mux.HandleFunc("PUT /api/v1/recommendations/dismissals/{id}", setDismissed(true))
 	mux.HandleFunc("DELETE /api/v1/recommendations/dismissals/{id}", setDismissed(false))
+	mux.HandleFunc("GET /api/v1/recommendations/discovery", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		items, err := db.Repository(token).DiscoverTitles(r.Context(), limit)
+		if err != nil {
+			matchError(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]any{"items": items})
+	}))
 	mux.HandleFunc("GET /api/v1/recommendations",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		limit,err:=strconv.Atoi(r.URL.Query().Get("limit"))
 		if err!=nil{limit=20}

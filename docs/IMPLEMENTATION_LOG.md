@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Cold-start Discovery
+
+Added verified-owner discovery from curated evidence without a taste profile. Discovery respects tracker and dismissal exclusions and exposes counts rather than fit scores. Added PostgreSQL and browser regressions. Hosted CI is pending.
+
 ## 2026-11-22 — Manage saved Personal Match dismissals
 
 Added cursor-based owner-scoped dismissal listing and a dashboard restore action. Added PostgreSQL and mocked browser regressions. Hosted CI is pending.
