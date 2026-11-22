@@ -14,6 +14,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
 }) {
   const [open, setOpen] = useState(false);
   const [follows, setFollows] = useState<Follow[]>([]);
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const unreadFilter = useRef(false);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [cursor, setCursor] = useState("");
   const [nextCursor, setNextCursor] = useState("");
@@ -29,24 +31,30 @@ export default function ReleaseAlerts({ client, library, onError }: {
     alive.current = true;
     return () => { alive.current = false; revision.current++; };
   }, []);
-  const read = useCallback(async (current: number, pageCursor = "") => {
+  const read = useCallback(async (current: number, pageCursor = "", onlyUnread = unreadFilter.current) => {
+    const params = new URLSearchParams();
+    if (pageCursor) params.set("cursor", pageCursor);
+    if (onlyUnread) params.set("unreadOnly", "true");
+    const query = params.toString();
     const [f, n] = await Promise.all([
       client.request<{ items: Follow[] }>("/follows"),
-      client.request<{ items: Notice[]; nextCursor?: string; materialization?: { created: number; hasMore: boolean } }>("/notifications" + (pageCursor ? "?cursor=" + encodeURIComponent(pageCursor) : "")),
+      client.request<{ items: Notice[]; nextCursor?: string; materialization?: { created: number; hasMore: boolean } }>("/notifications" + (query ? "?" + query : "")),
     ]);
     if (!alive.current || current !== revision.current) return;
+    unreadFilter.current = onlyUnread;
+    setUnreadOnly(onlyUnread);
     setFollows(f.items);
     setNotices(n.items);
     setCursor(pageCursor); setNextCursor(n.nextCursor ?? "");
     setCatchingUp(!pageCursor && n.materialization?.hasMore === true);
   }, [client]);
-  const refresh = useCallback(async (pageCursor = "") => {
+  const refresh = useCallback(async (pageCursor = "", onlyUnread = unreadFilter.current) => {
     if (inFlight.current) return;
     inFlight.current = true;
     const current = ++revision.current;
     setBusy(true);
     setMessage("");
-    try { await read(current, pageCursor); }
+    try { await read(current, pageCursor, onlyUnread); }
     catch (error) {
       if (alive.current && current === revision.current) {
         setMessage("Could not refresh release alerts. Try again.");
@@ -137,7 +145,14 @@ export default function ReleaseAlerts({ client, library, onError }: {
             className="mt-2 text-xs underline disabled:opacity-50">Mark all alerts as read</button>
         )}
         {cursor && <p className="mt-2 text-sm text-slate-400">Automatic refresh is paused while viewing history. Return to the latest page to check for new releases.</p>}
-        {!busy && notices.length === 0 && <p className="mt-2 text-sm text-slate-400">No release notifications yet.</p>}
+        <label className="mt-2 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={unreadOnly} disabled={busy}
+            onChange={event => void refresh("", event.target.checked)} />
+          Show unread alerts only
+        </label>
+        {!busy && notices.length === 0 && (
+          <p className="mt-2 text-sm text-slate-400">{unreadOnly ? "No unread release alerts." : "No release notifications yet."}</p>
+        )}
         <ul className="mt-3 space-y-3" aria-label="Release notifications">
           {notices.map(notice => <li key={notice.id} className="rounded-xl bg-white/5 p-3">
             <p className="text-sm font-medium">{notice.title} {!notice.readAt && <span className="ml-2 text-xs text-violet-200">Unread</span>}</p>

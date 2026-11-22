@@ -140,11 +140,24 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
  if ok,err:=a.ReadNotification(ctx,id);err!=nil||!ok{t.Fatal(err)}
  repeated,err:=a.NotificationHistory(ctx,firstCursor)
  if err!=nil||repeated.Items[0].ID!=id||repeated.Items[0].ReadAt==nil{t.Fatal("read moved boundary",err)}
+ unread, err := a.FilterNotificationHistory(ctx, firstCursor, true)
+ if err != nil || unread.Materialization != nil || len(unread.Items) != 100 {
+  t.Fatalf("unread history: %+v err=%v", unread, err)
+ }
+ for _, item := range unread.Items {
+  if item.ID == id || item.ReadAt != nil || item.Title == "Foreign history" {
+   t.Fatalf("unread filter returned an ineligible notice: %+v", item)
+  }
+ }
  if updated, err := a.ReadAllNotifications(ctx); err != nil || updated != 225 {
   t.Fatalf("mark all read: updated=%d err=%v", updated, err)
  }
  if updated, err := a.ReadAllNotifications(ctx); err != nil || updated != 0 {
   t.Fatalf("mark all replay: updated=%d err=%v", updated, err)
+ }
+ unread, err = a.FilterNotificationHistory(ctx, "", true)
+ if err != nil || len(unread.Items) != 0 || unread.NextCursor != "" {
+  t.Fatalf("unread inbox after mark-all: %+v err=%v", unread, err)
  }
  history, err := a.NotificationHistory(ctx, firstCursor)
  if err != nil || len(history.Items) == 0 {

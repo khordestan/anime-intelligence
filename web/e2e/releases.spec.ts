@@ -45,7 +45,7 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
         if (!historyFailed) { historyFailed = true; return respond({ error: "synthetic_retry" }, 500); }
         return respond({ items: [{ id: "notice-old", title: "New episode released", body: "Older synthetic release", createdAt: "2026-01-01T00:00:00Z" }], nextCursor: "" });
       }
-      const items = notices.get(token);
+      const items = notices.get(token)?.filter(notice => url.searchParams.get("unreadOnly") !== "true" || !notice.readAt);
       if (holdFirst && token.endsWith("1")) {
         blocked = true;
         await new Promise<void>(resolve => { release = resolve; });
@@ -168,4 +168,20 @@ test("marking all release alerts read refreshes the current list", async ({ page
   await panel.getByRole("button", { name: "Mark all alerts as read", exact: true }).click();
   await expect(panel.getByText("Unread", { exact: true })).toHaveCount(0);
   expect(api.calls.filter(call => call.path === "/notifications/read-all").map(call => call.method)).toEqual(["PATCH"]);
+});
+
+test("the unread alerts filter hides read notices and restores them when cleared", async ({ page }) => {
+  await mockReleases(page);
+  await page.goto("/");
+  await login(page, "release-unread@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  const onlyUnread = panel.getByRole("checkbox", { name: "Show unread alerts only" });
+  await onlyUnread.click();
+  await expect(onlyUnread).toBeChecked();
+  await panel.getByRole("button", { name: "Mark as read", exact: true }).click();
+  await expect(panel.getByText("No unread release alerts.")).toBeVisible();
+  await onlyUnread.click();
+  await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
+  await expect(panel.getByText("Unread", { exact: true })).toHaveCount(0);
 });

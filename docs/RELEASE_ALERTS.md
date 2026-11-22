@@ -46,3 +46,7 @@ The dashboard displays a catch-up notice on the latest page when hasMore is true
 ## Marking all alerts read
 
 PATCH /api/v1/notifications/read-all marks the caller's existing unread in-app notices read across all pages and returns the number updated. Repeating it after all existing notices are read returns zero. The endpoint only updates materialized notices. The dashboard refreshes the current page after the action.
+
+## Unread notifications
+
+Use GET /api/v1/notifications?unreadOnly=true for an unread-only view across all pages. Keep the filter when requesting nextCursor. The latest page still checks for new release events. History pages only read stored notifications. The dashboard starts at the latest page when changing the filter and keeps the filter during refresh and pagination.

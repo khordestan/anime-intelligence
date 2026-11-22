@@ -120,6 +120,11 @@ func (r *Repository) Notifications(ctx context.Context) ([]Notification,error) {
 // History pages read already materialized notices with a stable descending
 // timestamp/ID boundary. Cursor data never determines account ownership.
 func (r *Repository) NotificationHistory(ctx context.Context,cursor string) (NotificationPage,error) {
+	return r.FilterNotificationHistory(ctx, cursor, false)
+}
+
+// FilterNotificationHistory applies the unread filter before the page limit.
+func (r *Repository) FilterNotificationHistory(ctx context.Context, cursor string, unreadOnly bool) (NotificationPage, error) {
 	out:=NotificationPage{Items:[]Notification{}}
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return out,err}
@@ -164,8 +169,8 @@ SELECT (SELECT count(*) FROM inserted),(SELECT count(*) FROM eligible)>100`,u.ID
 	if err!=nil {return out,err}
 	}
 	rows,err:=tx.Query(ctx,`SELECT id::text,title,body,read_at,created_at FROM notifications
-WHERE user_id=$1 AND channel='IN_APP' AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
-ORDER BY created_at DESC,id DESC LIMIT 101`,u.ID,before,beforeID)
+WHERE user_id=$1 AND channel='IN_APP' AND (NOT $4::boolean OR read_at IS NULL) AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
+ORDER BY created_at DESC,id DESC LIMIT 101`,u.ID,before,beforeID,unreadOnly)
 	if err!=nil {return out,err}
 	for rows.Next() {
 		var n Notification
