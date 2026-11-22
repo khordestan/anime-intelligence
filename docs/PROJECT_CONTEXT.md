@@ -164,3 +164,5 @@ Personal Match retrieves up to 500 untracked titles with current eligible curate
 Personal Match shows the number of the owner's ratings contributing eligible evidence to each inferred feature, without exposing which titles contributed in the profile payload.
 
 Verified users can mark all materialized in-app release alerts as read, including older pages, without changing notifications for any other owner.
+
+The release alerts panel supports unread-only filtering on both latest and historical pages, with the same owner scope and materialization rules as the normal inbox.

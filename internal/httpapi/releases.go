@@ -48,7 +48,16 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 		w.WriteHeader(204)
 	}))
 	mux.HandleFunc("GET /api/v1/notifications",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
-		page,err:=db.Repository(token).NotificationHistory(r.Context(),r.URL.Query().Get("cursor"))
+		query := r.URL.Query()
+		var unreadOnly bool
+		if values, ok := query["unreadOnly"]; ok {
+			if len(values) != 1 || (values[0] != "true" && values[0] != "false") {
+				authError(w, 400, "invalid_notification_filter")
+				return
+			}
+			unreadOnly = values[0] == "true"
+		}
+		page,err:=db.Repository(token).FilterNotificationHistory(r.Context(),query.Get("cursor"),unreadOnly)
 		if err!=nil {releaseError(w,err);return}
 		response:=map[string]any{"items":page.Items,"count":len(page.Items),"limit":100,"nextCursor":page.NextCursor}
 		if page.Materialization!=nil{response["materialization"]=page.Materialization}

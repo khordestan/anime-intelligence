@@ -333,6 +333,10 @@ paths:
           name: cursor
           description: Opaque nextCursor from a previous page; empty selects the latest page.
           schema: { type: string, maxLength: 256 }
+        - in: query
+          name: unreadOnly
+          schema: { type: boolean, default: false }
+          description: Filter existing notices before applying the cursor and page limit.
       responses:
         "200": { description: Owned items with id/title/body/createdAt/optional readAt, count, limit=100 and nextCursor (empty at end) }
         "400": { description: Invalid notification cursor }

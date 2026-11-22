@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Unread release alerts
+
+Added server-side unread filtering before cursor pagination and a dashboard toggle. Extended PostgreSQL ownership/history and mocked browser tests. Hosted CI is pending.
+
 ## 2026-11-22 — Mark all release alerts read
 
 Added a verified-owner bulk read action for existing in-app release notices and exposed it in the dashboard. Extended PostgreSQL tests for authorization, history, isolation and idempotency. Hosted CI is pending.
