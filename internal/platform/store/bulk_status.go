@@ -17,3 +17,7 @@ type BulkStatusTarget struct {
 type BulkStatusTracker interface {
  UpdateStatuses(context.Context, string, []BulkStatusTarget) ([]Entry, bool, error)
 }
+
+type BulkRatingTracker interface {
+ UpdateRatings(context.Context, int, []BulkStatusTarget) ([]Entry, bool, error)
+}

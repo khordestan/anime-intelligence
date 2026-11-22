@@ -152,7 +152,7 @@ func (r *Repository) Rate(ctx context.Context, animeID string, score int) (store
 	if err != nil {
 		return store.Entry{}, false, err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO user_ratings(user_id,anime_id,scope,score) VALUES($1,$2,'SERIES',$3) ON CONFLICT(user_id,anime_id) WHERE scope='SERIES' AND season_key IS NULL DO UPDATE SET score=excluded.score,rated_at=now()`, u.ID, animeID, score)
+	err = upsertSeriesRating(ctx, tx, u.ID, animeID, score)
 	if err != nil {
 		return store.Entry{}, false, err
 	}
@@ -161,6 +161,11 @@ func (r *Repository) Rate(ctx context.Context, animeID string, score int) (store
 		return e, false, err
 	}
 	return e, true, tx.Commit(ctx)
+}
+
+func upsertSeriesRating(ctx context.Context, tx pgx.Tx, userID, animeID string, score int) error {
+	_, err := tx.Exec(ctx, `INSERT INTO user_ratings(user_id,anime_id,scope,score) VALUES($1,$2,'SERIES',$3) ON CONFLICT(user_id,anime_id) WHERE scope='SERIES' AND season_key IS NULL DO UPDATE SET score=excluded.score,rated_at=now()`, userID, animeID, score)
+	return err
 }
 
 // Remove locks the owned tracker row before associated progress/ratings, matching

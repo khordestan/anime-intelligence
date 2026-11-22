@@ -6,18 +6,42 @@ import (
  "strings"
  "time"
 
+ "github.com/jackc/pgx/v5"
  "github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 
 // UpdateStatuses applies status-only edits in one verified-owner transaction.
 // A missing/stale target rolls back every preceding edit.
 func (r *Repository) UpdateStatuses(ctx context.Context, status string, targets []store.BulkStatusTarget) ([]store.Entry, bool, error) {
- if len(targets) == 0 || len(targets) > store.MaxBulkStatusEntries {
-  return nil, false, store.ErrBulkStatusInvalid
- }
  switch status {
  case "PLANNING", "WATCHING", "COMPLETED", "ON_HOLD", "DROPPED":
  default:
+  return nil, false, store.ErrBulkStatusInvalid
+ }
+ return r.updateTrackerBatch(ctx, targets, func(ctx context.Context, tx pgx.Tx, ownerID string, target store.BulkStatusTarget) (store.Entry, bool, error) {
+  return updateCycleEntry(ctx, tx, ownerID, target.ID, &status, nil, target.ExpectedCycle)
+ })
+}
+
+func (r *Repository) UpdateRatings(ctx context.Context, rating int, targets []store.BulkStatusTarget) ([]store.Entry, bool, error) {
+ if rating < 1 || rating > 5 {
+  return nil, false, store.ErrBulkStatusInvalid
+ }
+ return r.updateTrackerBatch(ctx, targets, func(ctx context.Context, tx pgx.Tx, ownerID string, target store.BulkStatusTarget) (store.Entry, bool, error) {
+  entry, found, err := updateCycleEntry(ctx, tx, ownerID, target.ID, nil, nil, target.ExpectedCycle)
+  if err != nil || !found {
+   return entry, found, err
+  }
+  if err := upsertSeriesRating(ctx, tx, ownerID, entry.AnimeID, rating); err != nil {
+   return store.Entry{}, false, err
+  }
+  entry.Rating = rating
+  return entry, true, nil
+ })
+}
+
+func (r *Repository) updateTrackerBatch(ctx context.Context, targets []store.BulkStatusTarget, edit func(context.Context, pgx.Tx, string, store.BulkStatusTarget) (store.Entry, bool, error)) ([]store.Entry, bool, error) {
+ if len(targets) == 0 || len(targets) > store.MaxBulkStatusEntries {
   return nil, false, store.ErrBulkStatusInvalid
  }
  byID := make(map[string]int, len(targets))
@@ -42,7 +66,7 @@ func (r *Repository) UpdateStatuses(ctx context.Context, status string, targets 
  items := make([]store.Entry, len(targets))
  for _, id := range ids {
   index := byID[id]
-  entry, found, err := updateCycleEntry(ctx, tx, owner.ID, id, &status, nil, targets[index].ExpectedCycle)
+  entry, found, err := edit(ctx, tx, owner.ID, targets[index])
   if err != nil || !found {
    return nil, found, err
   }
