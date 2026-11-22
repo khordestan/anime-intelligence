@@ -176,3 +176,5 @@ Offline Personal Match evaluation reports nDCG and top-k fill rate alongside rec
 Offline Personal Match fixtures can enable overlap-based retrieval with a configurable cap and report held-out recall before ranking. This measures fixture retrieval separately from top-k ranking quality.
 
 The inbox shows the owner's total unread in-app alerts across stored pages, using the same snapshot as the current page. Pending release events are reported separately by the existing materialization status.
+
+Visible dashboards check for release alerts every minute even with the panel collapsed and show an unread badge. Hidden tabs and history views pause scheduled polling.

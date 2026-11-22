@@ -16,7 +16,7 @@ Materialization occurs on authenticated polling; it is not background mail, push
 
 ## Dashboard
 
-Verified accounts can open Manage release alerts, subscribe library titles, select a release track, stop alerts and mark notices read. The panel polls every minute while open on the latest page and has a manual refresh button. Older notifications opens one history page at a time; automatic refresh pauses there until Back to latest alerts is selected. Failed page requests preserve the current page and can be retried. Marking a historical notice read preserves the page. It resets on account changes and rejects stale results. Local mode and unverified accounts do not expose the panel. Credentials and notices are never stored in browser storage.
+Verified accounts can open Manage release alerts, subscribe library titles, select a release track, stop alerts and mark notices read. The visible dashboard polls every minute while viewing the latest page, including while the panel is collapsed. Collapsed polls request notification state only and show the unread total beside the panel button. Opening the panel refreshes subscriptions and the current inbox. The panel has a manual refresh button. Older notifications opens one history page at a time; automatic refresh pauses there until Back to latest alerts is selected. Failed page requests preserve the current page and can be retried. Marking a historical notice read preserves the page. It resets on account changes and rejects stale results. Local mode and unverified accounts do not expose the panel. Credentials and notices are never stored in browser storage.
 
 ## Remaining work
 
@@ -52,3 +52,5 @@ PATCH /api/v1/notifications/read-all marks the caller's existing unread in-app n
 Use GET /api/v1/notifications?unreadOnly=true for an unread-only view across all pages. Keep the filter when requesting nextCursor. The latest page still checks for new release events. History pages only read stored notifications. The dashboard starts at the latest page when changing the filter and keeps the filter during refresh and pagination.
 
 Notification pages include `unreadCount`, the number of the caller's unread in-app notices across all materialized pages. It is computed from the same database snapshot as the page, regardless of filters or cursors, and excludes release events awaiting materialization.
+
+The dashboard pauses scheduled polling while its tab is hidden or a history page is selected. This delivers badges while the dashboard is visible. Delivery when the app is closed still requires a background channel.

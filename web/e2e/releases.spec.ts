@@ -187,3 +187,16 @@ test("the unread alerts filter hides read notices and restores them when cleared
   await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
   await expect(panel.getByText("Unread", { exact: true })).toHaveCount(0);
 });
+
+test("visible dashboard checks for unread release alerts with its panel collapsed", async ({ page }) => {
+  const api = await mockReleases(page);
+  await page.clock.install();
+  await page.goto("/");
+  await login(page, "release-collapsed@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await expect(panel.getByRole("button", { name: "Manage release alerts", exact: true })).toBeVisible();
+  await page.clock.fastForward(61_000);
+  await expect(panel.getByText("Unread alerts: 1", { exact: true })).toBeVisible();
+  expect(api.calls.filter(call => call.path === "/notifications").map(call => call.method)).toEqual(["GET"]);
+  expect(api.calls.some(call => call.path === "/follows")).toBe(false);
+});

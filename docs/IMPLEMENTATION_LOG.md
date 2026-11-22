@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Release badges with the panel collapsed
+
+Extended visible-dashboard polling to display an unread badge when the alerts panel is collapsed. Added a clock-controlled browser regression. Hosted CI is pending.
+
 ## 2026-11-22 — Total unread release alerts
 
 Added a snapshot-consistent owner-wide unread count to notification pages and displayed it in the dashboard. Extended PostgreSQL and mocked browser tests. Hosted CI is pending.
