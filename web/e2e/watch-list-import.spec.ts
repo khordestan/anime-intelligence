@@ -19,6 +19,7 @@ test("watch-list import uploads only after submit and shows added and skipped co
       expiresAt: new Date(Date.now() + 60000).toISOString(),
       user: { id: "synthetic-owner", email: "import@example.test", emailVerified: true },
     });
+    if (path === "/tracker/import/preview") return send({ added: 1, skipped: 0 });
     if (path === "/tracker/import") {
       expect(request.method()).toBe("POST");
       uploads.push(request.postDataJSON());
@@ -36,6 +37,9 @@ test("watch-list import uploads only after submit and shows added and skipped co
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(data)),
   });
+  expect(uploads).toEqual([]);
+  await page.getByRole("button", { name: "Preview import" }).click();
+  await expect(page.getByText("Would add 1. Would skip 0 already in your library.")).toBeVisible();
   expect(uploads).toEqual([]);
   await page.getByRole("button", { name: "Import new titles" }).click();
   await expect(page.getByText("Watch list imported. Added 1. Skipped 0 already in your library.")).toBeVisible();
