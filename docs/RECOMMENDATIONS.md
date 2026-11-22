@@ -31,3 +31,7 @@ Candidate retrieval only uses feature keys that can contribute to the compatibil
 The evaluator also reports binary nDCG@k and fill rate for both rankings. nDCG gives more credit to relevant titles near the top and normalizes by the ideal order at the same cutoff. Fill rate is the number of returned titles divided by k, so a result set with insufficient eligible evidence can be distinguished from a full list with poor relevance.
 
 Set `candidateLimit` on the v1 suite to a value from 1 to 500 to evaluate the retrieval cap as well. The evaluator accepts up to 2,000 fixture candidates per case in this mode. It orders candidates by distinct features that can contribute to the profile score, then by canonical ID, before applying the cap. Fixtures supply already-eligible, current evidence. The report adds the retrieved candidate count and the share of held-out relevant titles retrieved per case, plus mean retrieval recall. The title baseline still uses the full eligible fixture. Omitting the limit preserves ranking-only evaluation.
+
+## Hide a Personal Match
+
+PUT /api/v1/recommendations/dismissals/{animeId} hides a canonical catalog title from the verified caller's Personal Match. DELETE on the same resource restores eligibility. Both operations are idempotent. The dashboard can undo its latest hide during the current session. Migration 000023 and refreshed runtime grants are required.

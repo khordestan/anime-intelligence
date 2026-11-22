@@ -48,3 +48,5 @@ GRANT SELECT(anime_id,provider,external_id) ON anime_external_ids TO anime_runti
 -- Public field provenance only; values, review references, hashes/audits and
 -- unprojected primary payloads stay unreadable through these operator tables.
 GRANT SELECT(anime_id,field,revision,mode,source_id,observed_at) ON catalog_field_choices TO anime_runtime;
+
+GRANT SELECT,INSERT,DELETE ON personal_match_dismissals TO anime_runtime;

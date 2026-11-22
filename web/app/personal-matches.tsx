@@ -10,6 +10,7 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
   const [open, setOpen] = useState(false);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [lastDismissed, setLastDismissed] = useState<Match | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [profile, setProfile] = useState<Signal[]>([]);
   const [busy, setBusy] = useState(false);
@@ -52,6 +53,27 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
     } catch (error) { if (alive.current && current === revision.current) { setMessage("Could not save preference. Try again."); onError(error); } }
     finally { if (alive.current && current === revision.current) setBusy(false); }
   }
+  async function setDismissed(match: Match, dismissed: boolean) {
+    const current = ++revision.current;
+    setBusy(true); setMessage("");
+    try {
+      await client.request("/recommendations/dismissals/" + encodeURIComponent(match.animeId), {
+        method: dismissed ? "PUT" : "DELETE",
+      });
+      if (!alive.current || current !== revision.current) return;
+      setLastDismissed(dismissed ? match : null);
+      if (dismissed) setMatches(currentMatches => currentMatches.filter(item => item.animeId !== match.animeId));
+      await read(current);
+      if (alive.current && current === revision.current) setMessage(dismissed ? "Match hidden." : "Match restored.");
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not finish updating Personal Match. Try refreshing.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
+  }
   const names = new Map(preferences.map(p => [p.key, p.name]));
   const inferred = new Map(profile.filter(p => p.inferred).map(p => [p.key, p.inferred!]));
   return <section aria-label="Personal Match" className="mt-8 rounded-2xl border border-white/10 bg-white/[.03] p-5">
@@ -80,10 +102,12 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
         </li>)}
       </ul>
       <h3 className="mt-5 font-semibold">Personal matches</h3>
+      {lastDismissed && <button type="button" disabled={busy} onClick={() => void setDismissed(lastDismissed, false)} className="mt-2 text-xs underline disabled:opacity-50">Undo hiding {lastDismissed.title}</button>}
       {!busy && matches.length === 0 && <p className="mt-2 text-sm text-slate-400">No supported matches yet. Curated catalog evidence and your preferences or ratings are needed.</p>}
       <ul className="mt-3 space-y-3" aria-label="Personal match results">
         {matches.map(match => <li key={match.animeId} className="rounded-xl bg-white/5 p-3">
           <p className="text-sm font-medium">{match.title} <span className="text-violet-200">{match.score.toFixed(2)} / 100</span></p>
+          <button type="button" disabled={busy} aria-label={"Hide match " + match.title} onClick={() => void setDismissed(match, true)} className="mt-2 text-xs underline disabled:opacity-50">Hide match</button>
           <ul className="mt-2 space-y-1">{match.evidence.map(e => <li key={e.featureKey} className="text-xs text-slate-400">{names.get(e.featureKey) ?? e.featureKey}: {e.direction}</li>)}</ul>
         </li>)}
       </ul>

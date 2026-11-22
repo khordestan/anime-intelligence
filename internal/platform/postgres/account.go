@@ -47,11 +47,15 @@ func (d *DB) exportAccountSnapshot(ctx context.Context, token string) (AccountEx
 	for _, table := range []struct{ key, name string }{
 		{"tracker", "user_anime"}, {"watchCycles", "watch_cycles"}, {"ratings", "user_ratings"}, {"progress", "watch_progress"},
 		{"preferences", "user_preferences"}, {"recommendations", "recommendations"},
-		{"feedback", "recommendation_feedback"}, {"follows", "user_follows"}, {"notifications", "notifications"},
+		{"feedback", "recommendation_feedback"}, {"personalMatchDismissals", "personal_match_dismissals"}, {"follows", "user_follows"}, {"notifications", "notifications"},
 	} {
 		var data []byte
 		// The identifiers come only from this fixed server-owned allowlist.
-		err = tx.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(to_jsonb(item) ORDER BY item.id),'[]'::jsonb) FROM (SELECT * FROM `+pgx.Identifier{table.name}.Sanitize()+` WHERE user_id=$1) item`, u.ID).Scan(&data)
+		orderKey := "id"
+		if table.name == "personal_match_dismissals" {
+			orderKey = "anime_id"
+		}
+		err = tx.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(to_jsonb(item) ORDER BY item.`+pgx.Identifier{orderKey}.Sanitize()+`),'[]'::jsonb) FROM (SELECT * FROM `+pgx.Identifier{table.name}.Sanitize()+` WHERE user_id=$1) item`, u.ID).Scan(&data)
 		if err != nil {
 			return AccountExport{}, err
 		}

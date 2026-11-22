@@ -168,6 +168,7 @@ func recommendationCandidates(ctx context.Context, tx pgx.Tx, ownerID string, ke
 		FROM anime_feature_observations o JOIN anime_features f ON f.id=o.feature_id
 		WHERE f.feature_key=ANY($2::text[]) AND `+eligibleRecommendationObservation+`
 		AND NOT EXISTS (SELECT 1 FROM user_anime ua WHERE ua.user_id=$1 AND ua.anime_id=o.anime_id)
+		AND NOT EXISTS (SELECT 1 FROM personal_match_dismissals d WHERE d.user_id=$1 AND d.anime_id=o.anime_id)
 		GROUP BY o.anime_id
 	)
 	SELECT a.id::text,a.canonical_title FROM supported JOIN anime a ON a.id=supported.anime_id
@@ -223,4 +224,30 @@ func recommendationFeatures(ctx context.Context, tx pgx.Tx, ids []string) (map[s
 		features[id] = append(features[id], feature)
 	}
 	return features, rows.Err()
+}
+
+func (r *Repository) SetPersonalMatchDismissed(ctx context.Context, animeID string, dismissed bool) (bool, error) {
+	tx, owner, err := r.db.productTx(ctx, r.token)
+	if err != nil {
+		return false, err
+	}
+	defer rollback(tx)
+	if dismissed {
+		var found bool
+		err = tx.QueryRow(ctx, `WITH title AS (
+			SELECT id FROM anime WHERE id=$2
+		), added AS (
+			INSERT INTO personal_match_dismissals(user_id,anime_id)
+			SELECT $1,id FROM title ON CONFLICT (user_id,anime_id) DO NOTHING
+		)
+		SELECT EXISTS(SELECT 1 FROM title)`, owner.ID, animeID).Scan(&found)
+		if err != nil || !found {
+			return false, err
+		}
+	} else {
+		if _, err = tx.Exec(ctx, `DELETE FROM personal_match_dismissals WHERE user_id=$1 AND anime_id=$2`, owner.ID, animeID); err != nil {
+			return false, err
+		}
+	}
+	return true, tx.Commit(ctx)
 }

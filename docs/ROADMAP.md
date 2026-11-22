@@ -126,6 +126,7 @@
 ## Milestone 6 — AI and discovery
 - [ ] Tool-constrained AI analyst
 - [ ] Evidence-grounded explanations
+- [x] Owner-scoped Personal Match dismissals and dashboard undo
 - [ ] Discovery feedback experience
 - [ ] LLM provider abstraction and usage controls
 
