@@ -12,6 +12,7 @@ import CatalogFilters, { emptyCatalogFilters, type CatalogFilterValues } from ".
 import PersonalMatches from "./personal-matches";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
+import { downloadJSON } from "../lib/download";
 import { RecoveryFlow, VerificationRequest } from "./identity-actions";
 
 import {
@@ -356,6 +357,22 @@ export default function Home() {
   async function rate(e: Entry, score: number) {
     await mutate("/ratings/" + e.animeId, "PUT", { score });
   }
+  async function downloadWatchList() {
+    if (busy) return;
+    const account = accountRevision.current;
+    setBusy(true);
+    setError("");
+    try {
+      const data = await client.request<unknown>("/tracker/export");
+      if (account === accountRevision.current) {
+        downloadJSON("anime-intelligence-watch-list.json", data);
+      }
+    } catch (error) {
+      if (account === accountRevision.current) handleError(error);
+    } finally {
+      if (account === accountRevision.current) setBusy(false);
+    }
+  }
   async function applyBulkStatus() {
     if (busy || !bulkEntries?.length || !bulkStatus) return;
     const account = accountRevision.current;
@@ -622,6 +639,11 @@ export default function Home() {
       <section aria-label="My Library" className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-2xl font-semibold">My Library</h2>
+          {mode === "postgres" && canEdit && (
+            <button type="button" disabled={busy} onClick={() => void downloadWatchList()} className="text-sm text-violet-200 underline disabled:opacity-50">
+              Download watch list
+            </button>
+          )}
           <button
             onClick={() => void refresh()}
             className="text-sm text-slate-400 underline"

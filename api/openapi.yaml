@@ -48,7 +48,8 @@ paths:
               schema: { type: string, const: no-store }
   /api/v1/anime:
     get:
-      summary: Search catalog
+      summary: Search or browse the public catalog
+      description: Supply cursor=start for the first cursor page. Keep the same filters and sort when using nextCursor. Cursor and offset are mutually exclusive.
       parameters:
         - in: query
           name: q
@@ -58,7 +59,13 @@ paths:
           schema: { type: integer, minimum: 1, maximum: 100, default: 24 }
         - in: query
           name: offset
-          schema: { type: integer, minimum: 0, default: 0 }
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+        - in: query
+          name: cursor
+          schema: { type: string, minLength: 1, maxLength: 16384 }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [TITLE, NEWEST, OLDEST], default: TITLE }
       responses:
         "200":
           description: Catalog page
@@ -66,7 +73,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [items, limit, offset, count]
+                required: [items, limit, count]
                 properties:
                   items:
                     type: array
@@ -74,6 +81,10 @@ paths:
                   limit: { type: integer }
                   offset: { type: integer }
                   count: { type: integer }
+                  nextOffset: { type: integer }
+                  previousOffset: { type: integer }
+                  nextCursor: { type: string }
+        "400": { description: Invalid filter or cursor }
   /api/v1/anime/lookup:
     get:
       summary: Resolve an exact public provider identity
@@ -421,6 +432,95 @@ paths:
         "201": { description: Library entry created }
         "401": { description: Missing or invalid session in PostgreSQL mode }
         "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
+  /api/v1/tracker/export:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Download the caller's current watch list
+      description: Verified PostgreSQL accounts can export current catalog IDs, statuses, episode progress and series ratings as a JSON attachment.
+      responses:
+        "200":
+          description: Versioned watch list attachment
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version, entries]
+                properties:
+                  version: { type: integer, enum: [1] }
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      required: [animeId, title, watchStatus, episodesWatched, watchedEpisodeNumbers, rating]
+                      properties:
+                        animeId: { type: string, format: uuid }
+                        title: { type: string }
+                        watchStatus: { type: string }
+                        episodesWatched: { type: integer }
+                        watchedEpisodeNumbers:
+                          type: [array, 'null']
+                          items: { type: integer }
+                        rating: { type: [integer, 'null'] }
+        "401": { description: Missing or invalid session }
+        "403": { description: Email verification required }
+        "500": { description: Export failed }
+  /api/v1/tracker/bulk-status:
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Update multiple owned tracker statuses atomically
+      description: PostgreSQL mode requires verified email. Each target must match its current viewing pass. The response preserves request order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [watchStatus, entries]
+              properties:
+                watchStatus: { type: string, enum: [PLANNING, WATCHING, COMPLETED, ON_HOLD, DROPPED] }
+                entries:
+                  type: array
+                  minItems: 1
+                  maxItems: 25
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, expectedCycle]
+                    properties:
+                      id: { type: string, format: uuid }
+                      expectedCycle: { type: integer, minimum: 1, maximum: 1000 }
+      responses:
+        "200":
+          description: Updated library entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, animeId, title, watchStatus, episodesWatched, exactProgress, watchCycle, updatedAt]
+                      properties:
+                        id: { type: string, format: uuid }
+                        animeId: { type: string, format: uuid }
+                        title: { type: string }
+                        watchStatus: { type: string }
+                        episodesWatched: { type: integer }
+                        exactProgress: { type: boolean }
+                        watchCycle: { type: integer }
+                        updatedAt: { type: string, format: date-time }
+                        totalEpisodes: { type: integer }
+                        rating: { type: integer }
+        "400": { description: Invalid status or targets }
+        "401": { description: Missing or invalid session }
+        "403": { description: Email verification required }
+        "404": { description: An entry is missing or foreign }
+        "409": { description: A viewing pass changed }
+        "500": { description: Bulk update failed and rolled back }
   /api/v1/tracker/{id}:
     delete:
       security: [{ bearerAuth: [] }]

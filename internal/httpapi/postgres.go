@@ -15,6 +15,7 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/password"
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
+	"github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 
 // NewPostgresRouter never registers the unauthenticated local-store routes.
@@ -228,6 +229,22 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 			fn(w, r, token, user)
 		})
 	}
+	mux.HandleFunc("GET /api/v1/tracker/export", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		export, err := db.Repository(token).ExportWatchList(r.Context())
+		switch {
+		case errors.Is(err, store.ErrUnauthorized):
+			authError(w, 401, "unauthorized")
+			return
+		case errors.Is(err, store.ErrEmailUnverified):
+			authError(w, 403, "email_verification_required")
+			return
+		case err != nil:
+			authError(w, 500, "watch_list_export_failed")
+			return
+		}
+		w.Header().Set("Content-Disposition", `attachment; filename="anime-intelligence-watch-list.json"`)
+		writeJSON(w, 200, export)
+	}))
 	mux.HandleFunc("GET /api/v1/tracker", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).List(w, r)
 	}))
