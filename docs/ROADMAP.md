@@ -115,7 +115,8 @@
 - [x] Deterministic Personal Match ranking core (pure Go, explainable, unit-tested)
 - [x] Verified-owner PostgreSQL Personal Match API with conservative curated non-spoiler evidence
 - [x] Preference editing and evidence-backed Personal Match dashboard
-- [ ] Richer curated evidence coverage and candidate retrieval
+- [x] Candidate retrieval by profile overlap with eligible curated evidence
+- [ ] Richer curated evidence coverage and retrieval evaluation
 - [ ] Personal Match, Global Essentials and Discovery lanes
 - [ ] Feedback learning and offline evaluation
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"sort"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -92,6 +93,8 @@ ON CONFLICT(user_id,feature_id,origin) DO UPDATE SET preference_weight=excluded.
 	return true,tx.Commit(ctx)
 }
 func(r *Repository) PersonalMatches(ctx context.Context,limit int)(PersonalMatches,error){
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	return retrySnapshotRead(ctx,func()(PersonalMatches,error){return r.personalMatchesSnapshot(ctx,limit)})
 }
 func(r *Repository) personalMatchesSnapshot(ctx context.Context,limit int)(PersonalMatches,error){
@@ -119,37 +122,18 @@ JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECL
 		rated=append(rated,a)
 	}
 	rows.Close();if err=rows.Err();err!=nil{return out,err}
-	rows,err=tx.Query(ctx,`SELECT a.id::text,a.canonical_title FROM anime a WHERE NOT EXISTS
-(SELECT 1 FROM user_anime ua WHERE ua.user_id=$1 AND ua.anime_id=a.id) ORDER BY a.canonical_title,a.id LIMIT 500`,u.ID)
-	if err!=nil{return out,err}
-	candidates:=[]intelligence.Candidate{}
-	ids:=[]string{}
-	for rows.Next(){
-		var a intelligence.Candidate
-		if err=rows.Scan(&a.AnimeID,&a.Title);err!=nil{rows.Close();return out,err}
-		candidates=append(candidates,a);ids=append(ids,a.AnimeID)
+	ratedIDs := make([]string, 0, len(rated))
+	for _, anime := range rated {
+		ratedIDs = append(ratedIDs, anime.AnimeID)
 	}
-	rows.Close();if err=rows.Err();err!=nil{return out,err}
-	for _,a:=range rated{ids=append(ids,a.AnimeID)}
-	// Only current, referenced, curated series-level non-spoiler observations
-	// participate. Provider genres/tags and model guesses are not feature scores.
-	rows,err=tx.Query(ctx,`SELECT DISTINCT ON(o.anime_id,o.feature_id) o.anime_id::text,f.feature_key,o.value::float8,o.confidence::float8
-FROM anime_feature_observations o JOIN anime_features f ON f.id=o.feature_id
-WHERE o.anime_id=ANY($1::uuid[]) AND f.active AND NOT f.spoiler_sensitive AND o.source_kind='CURATED'
-AND o.scope='SERIES' AND o.spoiler_level='NONE' AND o.observed_at<=now() AND o.confidence>0
-AND jsonb_typeof(o.evidence->'reference')='string' AND length(btrim(o.evidence->>'reference')) BETWEEN 1 AND 2048
-ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC`,ids)
-	if err!=nil{return out,err}
-	features:=map[string][]intelligence.FeatureValue{}
-	for rows.Next(){
-		var id string;var feature intelligence.FeatureValue
-		if err=rows.Scan(&id,&feature.Key,&feature.Value,&feature.Confidence);err!=nil{rows.Close();return out,err}
-		features[id]=append(features[id],feature)
+	features, err := recommendationFeatures(ctx, tx, ratedIDs)
+	if err != nil {
+		return out, err
 	}
-	rows.Close();if err=rows.Err();err!=nil{return out,err}
-	for i:=range rated{rated[i].Features=features[rated[i].AnimeID]}
-	for i:=range candidates{candidates[i].Features=features[candidates[i].AnimeID]}
-	profile:=intelligence.BuildTasteProfile(rated,explicit)
+	for i := range rated {
+		rated[i].Features = features[rated[i].AnimeID]
+	}
+	profile := intelligence.BuildTasteProfile(rated, explicit)
 	keys:=map[string]bool{}
 	for key:=range profile.Explicit{keys[key]=true}
 	for key:=range profile.Inferred{keys[key]=true}
@@ -163,6 +147,83 @@ ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC`,ids)
 		if p,ok:=profile.Inferred[key];ok{signal.Inferred=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence}}
 		out.Profile=append(out.Profile,signal)
 	}
-	out.Items=intelligence.RankPersonalMatches(profile,candidates,nil,intelligence.Options{Limit:limit})
+	if len(keys) != 0 {
+		candidates, err := recommendationCandidates(ctx, tx, u.ID, keys, out.CandidateLimit)
+		if err != nil {
+			return out, err
+		}
+		out.Items = intelligence.RankPersonalMatches(profile, candidates, nil, intelligence.Options{Limit: limit})
+	}
 	return out,tx.Commit(ctx)
+}
+
+const eligibleRecommendationObservation = `f.active AND NOT f.spoiler_sensitive AND o.source_kind='CURATED'
+	AND o.scope='SERIES' AND o.spoiler_level='NONE' AND o.observed_at<=now() AND o.confidence>0
+	AND jsonb_typeof(o.evidence->'reference')='string' AND length(btrim(o.evidence->>'reference')) BETWEEN 1 AND 2048`
+
+func recommendationCandidates(ctx context.Context, tx pgx.Tx, ownerID string, profileKeys map[string]bool, limit int) ([]intelligence.Candidate, error) {
+	keys := make([]string, 0, len(profileKeys))
+	for key := range profileKeys {
+		keys = append(keys, key)
+	}
+	rows, err := tx.Query(ctx, `WITH supported AS (
+		SELECT o.anime_id, count(DISTINCT o.feature_id) AS overlap
+		FROM anime_feature_observations o JOIN anime_features f ON f.id=o.feature_id
+		WHERE f.feature_key=ANY($2::text[]) AND `+eligibleRecommendationObservation+`
+		AND NOT EXISTS (SELECT 1 FROM user_anime ua WHERE ua.user_id=$1 AND ua.anime_id=o.anime_id)
+		GROUP BY o.anime_id
+	)
+	SELECT a.id::text,a.canonical_title FROM supported JOIN anime a ON a.id=supported.anime_id
+	ORDER BY supported.overlap DESC,a.id LIMIT $3`, ownerID, keys, limit)
+	if err != nil {
+		return nil, err
+	}
+	var candidates []intelligence.Candidate
+	var ids []string
+	for rows.Next() {
+		var candidate intelligence.Candidate
+		if err := rows.Scan(&candidate.AnimeID, &candidate.Title); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		candidates = append(candidates, candidate)
+		ids = append(ids, candidate.AnimeID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	features, err := recommendationFeatures(ctx, tx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range candidates {
+		candidates[i].Features = features[candidates[i].AnimeID]
+	}
+	return candidates, nil
+}
+
+func recommendationFeatures(ctx context.Context, tx pgx.Tx, ids []string) (map[string][]intelligence.FeatureValue, error) {
+	features := make(map[string][]intelligence.FeatureValue)
+	if len(ids) == 0 {
+		return features, nil
+	}
+	rows, err := tx.Query(ctx, `SELECT DISTINCT ON(o.anime_id,o.feature_id)
+		o.anime_id::text,f.feature_key,o.value::float8,o.confidence::float8
+		FROM anime_feature_observations o JOIN anime_features f ON f.id=o.feature_id
+		WHERE o.anime_id=ANY($1::uuid[]) AND `+eligibleRecommendationObservation+`
+		ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var feature intelligence.FeatureValue
+		if err := rows.Scan(&id,&feature.Key,&feature.Value,&feature.Confidence); err != nil {
+			return nil, err
+		}
+		features[id] = append(features[id], feature)
+	}
+	return features, rows.Err()
 }
