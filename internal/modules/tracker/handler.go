@@ -256,6 +256,38 @@ func (h *Handler) BulkStatus(w http.ResponseWriter, r *http.Request) {
   return
  }
  items, found, err := data.UpdateStatuses(r.Context(), strings.ToUpper(request.Status), request.Entries)
+ writeBulkEditResult(w, items, found, err, invalid)
+}
+
+func (h *Handler) BulkRating(w http.ResponseWriter, r *http.Request) {
+ var request struct {
+  Score int `json:"score"`
+  Entries []store.BulkStatusTarget `json:"entries"`
+ }
+ invalid := func() {
+  writeError(w, 400, "invalid_bulk_tracker_rating", "Provide a rating from 1 to 5 and up to 25 entry IDs with their viewing passes")
+ }
+ if decode(w, r, &request) != nil || request.Score < 1 || request.Score > 5 ||
+  len(request.Entries) == 0 || len(request.Entries) > store.MaxBulkStatusEntries {
+  invalid()
+  return
+ }
+ for _, target := range request.Entries {
+  if !validUUID(target.ID) {
+   invalid()
+   return
+  }
+ }
+ data, ok := h.data.(store.BulkRatingTracker)
+ if !ok {
+  writeError(w, 503, "tracker_unavailable", "Bulk rating edits are unavailable")
+  return
+ }
+ items, found, err := data.UpdateRatings(r.Context(), request.Score, request.Entries)
+ writeBulkEditResult(w, items, found, err, invalid)
+}
+
+func writeBulkEditResult(w http.ResponseWriter, items []store.Entry, found bool, err error, invalid func()) {
  switch {
  case errors.Is(err, store.ErrBulkStatusInvalid):
   invalid()

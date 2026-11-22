@@ -39,13 +39,13 @@ func TestBulkTrackerStatusRollbackAndIsolation(t *testing.T) {
   t.Fatal(err)
  }
  router := httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), db)
- call := func(token string, targets []store.BulkStatusTarget, want int) *httptest.ResponseRecorder {
+ request := func(path, token string, fields map[string]any, want int) *httptest.ResponseRecorder {
   t.Helper()
-  body, err := json.Marshal(map[string]any{"watchStatus": "ON_HOLD", "entries": targets})
+  body, err := json.Marshal(fields)
   if err != nil {
    t.Fatal(err)
   }
-  req := httptest.NewRequest("PATCH", "/api/v1/tracker/bulk-status", bytes.NewReader(body))
+  req := httptest.NewRequest("PATCH", path, bytes.NewReader(body))
   req.Header.Set("Authorization", "Bearer "+token)
   response := httptest.NewRecorder()
   router.ServeHTTP(response, req)
@@ -53,6 +53,10 @@ func TestBulkTrackerStatusRollbackAndIsolation(t *testing.T) {
    t.Fatalf("status=%d want=%d body=%s", response.Code, want, response.Body.String())
   }
   return response
+ }
+ call := func(token string, targets []store.BulkStatusTarget, want int) *httptest.ResponseRecorder {
+  t.Helper()
+  return request("/api/v1/tracker/bulk-status", token, map[string]any{"watchStatus": "ON_HOLD", "entries": targets}, want)
  }
  targets := []store.BulkStatusTarget{{ID: first.ID, ExpectedCycle: 1}, {ID: second.ID, ExpectedCycle: 1}}
  sort.Slice(targets, func(i, j int) bool { return targets[i].ID < targets[j].ID })
@@ -81,5 +85,31 @@ func TestBulkTrackerStatusRollbackAndIsolation(t *testing.T) {
   if entry.ID != targets[i].ID || entry.WatchStatus != "ON_HOLD" || (entry.ID == first.ID && (!entry.ExactProgress || entry.EpisodesWatched != 2)) {
    t.Fatalf("unexpected updated entry: %+v", entry)
   }
+ }
+
+ rate := func(token string, targets []store.BulkStatusTarget, score, want int) *httptest.ResponseRecorder {
+  t.Helper()
+  return request("/api/v1/tracker/bulk-rating", token, map[string]any{"score": score, "entries": targets}, want)
+ }
+ rate(two.Token, targets, 5, 404)
+ rate(one.Token, targets, 6, 400)
+ rate(one.Token, stale, 4, 409)
+ rows, err = a.Library(ctx)
+ if err != nil || len(rows) != 2 || rows[0].Rating != 0 || rows[1].Rating != 0 {
+  t.Fatalf("stale rating batch persisted: %v err=%v", rows, err)
+ }
+ response = rate(one.Token, targets, 4, 200)
+ if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil || len(body.Items) != 2 {
+  t.Fatalf("response=%s err=%v", response.Body.String(), err)
+ }
+ for i, entry := range body.Items {
+  if entry.ID != targets[i].ID || entry.WatchStatus != "ON_HOLD" || entry.Rating != 4 ||
+    (entry.ID == first.ID && (!entry.ExactProgress || entry.EpisodesWatched != 2)) {
+   t.Fatalf("unexpected rated entry: %+v", entry)
+  }
+ }
+ rows, err = a.Library(ctx)
+ if err != nil || len(rows) != 2 || rows[0].Rating != 4 || rows[1].Rating != 4 {
+  t.Fatalf("ratings did not persist: %v err=%v", rows, err)
  }
 }
