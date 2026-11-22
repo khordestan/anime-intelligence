@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-22 — Total unread release alerts
+
+Added a snapshot-consistent owner-wide unread count to notification pages and displayed it in the dashboard. Extended PostgreSQL and mocked browser tests. Hosted CI is pending.
+
 ## 2026-11-22 — Recommendation retrieval evaluation
 
 Added opt-in evaluation of the evidence-overlap stage and candidate cap, with per-case retrieval counts and macro recall. Added a regression that exercises cap loss, neutral evidence and disabled retrieval mode. Hosted CI is pending.

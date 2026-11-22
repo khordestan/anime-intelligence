@@ -50,3 +50,5 @@ PATCH /api/v1/notifications/read-all marks the caller's existing unread in-app n
 ## Unread notifications
 
 Use GET /api/v1/notifications?unreadOnly=true for an unread-only view across all pages. Keep the filter when requesting nextCursor. The latest page still checks for new release events. History pages only read stored notifications. The dashboard starts at the latest page when changing the filter and keeps the filter during refresh and pagination.
+
+Notification pages include `unreadCount`, the number of the caller's unread in-app notices across all materialized pages. It is computed from the same database snapshot as the page, regardless of filters or cursors, and excludes release events awaiting materialization.

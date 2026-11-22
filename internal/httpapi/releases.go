@@ -59,7 +59,7 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 		}
 		page,err:=db.Repository(token).FilterNotificationHistory(r.Context(),query.Get("cursor"),unreadOnly)
 		if err!=nil {releaseError(w,err);return}
-		response:=map[string]any{"items":page.Items,"count":len(page.Items),"limit":100,"nextCursor":page.NextCursor}
+		response:=map[string]any{"items":page.Items,"count":len(page.Items),"unreadCount":page.UnreadCount,"limit":100,"nextCursor":page.NextCursor}
 		if page.Materialization!=nil{response["materialization"]=page.Materialization}
 		writeJSON(w,200,response)
 	}))

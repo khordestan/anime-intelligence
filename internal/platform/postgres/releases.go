@@ -89,6 +89,7 @@ type NotificationMaterialization struct {
  HasMore bool `json:"hasMore"`
 }
 type NotificationPage struct {
+	UnreadCount int64 `json:"unreadCount"`
  Materialization *NotificationMaterialization `json:"materialization,omitempty"`
 	Items []Notification `json:"items"`
 	NextCursor string `json:"nextCursor,omitempty"`
@@ -168,14 +169,34 @@ SELECT (SELECT count(*) FROM inserted),(SELECT count(*) FROM eligible)>100`,u.ID
  if err==nil{out.Materialization=&status}
 	if err!=nil {return out,err}
 	}
-	rows,err:=tx.Query(ctx,`SELECT id::text,title,body,read_at,created_at FROM notifications
-WHERE user_id=$1 AND channel='IN_APP' AND (NOT $4::boolean OR read_at IS NULL) AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
-ORDER BY created_at DESC,id DESC LIMIT 101`,u.ID,before,beforeID,unreadOnly)
-	if err!=nil {return out,err}
+	rows, err := tx.Query(ctx, `SELECT page.id::text,page.title,page.body,page.read_at,page.created_at,total.unread
+	FROM (
+		SELECT count(*) AS unread FROM notifications
+		WHERE user_id=$1 AND channel='IN_APP' AND read_at IS NULL
+	) total
+	LEFT JOIN LATERAL (
+		SELECT id,title,body,read_at,created_at FROM notifications
+		WHERE user_id=$1 AND channel='IN_APP' AND (NOT $4::boolean OR read_at IS NULL)
+		  AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
+		ORDER BY created_at DESC,id DESC LIMIT 101
+	) page ON true
+	ORDER BY page.created_at DESC,page.id DESC`, u.ID, before, beforeID, unreadOnly)
+	if err != nil {
+		return out, err
+	}
 	for rows.Next() {
-		var n Notification
-		if err=rows.Scan(&n.ID,&n.Title,&n.Body,&n.ReadAt,&n.CreatedAt);err!=nil {rows.Close();return out,err}
-		out.Items=append(out.Items,n)
+		var id, title, body *string
+		var createdAt, readAt *time.Time
+		if err = rows.Scan(&id, &title, &body, &readAt, &createdAt, &out.UnreadCount); err != nil {
+			rows.Close()
+			return out, err
+		}
+		// An empty page still returns the account-wide total from the same snapshot.
+		if id != nil {
+			out.Items = append(out.Items, Notification{
+				ID: *id, Title: *title, Body: *body, ReadAt: readAt, CreatedAt: *createdAt,
+			})
+		}
 	}
 	rows.Close()
 	if err=rows.Err();err!=nil {return out,err}
