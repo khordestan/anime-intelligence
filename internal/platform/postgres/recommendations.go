@@ -304,15 +304,35 @@ type DiscoveryTitle struct {
 
 // DiscoverTitles offers eligible catalog titles even before a taste profile exists.
 func (r *Repository) DiscoverTitles(ctx context.Context, limit int) ([]DiscoveryTitle, error) {
+	page, err := r.DiscoverPage(ctx, limit, nil)
+	return page.Items, err
+}
+
+type DiscoveryCursor struct {
+	AnimeID string `json:"animeId"`
+	EvidenceCount int `json:"evidenceCount"`
+}
+
+type DiscoveryPage struct {
+	Items []DiscoveryTitle `json:"items"`
+	NextCursor *DiscoveryCursor `json:"nextCursor,omitempty"`
+}
+
+func (r *Repository) DiscoverPage(ctx context.Context, limit int, after *DiscoveryCursor) (DiscoveryPage, error) {
 	if limit < 1 || limit > 50 {
 		limit = 20
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	return retrySnapshotRead(ctx, func() ([]DiscoveryTitle, error) {
+	var afterID string
+	var afterCount int
+	if after != nil {
+		afterID, afterCount = after.AnimeID, after.EvidenceCount
+	}
+	return retrySnapshotRead(ctx, func() (DiscoveryPage, error) {
 		tx, owner, err := r.verifiedSnapshotTx(ctx)
 		if err != nil {
-			return nil, err
+			return DiscoveryPage{}, err
 		}
 		defer rollback(tx)
 		rows, err := tx.Query(ctx, `WITH latest AS (
@@ -327,22 +347,29 @@ func (r *Repository) DiscoverTitles(ctx context.Context, limit int) ([]Discovery
 		)
 		SELECT a.id::text,a.canonical_title,s.feature_count
 		FROM supported s JOIN anime a ON a.id=s.anime_id
-		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit)
+		WHERE $3::bigint=0 OR s.feature_count<$3 OR (s.feature_count=$3 AND a.id>NULLIF($4,'')::uuid)
+		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID)
 		if err != nil {
-			return nil, err
+			return DiscoveryPage{}, err
 		}
 		defer rows.Close()
 		items := []DiscoveryTitle{}
 		for rows.Next() {
 			var item DiscoveryTitle
 			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount); err != nil {
-				return nil, err
+				return DiscoveryPage{}, err
 			}
 			items = append(items, item)
 		}
 		if err := rows.Err(); err != nil {
-			return nil, err
+			return DiscoveryPage{}, err
 		}
-		return items, tx.Commit(ctx)
+		page := DiscoveryPage{Items: items}
+		if len(items) > limit {
+			last := items[limit-1]
+			page.Items = items[:limit]
+			page.NextCursor = &DiscoveryCursor{AnimeID: last.AnimeID, EvidenceCount: last.EvidenceCount}
+		}
+		return page, tx.Commit(ctx)
 	})
 }

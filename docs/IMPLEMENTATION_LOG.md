@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-23 — Discovery pagination
+
+Added a cursor for Discovery and a dashboard load-more action. Extended PostgreSQL coverage for stable pagination across tied evidence counts. Hosted CI is pending.
+
 ## 2026-11-23 — Plan to watch from recommendations
 
 Added the dashboard action using the existing add-only import and refreshed the library after a successful save. Fixed the Discovery load signature reported by TypeScript CI. Added a browser regression. Hosted CI is pending.

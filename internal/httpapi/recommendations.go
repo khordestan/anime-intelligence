@@ -72,12 +72,23 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 	mux.HandleFunc("DELETE /api/v1/recommendations/dismissals/{id}", setDismissed(false))
 	mux.HandleFunc("GET /api/v1/recommendations/discovery", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		items, err := db.Repository(token).DiscoverTitles(r.Context(), limit)
+		query := r.URL.Query()
+		var cursor *postgres.DiscoveryCursor
+		if query.Has("after") || query.Has("afterCount") {
+			id := query.Get("after")
+			count, err := strconv.Atoi(query.Get("afterCount"))
+			if err != nil || count < 1 || !validSessionID(id) || len(query["after"]) != 1 || len(query["afterCount"]) != 1 {
+				authError(w, 400, "invalid_discovery_cursor")
+				return
+			}
+			cursor = &postgres.DiscoveryCursor{AnimeID: id, EvidenceCount: count}
+		}
+		page, err := db.Repository(token).DiscoverPage(r.Context(), limit, cursor)
 		if err != nil {
 			matchError(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"items": items})
+		writeJSON(w, 200, page)
 	}))
 	mux.HandleFunc("GET /api/v1/recommendations",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		limit,err:=strconv.Atoi(r.URL.Query().Get("limit"))
