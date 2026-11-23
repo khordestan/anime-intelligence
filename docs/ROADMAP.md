@@ -119,7 +119,8 @@
 - [x] Candidate retrieval by profile overlap with eligible curated evidence
 - [x] Offline retrieval-cap evaluation on held-out judgments
 - [ ] Richer curated evidence coverage and representative retrieval evaluation
-- [ ] Personal Match, Global Essentials and Discovery lanes
+- [x] Evidence-backed cold-start Discovery lane
+- [ ] Global Essentials lane and richer Discovery ranking
 - [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline
 - [ ] Feedback learning and representative evaluation datasets
 

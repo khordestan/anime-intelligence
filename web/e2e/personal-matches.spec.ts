@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function mockMatches(page: Page, hold = false) {
   let issued = 0;
+  const planned = new Set<string>();
   const dismissed = new Set<string>();
   const preferences = new Map<string, number | null>();
   const calls: { path: string; token: string; body: unknown }[] = [];
@@ -35,6 +36,11 @@ async function mockMatches(page: Page, hold = false) {
       else dismissed.add(token);
       return route.fulfill({ status: 204, headers });
     }
+    if (path === "/tracker/import") {
+      planned.add(token);
+      return respond({ added: 1, skipped: 0 });
+    }
+    if (path === "/recommendations/discovery") return respond({ items: (planned.has(token) || dismissed.has(token)) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 1 }] });
     if (path === "/recommendations") {
       const items = preferences.get(token) === null || dismissed.has(token) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
       if (hold && token.endsWith("1")) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
@@ -96,4 +102,33 @@ test("Personal Match can restore a hidden title from the saved list", async ({ p
   await panel.getByRole("button", { name: "Restore match Synthetic account match", exact: true }).click();
   await expect(panel.getByText("Match restored.", { exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: "Hide match Synthetic account match", exact: true })).toBeVisible();
+});
+
+test("Discovery works before adding preferences and respects hidden titles", async ({ page }) => {
+  await mockMatches(page);
+  await page.goto("/");
+  await login(page, "discovery@example.test");
+  const panel = page.getByRole("region", { name: "Personal Match", exact: true });
+  await panel.getByRole("button", { name: "Personal Match settings", exact: true }).click();
+  await expect(panel.getByText(/No supported matches yet/)).toBeVisible();
+  await panel.getByRole("button", { name: "Explore titles", exact: true }).click();
+  const discovery = panel.getByRole("region", { name: "Discovery titles" });
+  await expect(discovery.getByText("1 supported feature")).toBeVisible();
+  await discovery.getByRole("button", { name: "Hide discovery title Synthetic account match" }).click();
+  await expect(discovery.getByText("No eligible discovery titles yet.")).toBeVisible();
+});
+
+test("planning a discovery title uses add-only import", async ({ page }) => {
+  const api = await mockMatches(page);
+  await page.goto("/");
+  await login(page, "discovery-planning@example.test");
+  const panel = page.getByRole("region", { name: "Personal Match", exact: true });
+  await panel.getByRole("button", { name: "Personal Match settings", exact: true }).click();
+  await panel.getByRole("button", { name: "Explore titles", exact: true }).click();
+  await panel.getByRole("button", { name: "Plan to watch Synthetic account match" }).click();
+  await expect(panel.getByText("Added to your library as Planning.", { exact: true })).toBeVisible();
+  expect(api.calls.find(call => call.path === "/tracker/import")?.body).toEqual({
+    version: 1, entries: [{ animeId: "synthetic-match", watchStatus: "PLANNING" }],
+  });
+  await expect(panel.getByText("No eligible discovery titles yet.")).toBeVisible();
 });

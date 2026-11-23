@@ -44,6 +44,10 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	for _,repo:=range []interface{Add(context.Context,string,string,int)(store.Entry,error)}{a,b}{
 		if _,err:=repo.Add(ctx,watched,"COMPLETED",12);err!=nil{t.Fatal(err)}
 	}
+	discovered, err := a.DiscoverTitles(ctx, 20)
+	if err != nil || len(discovered) != 2 || discovered[0].AnimeID != strong || discovered[1].AnimeID != weak || discovered[0].EvidenceCount != 1 {
+		t.Fatalf("cold-start discovery: %+v err=%v", discovered, err)
+	}
 	positive,negative:=1.0,-1.0
 	if ok,err:=a.SetFeaturePreference(ctx,"synthetic.power",&positive);err!=nil||!ok{t.Fatal(err)}
 	if ok,err:=b.SetFeaturePreference(ctx,"synthetic.power",&negative);err!=nil||!ok{t.Fatal(err)}
@@ -92,6 +96,15 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if page, err := b.PersonalMatches(ctx, 20); err != nil || len(page.Items) != 2 {
 		t.Fatalf("another owner's match was dismissed: %+v err=%v", page, err)
 	}
+	discovered, err = a.DiscoverTitles(ctx, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, candidate := range discovered {
+		if candidate.AnimeID == strong {
+			t.Fatal("dismissed title appeared in Discovery")
+		}
+	}
 	dismissals, err := a.PersonalMatchDismissals(ctx, "")
 	if err != nil || len(dismissals.Items) != 1 || dismissals.Items[0].AnimeID != strong {
 		t.Fatalf("owned dismissals: %+v err=%v", dismissals, err)
@@ -132,7 +145,7 @@ func TestRecommendationRoutesRejectOwnerOverrides(t *testing.T){
 		r:=httptest.NewRequest(method,path,strings.NewReader(body));if token!=""{r.Header.Set("Authorization","Bearer "+token)}
 		w:=httptest.NewRecorder();h.ServeHTTP(w,r);return w
 	}
-	for _,spec:=range [][2]string{{"GET","/api/v1/recommendations"},{"GET","/api/v1/recommendations/dismissals"},{"PUT","/api/v1/recommendations/dismissals/10000000-0000-4000-8000-000000000001"},{"DELETE","/api/v1/recommendations/dismissals/10000000-0000-4000-8000-000000000001"},{"GET","/api/v1/preferences"},{"PUT","/api/v1/preferences/missing"},{"DELETE","/api/v1/preferences/missing"}}{
+	for _,spec:=range [][2]string{{"GET","/api/v1/recommendations"},{"GET","/api/v1/recommendations/discovery"},{"GET","/api/v1/recommendations/dismissals"},{"PUT","/api/v1/recommendations/dismissals/10000000-0000-4000-8000-000000000001"},{"DELETE","/api/v1/recommendations/dismissals/10000000-0000-4000-8000-000000000001"},{"GET","/api/v1/preferences"},{"PUT","/api/v1/preferences/missing"},{"DELETE","/api/v1/preferences/missing"}}{
 		if w:=call(spec[0],spec[1],"",`{"weight":1}`);w.Code!=401{t.Fatal("unprotected route",w.Code)}
 		if w:=call(spec[0],spec[1],s.Token,`{"weight":1}`);w.Code!=403{t.Fatal("unverified route",w.Code)}
 	}
