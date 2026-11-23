@@ -635,7 +635,7 @@ export default function Home() {
         <ReleaseAlerts key={`release-alerts:${session.user.id}`} client={client} library={library} onError={handleError} />
       )}
       {mode === "postgres" && session?.user.emailVerified && <ReleaseCalendar key={`calendar:${session.user.id}`} client={client} onError={handleError} />}
-      {mode === "postgres" && session?.user.emailVerified && <PersonalMatches key={`matches:${session.user.id}`} client={client} onError={handleError} />}
+      {mode === "postgres" && session?.user.emailVerified && <PersonalMatches key={`matches:${session.user.id}`} client={client} onError={handleError} onLibraryChange={refresh} />}
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat label="In your library" value={library.length} />
         <Stat

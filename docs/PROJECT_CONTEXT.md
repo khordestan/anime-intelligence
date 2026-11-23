@@ -186,3 +186,5 @@ Migration 000023 adds verified-owner Personal Match dismissals. Dismissed titles
 Personal Match now lists hidden titles in owner-scoped pages of up to 50. The dashboard can restore a title from that list after signing back in.
 
 Discovery is available without a taste profile. It orders untracked, unhidden catalog titles by current eligible curated feature coverage and displays the evidence count. Verified ownership applies to tracking and dismissal exclusions.
+
+Both recommendation lanes can add a title to My Library as Planning through add-only import, which preserves existing tracker entries.

@@ -9,7 +9,7 @@ type HiddenMatch = { animeId: string; title: string };
 type DiscoveryTitle = HiddenMatch & { evidenceCount: number };
 type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
-export default function PersonalMatches({ client, onError }: { client: ApiClient; onError: (error: unknown) => void }) {
+export default function PersonalMatches({ client, onError, onLibraryChange }: { client: ApiClient; onError: (error: unknown) => void; onLibraryChange: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -34,7 +34,7 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
     setDiscovery(d?.items ?? null);
     setPreferences(p.items); setMatches(m.items); setProfile(m.profile ?? []);
   }
-  async function load(includeHidden = hidden !== null) {
+  async function load(includeHidden = hidden !== null, includeDiscovery = discovery !== null) {
     const current = ++revision.current;
     setOpen(true); setBusy(true); setMessage("");
     try { await read(current, includeHidden, includeDiscovery); }
@@ -86,6 +86,33 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
       if (alive.current && current === revision.current) setBusy(false);
     }
   }
+  async function planTitle(title: HiddenMatch) {
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await client.request<{ added: number }>("/tracker/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: 1, entries: [{ animeId: title.animeId, watchStatus: "PLANNING" }] }),
+      });
+      if (!alive.current || current !== revision.current) return;
+      setMatches(items => items.filter(item => item.animeId !== title.animeId));
+      setDiscovery(items => items?.filter(item => item.animeId !== title.animeId) ?? null);
+      await Promise.all([read(current), onLibraryChange()]);
+      if (alive.current && current === revision.current) {
+        setMessage(result.added ? "Added to your library as Planning." : "Already in your library.");
+      }
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not finish adding this title. Try refreshing.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
+  }
+
   async function loadMoreHidden(after: string) {
     const current = ++revision.current;
     setBusy(true);
@@ -156,6 +183,8 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
       <ul className="mt-3 space-y-3" aria-label="Personal match results">
         {matches.map(match => <li key={match.animeId} className="rounded-xl bg-white/5 p-3">
           <p className="text-sm font-medium">{match.title} <span className="text-violet-200">{match.score.toFixed(2)} / 100</span></p>
+          <button type="button" disabled={busy} aria-label={"Plan to watch " + match.title}
+            onClick={() => void planTitle(match)} className="mr-3 mt-2 text-xs underline disabled:opacity-50">Plan to watch</button>
           <button type="button" disabled={busy} aria-label={"Hide match " + match.title} onClick={() => void setDismissed(match, true)} className="mt-2 text-xs underline disabled:opacity-50">Hide match</button>
           <ul className="mt-2 space-y-1">{match.evidence.map(e => <li key={e.featureKey} className="text-xs text-slate-400">{names.get(e.featureKey) ?? e.featureKey}: {e.direction}</li>)}</ul>
         </li>)}
@@ -173,6 +202,8 @@ export default function PersonalMatches({ client, onError }: { client: ApiClient
               {discovery.map(title => <li key={title.animeId} className="rounded-xl bg-white/5 p-3">
                 <p className="text-sm font-medium">{title.title}</p>
                 <p className="text-xs text-slate-400">{title.evidenceCount} supported {title.evidenceCount === 1 ? "feature" : "features"}</p>
+                <button type="button" disabled={busy} aria-label={"Plan to watch " + title.title}
+                  onClick={() => void planTitle(title)} className="mr-3 mt-2 text-xs underline disabled:opacity-50">Plan to watch</button>
                 <button type="button" disabled={busy} aria-label={"Hide discovery title " + title.title} onClick={() => void setDismissed(title, true)}
                   className="mt-2 text-xs underline disabled:opacity-50">Hide title</button>
               </li>)}
