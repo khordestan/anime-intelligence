@@ -48,6 +48,14 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if err != nil || len(discovered) != 2 || discovered[0].AnimeID != strong || discovered[1].AnimeID != weak || discovered[0].EvidenceCount != 1 {
 		t.Fatalf("cold-start discovery: %+v err=%v", discovered, err)
 	}
+	firstPage, err := a.DiscoverPage(ctx, 1, nil)
+	if err != nil || len(firstPage.Items) != 1 || firstPage.Items[0].AnimeID != strong || firstPage.NextCursor == nil {
+		t.Fatalf("first discovery page: %+v err=%v", firstPage, err)
+	}
+	secondPage, err := a.DiscoverPage(ctx, 1, firstPage.NextCursor)
+	if err != nil || len(secondPage.Items) != 1 || secondPage.Items[0].AnimeID != weak || secondPage.NextCursor != nil {
+		t.Fatalf("second discovery page: %+v err=%v", secondPage, err)
+	}
 	positive,negative:=1.0,-1.0
 	if ok,err:=a.SetFeaturePreference(ctx,"synthetic.power",&positive);err!=nil||!ok{t.Fatal(err)}
 	if ok,err:=b.SetFeaturePreference(ctx,"synthetic.power",&negative);err!=nil||!ok{t.Fatal(err)}

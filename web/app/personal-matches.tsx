@@ -7,6 +7,8 @@ type Preference = { key: string; name: string; category: string; weight: number 
 type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number } };
 type HiddenMatch = { animeId: string; title: string };
 type DiscoveryTitle = HiddenMatch & { evidenceCount: number };
+type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount">;
+type DiscoveryPage = { items: DiscoveryTitle[]; nextCursor?: DiscoveryCursor };
 type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
 export default function PersonalMatches({ client, onError, onLibraryChange }: { client: ApiClient; onError: (error: unknown) => void; onLibraryChange: () => Promise<void> }) {
@@ -14,7 +16,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [lastDismissed, setLastDismissed] = useState<HiddenMatch | null>(null);
-  const [discovery, setDiscovery] = useState<DiscoveryTitle[] | null>(null);
+  const [discovery, setDiscovery] = useState<DiscoveryPage | null>(null);
   const [hidden, setHidden] = useState<HiddenMatches | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [profile, setProfile] = useState<Signal[]>([]);
@@ -27,11 +29,11 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
       client.request<{ items: Preference[] }>("/preferences"),
       client.request<{ items: Match[]; profile?: Signal[] }>("/recommendations"),
       includeHidden ? client.request<HiddenMatches>("/recommendations/dismissals") : Promise.resolve(null),
-      includeDiscovery ? client.request<{ items: DiscoveryTitle[] }>("/recommendations/discovery") : Promise.resolve(null),
+      includeDiscovery ? client.request<DiscoveryPage>("/recommendations/discovery") : Promise.resolve(null),
     ]);
     if (!alive.current || current !== revision.current) return;
     setHidden(h);
-    setDiscovery(d?.items ?? null);
+    setDiscovery(d);
     setPreferences(p.items); setMatches(m.items); setProfile(m.profile ?? []);
   }
   async function load(includeHidden = hidden !== null, includeDiscovery = discovery !== null) {
@@ -73,7 +75,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
       setLastDismissed(dismissed ? match : null);
       if (dismissed) {
         setMatches(currentMatches => currentMatches.filter(item => item.animeId !== match.animeId));
-        setDiscovery(items => items?.filter(item => item.animeId !== match.animeId) ?? null);
+        setDiscovery(page => page ? { ...page, items: page.items.filter(item => item.animeId !== match.animeId) } : null);
       }
       await read(current);
       if (alive.current && current === revision.current) setMessage(dismissed ? "Match hidden." : "Match restored.");
@@ -98,7 +100,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
       });
       if (!alive.current || current !== revision.current) return;
       setMatches(items => items.filter(item => item.animeId !== title.animeId));
-      setDiscovery(items => items?.filter(item => item.animeId !== title.animeId) ?? null);
+      setDiscovery(page => page ? { ...page, items: page.items.filter(item => item.animeId !== title.animeId) } : null);
       await Promise.all([read(current), onLibraryChange()]);
       if (alive.current && current === revision.current) {
         setMessage(result.added ? "Added to your library as Planning." : "Already in your library.");
@@ -125,6 +127,29 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
     } catch (error) {
       if (alive.current && current === revision.current) {
         setMessage("Could not load hidden matches. Try again.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
+  }
+  async function loadMoreDiscovery(after: DiscoveryCursor) {
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    const query = new URLSearchParams({ after: after.animeId, afterCount: String(after.evidenceCount) });
+    try {
+      const page = await client.request<DiscoveryPage>("/recommendations/discovery?" + query);
+      if (alive.current && current === revision.current) {
+        setDiscovery(existing => {
+          const previous = existing?.items ?? [];
+          const seen = new Set(previous.map(item => item.animeId));
+          return { ...page, items: [...previous, ...page.items.filter(item => !seen.has(item.animeId))] };
+        });
+      }
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not load more discovery titles. Try again.");
         onError(error);
       }
     } finally {
@@ -197,9 +222,9 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
         {discovery !== null && (
           <section aria-label="Discovery titles" className="mt-3">
             <p className="text-sm text-slate-400">Untracked titles ordered by the number of curated features with evidence.</p>
-            {discovery.length === 0 && <p className="mt-2 text-sm text-slate-400">No eligible discovery titles yet.</p>}
+            {discovery.items.length === 0 && <p className="mt-2 text-sm text-slate-400">No eligible discovery titles yet.</p>}
             <ul className="mt-3 space-y-2">
-              {discovery.map(title => <li key={title.animeId} className="rounded-xl bg-white/5 p-3">
+              {discovery.items.map(title => <li key={title.animeId} className="rounded-xl bg-white/5 p-3">
                 <p className="text-sm font-medium">{title.title}</p>
                 <p className="text-xs text-slate-400">{title.evidenceCount} supported {title.evidenceCount === 1 ? "feature" : "features"}</p>
                 <button type="button" disabled={busy} aria-label={"Plan to watch " + title.title}
@@ -208,6 +233,11 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
                   className="mt-2 text-xs underline disabled:opacity-50">Hide title</button>
               </li>)}
             </ul>
+            {discovery.nextCursor && (
+              <button type="button" disabled={busy} onClick={() => {
+                if (discovery.nextCursor) void loadMoreDiscovery(discovery.nextCursor);
+              }} className="mt-2 text-xs underline disabled:opacity-50">Load more discovery titles</button>
+            )}
           </section>
         )}
       </div>
