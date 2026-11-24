@@ -29,6 +29,12 @@ type catalogAnalysisTitle struct {
 	Evidence []catalogAnalysisFact `json:"evidence"`
 }
 
+type catalogComparison struct {
+	Field      string   `json:"field"`
+	Difference int      `json:"difference"`
+	AnimeIDs   []string `json:"animeIds"`
+}
+
 var analysisFields = []struct {
 	key   string
 	words []string
@@ -127,7 +133,38 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 		Model        string                 `json:"model,omitempty"`
 		TopicMatched bool                   `json:"topicMatched"`
 		Items        []catalogAnalysisTitle `json:"items"`
-	}{Engine: engine, Model: model, TopicMatched: matched, Items: items})
+		Comparisons  []catalogComparison    `json:"comparisons,omitempty"`
+	}{Engine: engine, Model: model, TopicMatched: matched, Items: items, Comparisons: compareAnalysisFacts(items)})
+}
+
+// compareAnalysisFacts reports the first title's value minus the second's.
+// Only fields with two known numeric values can support these differences.
+func compareAnalysisFacts(items []catalogAnalysisTitle) []catalogComparison {
+	if len(items) != 2 {
+		return nil
+	}
+	var comparisons []catalogComparison
+	for _, first := range items[0].Evidence {
+		if first.Field != "episodeCount" && first.Field != "releaseYear" {
+			continue
+		}
+		index := slices.IndexFunc(items[1].Evidence, func(fact catalogAnalysisFact) bool { return fact.Field == first.Field })
+		if index < 0 {
+			continue
+		}
+		second := items[1].Evidence[index]
+		if len(first.Values) != 1 || len(second.Values) != 1 {
+			continue
+		}
+		left, leftErr := strconv.Atoi(first.Values[0])
+		right, rightErr := strconv.Atoi(second.Values[0])
+		if leftErr == nil && rightErr == nil {
+			comparisons = append(comparisons, catalogComparison{
+				Field: first.Field, Difference: left - right, AnimeIDs: []string{items[0].AnimeID, items[1].AnimeID},
+			})
+		}
+	}
+	return comparisons
 }
 
 func selectAnalysisFields(question string) ([]string, bool) {

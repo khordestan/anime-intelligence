@@ -4,9 +4,12 @@ for (const assisted of [false, true]) {
 test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show reviewed evidence`, async ({ page }) => {
   const id = "10000000-0000-4000-8000-000000000001";
   const title = "Synthetic evidence";
+  const secondID = "10000000-0000-4000-8000-000000000002";
+  const secondTitle = "Synthetic comparison";
   await page.route("**/api/v1**", async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    const url = new URL(request.url());
+    const path = url.pathname.replace("/api/v1", "");
     const headers = {
       "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
@@ -20,7 +23,9 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       user: { id: "analyst", email: "analyst@example.test", displayName: "Analyst", emailVerified: true },
     });
-    if (path === "/anime") return reply({ items: [] });
+    if (path === "/anime") return reply({
+      items: url.searchParams.get("q") === "Synthetic" ? [{ id, title }, { id: secondID, title: secondTitle }] : [],
+    });
     if (path === "/tracker") return reply({ items: [{ id: "entry", animeId: id, title, watchStatus: "PLANNING", episodesWatched: 0 }] });
     if (path === "/anime/" + id + "/details") {
       return reply({
@@ -30,7 +35,15 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
     }
     if (path === (assisted ? "/analysis/catalog/assisted" : "/analysis/catalog")) {
       if (assisted) expect(request.headers().authorization).toBe("Bearer " + "a".repeat(43));
-      expect(request.postDataJSON()).toEqual({ question: "How many episodes?", animeIds: [id] });
+      const payload = request.postDataJSON();
+      if (!assisted && payload.animeIds.length === 2) {
+        expect(payload).toEqual({ question: "How many episodes?", animeIds: [id, secondID] });
+        return reply({ engine: "catalog-facts-v1", topicMatched: true, comparisons: [{field: "episodeCount", difference: -12, animeIds: [id, secondID]}], items: [
+          { animeId: id, title, evidence: [{ field: "episodeCount", values: ["0"] }] },
+          { animeId: secondID, title: secondTitle, evidence: [{ field: "episodeCount", values: ["12"] }] },
+        ] });
+      }
+      expect(payload).toEqual({ question: "How many episodes?", animeIds: [id] });
       return reply({
         engine: "catalog-facts-v1", model: assisted ? "synthetic-model" : undefined, topicMatched: true, items: [
           { animeId: id, title, evidence: [{ field: "episodeCount", values: ["0"], provider: "synthetic-review" }] },
@@ -62,5 +75,18 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
   await expect(evidence.getByText("Source: synthetic-review")).toBeVisible();
   if (assisted) await expect(evidence.getByText("Topics selected by synthetic-model")).toBeVisible();
   await expect(page.getByText("Synthetic spoiler")).toHaveCount(0);
+  if (!assisted) {
+    await page.getByText("Compare with another title", { exact: true }).click();
+    await page.getByLabel("Find a comparison title").fill("Synthetic");
+    await page.getByRole("button", { name: "Search titles", exact: true }).click();
+    await page.getByRole("button", { name: secondTitle, exact: true }).click();
+    await page.getByRole("button", { name: "Show evidence" }).click();
+    await expect(evidence.getByRole("heading", { name: title, exact: true })).toBeVisible();
+    await expect(evidence.getByRole("heading", { name: secondTitle, exact: true })).toBeVisible();
+    await expect(evidence.getByText("12", { exact: true })).toBeVisible();
+    await expect(evidence.getByText(title + " has 12 fewer episodes than " + secondTitle + ".")).toBeVisible();
+    await page.getByRole("button", { name: "Remove comparison" }).click();
+    await expect(evidence).toHaveCount(0);
+  }
 });
 }
