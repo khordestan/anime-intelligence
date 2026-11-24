@@ -59,3 +59,7 @@ catalog-fetch retrieves a bounded set of supported Wikidata anime-work items as 
 ## Measure field presence before importing
 
 Run `go run ./cmd/catalog-check -input snapshot.json -coverage` to append aggregate field and per-track row counts to the validation report. Counts cover the validated snapshot and include known zero episode totals. Unknown format, status and release year and missing text or lists contribute zero to their respective fields. Scheduled and confirmed release counts are independent, so a row containing both timestamps contributes to both counts. Reusing the report on different candidate feeds can show which fields each sample covers. It measures recorded presence within the supplied set. Field accuracy, coverage of the wider catalog and licensing require separate review.
+
+## Preview schedule moves
+
+Run `go run ./cmd/catalog-check -previous previous.json -input next.json -schedule-changes` to preview stated schedule moves alongside confirmed release events. Moves compare matching external title IDs, episode numbers and tracks from two ordered snapshots of the same source. Each item includes the before and after times and whether the stated schedule moved earlier or later. New, omitted and unchanged times and rows with a release confirmation contribute no schedule move. The same comparison uses PostgreSQL timestamp precision. A first snapshot produces an empty preview. This offline comparison creates no alerts and keeps schedule moves separate from release confirmations.

@@ -137,6 +137,17 @@ type Event struct {
 	ReleasedAt time.Time `json:"releasedAt"`
 }
 
+func validateSnapshotPair(previous *Snapshot, next Snapshot, now time.Time) error {
+	if next.Validate(now) != nil {
+		return ErrInvalid
+	}
+	if previous != nil && (previous.Validate(now) != nil || previous.Provider != next.Provider ||
+		!next.ObservedAt.Truncate(time.Microsecond).After(previous.ObservedAt.Truncate(time.Microsecond))) {
+		return ErrInvalid
+	}
+	return nil
+}
+
 // Releases compares snapshots of the same provider. A first snapshot establishes
 // a baseline, avoiding a historical alert flood. Missing records never retract
 // releases. Durable consumers must retain event keys across partial snapshots.
@@ -146,10 +157,9 @@ type Event struct {
 // This preview has only the supplied pair, unlike the importer's retained
 // per-title observations and event ledger.
 func Releases(previous *Snapshot, next Snapshot, now time.Time) ([]Event,error) {
-	if next.Validate(now) != nil { return nil, ErrInvalid }
+	if err := validateSnapshotPair(previous, next, now); err != nil { return nil, err }
 	out := []Event{}
 	if previous == nil { return out,nil }
-	if previous.Validate(now) != nil || previous.Provider != next.Provider || !next.ObservedAt.Truncate(time.Microsecond).After(previous.ObservedAt.Truncate(time.Microsecond)) { return nil,ErrInvalid }
 	released := map[string]bool{}
 	for _, t := range previous.Titles {
 		for _, e := range t.Episodes {
