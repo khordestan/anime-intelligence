@@ -489,9 +489,17 @@ paths:
           name: afterCount
           description: Evidence count from nextCursor. Supply with after.
           schema: { type: integer, minimum: 1 }
+        - in: query
+          name: featureKey
+          description: Require positive curated evidence for this feature key.
+          schema: { type: string, maxLength: 128 }
+        - in: query
+          name: afterFeature
+          description: Feature key from nextCursor when paging a filtered result.
+          schema: { type: string, maxLength: 128 }
       responses:
         "200": { description: Items with animeId, title, positive curated evidenceCount and up to four supportedFeatures, plus nextCursor when another page exists }
-        "400": { description: Invalid Discovery cursor }
+        "400": { description: Invalid Discovery cursor or feature filter }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/recommendations:

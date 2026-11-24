@@ -45,3 +45,5 @@ GET /api/v1/recommendations/discovery returns untracked, unhidden titles for the
 Discovery includes `nextCursor` when more titles are available. Pass its `animeId` as `after` and its `evidenceCount` as `afterCount`. The dashboard appends further pages and deduplicates titles if catalog evidence changes between requests.
 
 Discovery shows up to four feature names per title, ordered by the product of the curated feature value and confidence, with feature key breaking ties. Names come from the same eligible positive observations used for the evidence count.
+
+Use `featureKey` to require positive evidence for a feature from the preferences taxonomy. Other eligible features still contribute to the title's evidence count and ranking. For filtered pagination, send the same `featureKey` and the cursor's `featureKey` as `afterFeature`. Unknown keys have no results.

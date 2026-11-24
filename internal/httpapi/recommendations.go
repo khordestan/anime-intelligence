@@ -73,17 +73,22 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 	mux.HandleFunc("GET /api/v1/recommendations/discovery", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 		query := r.URL.Query()
+		featureKey := query.Get("featureKey")
+		if len(featureKey) > 128 || len(query["featureKey"]) > 1 {
+			authError(w, 400, "invalid_feature")
+			return
+		}
 		var cursor *postgres.DiscoveryCursor
-		if query.Has("after") || query.Has("afterCount") {
+		if query.Has("after") || query.Has("afterCount") || query.Has("afterFeature") {
 			id := query.Get("after")
 			count, err := strconv.Atoi(query.Get("afterCount"))
-			if err != nil || count < 1 || !validSessionID(id) || len(query["after"]) != 1 || len(query["afterCount"]) != 1 {
+			if err != nil || count < 1 || !validSessionID(id) || len(query["after"]) != 1 || len(query["afterCount"]) != 1 || len(query["afterFeature"]) > 1 || query.Get("afterFeature") != featureKey {
 				authError(w, 400, "invalid_discovery_cursor")
 				return
 			}
-			cursor = &postgres.DiscoveryCursor{AnimeID: id, EvidenceCount: count}
+			cursor = &postgres.DiscoveryCursor{AnimeID: id, EvidenceCount: count, FeatureKey: featureKey}
 		}
-		page, err := db.Repository(token).DiscoverPage(r.Context(), limit, cursor)
+		page, err := db.Repository(token).DiscoverByFeature(r.Context(), limit, cursor, featureKey)
 		if err != nil {
 			matchError(w, err)
 			return

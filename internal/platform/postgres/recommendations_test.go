@@ -56,6 +56,19 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if err != nil || len(secondPage.Items) != 1 || secondPage.Items[0].AnimeID != weak || secondPage.NextCursor != nil {
 		t.Fatalf("second discovery page: %+v err=%v", secondPage, err)
 	}
+	filtered, err := a.DiscoverByFeature(ctx, 1, nil, "synthetic.power")
+	if err != nil || len(filtered.Items) != 1 || filtered.Items[0].AnimeID != strong ||
+		filtered.NextCursor == nil || filtered.NextCursor.FeatureKey != "synthetic.power" {
+		t.Fatalf("filtered first page: %+v err=%v", filtered, err)
+	}
+	filtered, err = a.DiscoverByFeature(ctx, 1, filtered.NextCursor, "synthetic.power")
+	if err != nil || len(filtered.Items) != 1 || filtered.Items[0].AnimeID != weak || filtered.NextCursor != nil {
+		t.Fatalf("filtered next page: %+v err=%v", filtered, err)
+	}
+	unknown, err := a.DiscoverByFeature(ctx, 20, nil, "synthetic.missing")
+	if err != nil || len(unknown.Items) != 0 {
+		t.Fatalf("unknown feature results: %+v err=%v", unknown, err)
+	}
 	positive,negative:=1.0,-1.0
 	if ok,err:=a.SetFeaturePreference(ctx,"synthetic.power",&positive);err!=nil||!ok{t.Fatal(err)}
 	if ok,err:=b.SetFeaturePreference(ctx,"synthetic.power",&negative);err!=nil||!ok{t.Fatal(err)}
@@ -158,6 +171,9 @@ func TestRecommendationRoutesRejectOwnerOverrides(t *testing.T){
 		if w:=call(spec[0],spec[1],s.Token,`{"weight":1}`);w.Code!=403{t.Fatal("unverified route",w.Code)}
 	}
 	verifyAccount(t,db,s.Token)
+	if w := call("GET", "/api/v1/recommendations/discovery?featureKey=synthetic.power&after=10000000-0000-4000-8000-000000000001&afterCount=1", s.Token, ""); w.Code != 400 {
+		t.Fatal("accepted cursor without matching feature", w.Code, w.Body.String())
+	}
 	for _,body:=range []string{`{"weight":1,"userId":"spoofed"}`,`{"weight":null}`,`{"weight":2}`}{
 		if w:=call("PUT","/api/v1/preferences/missing",s.Token,body);w.Code!=400{t.Fatal("invalid preference body",w.Code,w.Body.String())}
 	}

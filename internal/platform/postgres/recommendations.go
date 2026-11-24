@@ -312,6 +312,7 @@ func (r *Repository) DiscoverTitles(ctx context.Context, limit int) ([]Discovery
 type DiscoveryCursor struct {
 	AnimeID string `json:"animeId"`
 	EvidenceCount int `json:"evidenceCount"`
+	FeatureKey string `json:"featureKey,omitempty"`
 }
 
 type DiscoveryPage struct {
@@ -320,6 +321,10 @@ type DiscoveryPage struct {
 }
 
 func (r *Repository) DiscoverPage(ctx context.Context, limit int, after *DiscoveryCursor) (DiscoveryPage, error) {
+	return r.DiscoverByFeature(ctx, limit, after, "")
+}
+
+func (r *Repository) DiscoverByFeature(ctx context.Context, limit int, after *DiscoveryCursor, featureKey string) (DiscoveryPage, error) {
 	if limit < 1 || limit > 50 {
 		limit = 20
 	}
@@ -347,11 +352,12 @@ func (r *Repository) DiscoverPage(ctx context.Context, limit int, after *Discove
 			SELECT anime_id,count(*) AS feature_count,
 				(array_agg(display_name ORDER BY value*confidence DESC,feature_key))[1:4] AS feature_names
 			FROM latest WHERE value>0 GROUP BY anime_id
+			HAVING $5::text='' OR bool_or(feature_key=$5)
 		)
 		SELECT a.id::text,a.canonical_title,s.feature_count,s.feature_names
 		FROM supported s JOIN anime a ON a.id=s.anime_id
 		WHERE $3::bigint=0 OR s.feature_count<$3 OR (s.feature_count=$3 AND a.id>NULLIF($4,'')::uuid)
-		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID)
+		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID, featureKey)
 		if err != nil {
 			return DiscoveryPage{}, err
 		}
@@ -371,7 +377,7 @@ func (r *Repository) DiscoverPage(ctx context.Context, limit int, after *Discove
 		if len(items) > limit {
 			last := items[limit-1]
 			page.Items = items[:limit]
-			page.NextCursor = &DiscoveryCursor{AnimeID: last.AnimeID, EvidenceCount: last.EvidenceCount}
+			page.NextCursor = &DiscoveryCursor{AnimeID: last.AnimeID, EvidenceCount: last.EvidenceCount, FeatureKey: featureKey}
 		}
 		return page, tx.Commit(ctx)
 	})
