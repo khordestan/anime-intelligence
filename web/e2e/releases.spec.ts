@@ -54,7 +54,7 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
         await new Promise<void>(resolve => { release = resolve; });
       }
       latestChecks++;
-      try { return await respond({ items, unreadCount: (notices.get(token) ?? []).filter(notice => !notice.readAt).length, nextCursor: history ? "older-page" : "", materialization: { created: backlog && latestChecks === 1 ? 100 : 0, hasMore: backlog && latestChecks === 1 } }); } catch { return; }
+      try { return await respond({ items, unreadCount: (notices.get(token) ?? []).filter(notice => !notice.readAt).length, nextCursor: history ? "older-page" : "", materialization: { created: backlog && latestChecks === 1 ? 100 : 0, hasMore: backlog && latestChecks === 1, oldestPendingAt: backlog && latestChecks === 1 ? "2026-01-01T00:00:00Z" : undefined } }); } catch { return; }
     }
     if (path === "/notifications/read-all") {
       const unread = (notices.get(token) ?? []).filter(notice => !notice.readAt);
@@ -142,7 +142,7 @@ test("release catch-up is separate from history and clears after the next checke
   await page.goto("/");
   await login(page, "backlog-browser@example.test");
   const panel = page.getByRole("region", { name: "Release alerts", exact: true });
-  const pending = panel.getByText("More release alerts are waiting. Refresh alerts to continue catching up; each check adds up to 100 notifications.", { exact: true });
+  const pending = panel.getByText(/More release alerts are waiting\. The oldest pending release is from .+\. Refresh alerts to check the next batch\./);
   await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
   await expect(pending).toBeVisible();
   await panel.getByRole("button", { name: "Older notifications", exact: true }).click();
