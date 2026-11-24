@@ -10,7 +10,8 @@ async function mockMatches(page: Page, hold = false) {
   let blocked = false;
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    const url = new URL(request.url());
+    const path = url.pathname.replace("/api/v1", "");
     const token = (request.headers().authorization ?? "").replace("Bearer ", "");
     const headers = { "Access-Control-Allow-Origin": "http://127.0.0.1:3000", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS" };
     const respond = (body: unknown, status = 200) => route.fulfill({ status, headers, contentType: "application/json", body: JSON.stringify(body) });
@@ -40,7 +41,22 @@ async function mockMatches(page: Page, hold = false) {
       planned.add(token);
       return respond({ added: 1, skipped: 0 });
     }
-    if (path === "/recommendations/discovery") return respond({ items: (planned.has(token) || dismissed.has(token)) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 1 }] });
+    if (path === "/recommendations/discovery") {
+      const featureKey = url.searchParams.get("featureKey");
+      const after = url.searchParams.get("after");
+      if (planned.has(token) || dismissed.has(token)) return respond({ items: [] });
+      if (after) {
+        if (after !== "synthetic-match" || featureKey !== "synthetic.mystery" ||
+          url.searchParams.get("afterFeature") !== featureKey || url.searchParams.get("afterCount") !== "1") {
+          return respond({ error: "invalid_discovery_cursor" }, 400);
+        }
+        return respond({ items: [{ animeId: "synthetic-next", title: "Synthetic mystery sequel", evidenceCount: 1 }] });
+      }
+      return respond({
+        items: [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 1, supportedFeatures: ["Synthetic mystery"] }],
+        nextCursor: featureKey ? { animeId: "synthetic-match", evidenceCount: 1, featureKey } : undefined,
+      });
+    }
     if (path === "/recommendations") {
       const items = preferences.get(token) === null || dismissed.has(token) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
       if (hold && token.endsWith("1")) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
@@ -114,6 +130,13 @@ test("Discovery works before adding preferences and respects hidden titles", asy
   await panel.getByRole("button", { name: "Explore titles", exact: true }).click();
   const discovery = panel.getByRole("region", { name: "Discovery titles" });
   await expect(discovery.getByText("1 supported feature")).toBeVisible();
+  await expect(discovery.getByRole("listitem").getByText("Synthetic mystery", { exact: true })).toBeVisible();
+  const filter = discovery.getByLabel("Filter by feature");
+  await filter.selectOption("synthetic.mystery");
+  await discovery.getByRole("button", { name: "Load more discovery titles" }).click();
+  await expect(discovery.getByText("Synthetic mystery sequel")).toBeVisible();
+  await filter.selectOption("");
+  await expect(discovery.getByText("Synthetic mystery sequel")).toHaveCount(0);
   await discovery.getByRole("button", { name: "Hide discovery title Synthetic account match" }).click();
   await expect(discovery.getByText("No eligible discovery titles yet.")).toBeVisible();
 });
