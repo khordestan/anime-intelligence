@@ -35,4 +35,4 @@ A score is a relative compatibility signal, not a probability that the user will
 
 The verified PostgreSQL API loads curated observations, derives profile signals, retrieves candidates and runs the ranking core. The dashboard exposes Personal Match, dismissals and Discovery. Discovery has its own evidence-coverage order and supports feature filtering and pagination. See [runtime recommendations](RECOMMENDATIONS.md) for eligibility, limits and contracts.
 
-The offline evaluator compares ranking and retrieval against explicit held-out judgments. Global Essentials, richer exploration and feedback learning remain on the [roadmap](../ROADMAP.md).
+The offline evaluator compares ranking and retrieval against explicit held-out judgments. The [Global Essentials offline baseline](GLOBAL_ESSENTIALS.md) evaluates public recognition independently of personal fit. A runtime Essentials lane, richer exploration and feedback learning remain on the [roadmap](../ROADMAP.md).

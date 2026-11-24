@@ -144,7 +144,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Offline retrieval-cap evaluation on held-out judgments
 - [ ] Richer curated evidence coverage and representative retrieval evaluation
 - [x] Evidence-backed cold-start Discovery lane with keyset pagination, curated feature labels/filtering and add to Planning
-- [ ] Global Essentials lane and richer Discovery ranking
+- [x] Offline Global Essentials ranking rubric and evaluator
+- [ ] Reviewed Global Essentials evidence and evaluation corpus, runtime lane and richer Discovery ranking
 - [ ] Authorized release notifications for delays, schedule changes and movie releases
 - [ ] Recommendation and alert dashboards for finer controls where the API already supports them
 - [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline

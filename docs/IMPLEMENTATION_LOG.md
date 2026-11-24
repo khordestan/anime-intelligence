@@ -989,3 +989,8 @@ Validation for `daac704276d539b9987310823357814ee726d716`: all seven [CI jobs](h
 - Added strict manifest, preview, disabled-source/concurrent replay, lookup/details preservation, stale/different-review, mapping/import rollback, restricted-role, dependency matrix, batch rollback and downgrade regressions. Recovery ledger and explicit migration CI include 000022.
 - Baseline a13073a24021094bfb7d5ff84f85f64d2cfecad2 CI 44080181072 and Security 44080181088 passed on inspection. Local Go/Node unavailable; exact implementation hosted checks pending.
 - No real metadata, secrets, account/watch data, provider requests, source/host activation or deployment.
+
+## 2026-11-24 — Offline Global Essentials baseline
+
+- Added a deterministic public-recognition ranker and an offline, bounded fixture evaluator with a title-order baseline. The report includes evidence citations and measures missed held-out titles even when they lack qualifying evidence.
+- Local Go tests, race tests, vet and build passed with `make check`. The documented CLI example returned the expected metrics. PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Hosted checks pending.
