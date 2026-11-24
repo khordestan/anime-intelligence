@@ -31,8 +31,8 @@ A score is a relative compatibility signal, not a probability that the user will
 - Spoiler-sensitive features must not be sent to default recommendation surfaces.
 - The engine does not invent catalog facts; it consumes feature observations supplied by the application.
 
-## Current scope and next integration work
+## Runtime scope
 
-Implemented: profile inference, explicit/inferred preference separation, personal-match ranking, evidence output, limits, exclusion and unit tests.
+The verified PostgreSQL API loads curated observations, derives profile signals, retrieves candidates and runs the ranking core. The dashboard exposes Personal Match, dismissals and Discovery. Discovery has its own evidence-coverage order and supports feature filtering and pagination. See [runtime recommendations](RECOMMENDATIONS.md) for eligibility, limits and contracts.
 
-Not yet implemented: loading observations from PostgreSQL, user-specific HTTP endpoints, global-essential ranking, discovery ranking, feedback learning, and offline evaluation. Those should be added only after source quality and provenance are available.
+The offline evaluator compares ranking and retrieval against explicit held-out judgments. Global Essentials, richer exploration and feedback learning remain on the [roadmap](../ROADMAP.md).
