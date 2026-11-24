@@ -78,6 +78,9 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT USAGE ON SCHEMA public TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON anime,catalog_metadata,anime_relations,airing_schedule TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON users,auth_sessions,auth_challenges,identity_outbox,identity_requests,user_anime,watch_progress,user_ratings TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT ON user_preferences,recommendations,recommendation_feedback,user_follows,notifications TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
@@ -478,6 +481,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
     SELECT id,user_id,'INTERESTED' FROM recommendations WHERE user_id=$1 OR user_id=$2`, []any{one.User.ID, two.User.ID}},
 		{`INSERT INTO personal_match_dismissals(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO user_follows(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
+		{`INSERT INTO catalog_analysis_owner_budget(user_id,window_start,requests) VALUES($1,now(),1),($2,now(),1)`, []any{one.User.ID,two.User.ID}},
 		{`INSERT INTO notifications(user_id,title,body) VALUES($1,'Synthetic notice','Synthetic content'),($2,'Synthetic notice','Synthetic content')`, []any{one.User.ID, two.User.ID}},
 	} {
 		if _, err = owner.Exec(ctx, seed.sql, seed.args...); err != nil {
@@ -492,7 +496,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 10 {
+	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 11 {
 		t.Fatal("export contract failed")
 	}
 	encoded, err := json.Marshal(exported)
@@ -527,7 +531,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("deleted account session accepted", err)
 		}
 	}
-	for _, table := range []string{"users", "auth_sessions", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications"} {
+	for _, table := range []string{"users", "auth_sessions", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications", "catalog_analysis_owner_budget"} {
 		field := "user_id"
 		if table == "users" {
 			field = "id"

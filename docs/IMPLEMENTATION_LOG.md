@@ -1091,3 +1091,10 @@ Validation for `c405f68` (PR #55): [CI](https://github.com/khordestan/anime-inte
 
 - Added a disabled loopback Nginx example and an isolated container smoke check. The example bounds credential and assisted-analysis request intake independently and strips inbound forwarding headers.
 - The local Docker smoke test passed with the pinned Nginx 1.30 image. The test exercised allowed traffic, shared identity-path throttling, local dashboard CORS and unaffected catalog and analysis requests. No listener was published. Hosted checks pending.
+
+Validation for `063a4c5` (PR #56): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45417387538) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45417387536) passed, including the ingress rehearsal. The PR merged as `61f0612`.
+
+## 2026-11-24 — Shared analyst rate budgets
+
+- Moved the per-owner and deployment request budgets into an atomic PostgreSQL reservation. The per-process concurrency bound still applies. Owner budget records are forced-RLS scoped and included in account export and deletion.
+- Local `make check` passed. The real PostgreSQL regression passed three runs under the race detector with separate router instances, owner and deployment caps, and private usage export and deletion. Hosted checks pending.

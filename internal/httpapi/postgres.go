@@ -117,13 +117,13 @@ func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery
 		}
 	}
 	if selector != nil {
-		budget := &analysisBudget{}
-		mux.HandleFunc("POST /api/v1/analysis/catalog/assisted", protect(func(w http.ResponseWriter, r *http.Request, _ string, u postgres.User) {
+		slots := make(chan struct{}, 2)
+		mux.HandleFunc("POST /api/v1/analysis/catalog/assisted", protect(func(w http.ResponseWriter, r *http.Request, token string, u postgres.User) {
 			if !u.EmailVerified {
 				authError(w, http.StatusForbidden, "email_verification_required")
 				return
 			}
-			c.AnalyzeWithSelector(w, r, budget.forOwner(u.ID, selector))
+			c.AnalyzeWithSelector(w, r, boundedAnalysisSelector(slots, db.Repository(token).ReserveAnalysisCall, selector))
 		}))
 	}
 	registerIdentityRoutes(mux, db, delivery, gate, protect)
