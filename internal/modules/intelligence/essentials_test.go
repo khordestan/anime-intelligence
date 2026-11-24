@@ -33,6 +33,12 @@ func TestGlobalEssentialsEvaluation(t *testing.T) {
 		report.TitleBaseline.Recall != 0.5 || report.GlobalEssentials.FillRate != 1 {
 		t.Fatalf("unexpected metrics: %+v", report)
 	}
+	wantCoverage := EssentialsCoverage{
+		Candidates: 4, EligibleCandidates: 3, Relevant: 2, EligibleRelevant: 1, RecallCeilingAtK: 0.5,
+	}
+	if report.Coverage != wantCoverage {
+		t.Fatalf("coverage = %+v, want %+v", report.Coverage, wantCoverage)
+	}
 	slices.Reverse(fixture.Candidates)
 	for _, candidate := range fixture.Candidates {
 		slices.Reverse(candidate.Evidence)

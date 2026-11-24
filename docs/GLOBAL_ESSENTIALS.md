@@ -45,3 +45,9 @@ Set `GLOBAL_ESSENTIALS_FILE` to a local JSON file with `version: 1` and the same
 On PostgreSQL API startup, each candidate's ID and title must match the canonical catalog. Invalid manifests fail startup without logging their contents. The API serves the resulting snapshot until restart through `GET /api/v1/recommendations/essentials`. The dashboard shows the lane to signed-out and signed-in users when runtime metadata advertises it. Restart after changing the manifest or reconciling catalog references. An unset file leaves the lane disabled.
 
 The repository ships no live corpus. A representative corpus and held-out judgments remain open.
+
+## Measure evidence coverage
+
+The evaluator reports how many candidates and held-out relevant candidates have qualifying evidence. The recall ceiling at k is the smaller of k and the number of eligible relevant titles, divided by all relevant titles. Compare the ceiling with measured recall to distinguish limited evidence coverage from ordering mistakes.
+
+A five-film pilot used Academy Animated Feature Film wins as the only input and membership in the published 2022 Sight and Sound critics' results as the held-out signal. The cohort deliberately included one film with an Academy win and poll coverage, two additional films in the poll, and two other films released before the poll. At k=3, the ranker filled one slot and retrieved one of three relevant titles, meeting its 0.333 recall ceiling. Alphabetical ordering retrieved two of three. This small, film-only pilot measured the effect of the single source chosen for the trial. It leaves the quality of the ranking across eras, regions, studios and TV series open. [Academy ceremony results](https://www.oscars.org/oscars/ceremonies/2003) · [Sight and Sound critics' poll](https://www.bfi.org.uk/sight-and-sound/greatest-films-all-time)
