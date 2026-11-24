@@ -1019,3 +1019,12 @@ Validation for `8db4d94` (PR #44): [CI](https://github.com/khordestan/anime-inte
 
 - Added canonical feature keys alongside the existing top-four Discovery feature names. Result cards use those keys to apply the existing filter and reset the paging cursor.
 - Local `make check`, dependency install, frontend unit tests, build and typecheck passed. All five focused Personal Match and Discovery browser tests passed. PostgreSQL integration tests skipped locally without `TEST_DATABASE_URL`. Hosted checks pending.
+
+Validation for Discovery feature navigation, `7846301` (PR #45): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45408956844) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45408956125) passed, including the PostgreSQL regression. The PR merged as `ee6c8ca`.
+
+Validation for catalog snapshot coverage, `4a1cf1a` (PR #46): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45409247536) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45409247438) passed. The PR merged as `98e7327`.
+
+## 2026-11-24 — Release backlog burst
+
+- Added a synthetic PostgreSQL regression with sixteen simultaneous polls across two verified owners following the same title on distinct tracks. Each owner drains 230 events within the per-request batch cap, with exactly 230 stored notices and no cross-track rows.
+- Local Go tests, race tests, vet and build passed. The focused PostgreSQL test passed three times under the race detector using a disposable PostgreSQL 17 container. Hosted checks pending.
