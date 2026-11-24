@@ -24,6 +24,7 @@ func main() {
 	}
 	var handler http.Handler
 	storage := "local-file"
+	essentialsPath := os.Getenv("GLOBAL_ESSENTIALS_FILE")
 	if dsn != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		db, err := postgres.Open(ctx, dsn)
@@ -33,6 +34,13 @@ func main() {
 			os.Exit(1)
 		}
 		defer db.Close()
+		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		essentials, err := loadEssentials(ctx, essentialsPath, db.Repository(""))
+		cancel()
+		if err != nil {
+			logger.Error("Global Essentials initialization failed; check the reviewed manifest and canonical catalog")
+			os.Exit(1)
+		}
 		var delivery *identitymail.Service
 		if sender != nil {
 			cipher, err := identityCipherFromEnv(os.Getenv)
@@ -48,9 +56,13 @@ func main() {
 			delivery = identitymail.NewDurableService(outbox, sender, logger)
 			defer delivery.Close()
 		}
-		handler = httpapi.NewPostgresRouterWithIdentity(logger, db, delivery)
+		handler = httpapi.NewPostgresRouterWithEssentials(logger, db, delivery, essentials)
 		storage = "postgresql"
 	} else {
+		if essentialsPath != "" {
+			logger.Error("Global Essentials requires PostgreSQL")
+			os.Exit(1)
+		}
 		dataPath := os.Getenv("DATA_FILE")
 		if dataPath == "" {
 			dataPath = "./data/local.json"

@@ -994,3 +994,9 @@ Validation for `daac704276d539b9987310823357814ee726d716`: all seven [CI jobs](h
 
 - Added a deterministic public-recognition ranker and an offline, bounded fixture evaluator with a title-order baseline. The report includes evidence citations and measures missed held-out titles even when they lack qualifying evidence.
 - Local Go tests, race tests, vet and build passed with `make check`. The documented CLI example returned the expected metrics. PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Hosted checks pending.
+
+## 2026-11-24 — Opt-in Global Essentials lane
+
+- The offline baseline from PR #42 passed [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45406330117) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45406329929) on `091b6f4` and merged.
+- PostgreSQL startup now validates an optional reviewed manifest against catalog IDs and titles. The public API and dashboard display the bounded, evidence-linked snapshot.
+- Local `make check`, frontend dependency install, unit tests, production build and typecheck passed. PostgreSQL integration tests skipped locally without `TEST_DATABASE_URL`. Hosted checks and the full local browser run are pending.

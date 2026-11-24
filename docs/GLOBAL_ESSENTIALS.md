@@ -38,4 +38,10 @@ JSON
 
 The report includes the ranked results plus nDCG, fill rate, recall and reciprocal rank at k. The title-ordered baseline ranks the full candidate pool, including unsupported titles. This example gives Global Essentials recall of 1 and title-order recall of 0 at k=1. Bounds are 8 MiB per fixture, 2,000 candidates, 20 evidence records per title and k from 1 to 100.
 
-A reviewed corpus, representative held-out judgments and a runtime lane remain open.
+## Enable the dashboard lane
+
+Set `GLOBAL_ESSENTIALS_FILE` to a local JSON file with `version: 1` and the same `candidates` array as the evaluator. Omit `relevant` from this runtime manifest. Each of its 1–100 candidates must carry at least one reviewed evidence record. The manifest is capped at 1 MiB.
+
+On PostgreSQL API startup, each candidate's ID and title must match the canonical catalog. Invalid manifests fail startup without logging their contents. The API serves the resulting snapshot until restart through `GET /api/v1/recommendations/essentials`. The dashboard shows the lane to signed-out and signed-in users when runtime metadata advertises it. Restart after changing the manifest or reconciling catalog references. An unset file leaves the lane disabled.
+
+The repository ships no live corpus. A representative corpus and held-out judgments remain open.

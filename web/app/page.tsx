@@ -9,6 +9,7 @@ import RewatchManager from "./rewatch-manager";
 import NotesEditor from "./notes-editor";
 import CatalogDetails from "./catalog-details";
 import CatalogFilters, { emptyCatalogFilters, type CatalogFilterValues } from "./catalog-filters";
+import GlobalEssentials from "./global-essentials";
 import PersonalMatches from "./personal-matches";
 import PasswordManager from "./password-manager";
 import AccountManager from "./account-manager";
@@ -86,6 +87,7 @@ export default function Home() {
   const retryPage = useRef<string[] | null>(null);
   const catalogSearchRevision = useRef(0);
   const [client] = useState(() => new ApiClient(API));
+  const [essentialsAvailable, setEssentialsAvailable] = useState(false);
   const [identityAvailable, setIdentityAvailable] = useState(false);
   const [mode, setMode] = useState<"local" | "postgres" | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -158,11 +160,13 @@ export default function Home() {
       .request<{
         authenticationRequired?: boolean;
         identityDeliveryAvailable?: boolean;
+        globalEssentialsAvailable?: boolean;
       }>("")
       .then((meta) => {
         if (active) {
           setMode(meta.authenticationRequired ? "postgres" : "local");
           setIdentityAvailable(!!meta.identityDeliveryAvailable);
+          setEssentialsAvailable(!!meta.globalEssentialsAvailable);
         }
       })
       .catch((e) => {
@@ -635,6 +639,7 @@ export default function Home() {
         <ReleaseAlerts key={`release-alerts:${session.user.id}`} client={client} library={library} onError={handleError} />
       )}
       {mode === "postgres" && session?.user.emailVerified && <ReleaseCalendar key={`calendar:${session.user.id}`} client={client} onError={handleError} />}
+      {essentialsAvailable && <GlobalEssentials baseURL={API} />}
       {mode === "postgres" && session?.user.emailVerified && <PersonalMatches key={`matches:${session.user.id}`} client={client} onError={handleError} onLibraryChange={refresh} />}
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat label="In your library" value={library.length} />
