@@ -158,12 +158,14 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 
 ## Milestone 6 — AI and discovery
 - [x] Read-only catalog evidence tool with bounded topic selection and source attribution
-- [ ] Tool-constrained AI analyst
+- [x] Opt-in model-assisted catalog topic selection
+- [ ] Tool-constrained analyst for broader queries
 - [ ] Evidence-grounded explanations
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
 - [x] Discovery hide/restore and add-to-Planning feedback
 - [ ] Discovery feedback beyond hide/restore and library actions
-- [ ] LLM provider abstraction and usage controls
+- [x] LLM provider abstraction, OpenAI adapter and process-local usage controls
+- [ ] Distributed usage controls and representative model evaluation
 
 ## Milestone 7 — Production readiness
 - [x] Request-log redaction and bounded live dependency/security-schema readiness checks

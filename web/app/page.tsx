@@ -87,6 +87,7 @@ export default function Home() {
   const retryPage = useRef<string[] | null>(null);
   const catalogSearchRevision = useRef(0);
   const [client] = useState(() => new ApiClient(API));
+  const [assistedAnalysisAvailable, setAssistedAnalysisAvailable] = useState(false);
   const [essentialsAvailable, setEssentialsAvailable] = useState(false);
   const [identityAvailable, setIdentityAvailable] = useState(false);
   const [mode, setMode] = useState<"local" | "postgres" | null>(null);
@@ -161,12 +162,14 @@ export default function Home() {
         authenticationRequired?: boolean;
         identityDeliveryAvailable?: boolean;
         globalEssentialsAvailable?: boolean;
+        assistedCatalogAnalysisAvailable?: boolean;
       }>("")
       .then((meta) => {
         if (active) {
           setMode(meta.authenticationRequired ? "postgres" : "local");
           setIdentityAvailable(!!meta.identityDeliveryAvailable);
           setEssentialsAvailable(!!meta.globalEssentialsAvailable);
+          setAssistedAnalysisAvailable(!!meta.assistedCatalogAnalysisAvailable);
         }
       })
       .catch((e) => {
@@ -684,7 +687,7 @@ export default function Home() {
                   Add
                 </button>
                 </div>
-                <CatalogDetails key={`search-catalog:${session?.user.id ?? "public"}:${a.id}`} client={client} id={a.id} title={a.title} onError={handleError} />
+                <CatalogDetails key={`search-catalog:${session?.user.id ?? "public"}:${a.id}`} client={client} id={a.id} title={a.title} onError={handleError} assistedAnalysis={assistedAnalysisAvailable && !!session?.user.emailVerified} />
               </div>
             ))}
             {matchingCatalog.length > results.length && <button onClick={() => setCatalogResultLimit(current => current + 8)} className="text-sm text-violet-200 underline">Show more catalog matches</button>}
@@ -920,7 +923,7 @@ export default function Home() {
                     +1 episode
                   </button>
                 </div>
-                <CatalogDetails key={`catalog:${session?.user.id ?? "public"}:${e.animeId}`} client={client} id={e.animeId} title={e.title} onError={handleError} />
+                <CatalogDetails key={`catalog:${session?.user.id ?? "public"}:${e.animeId}`} client={client} id={e.animeId} title={e.title} onError={handleError} assistedAnalysis={assistedAnalysisAvailable && !!session?.user.emailVerified} />
                 {mode === "postgres" && session?.user.emailVerified && (
                   <EpisodeEditor key={`episodes:${session.user.id}:${e.id}`} client={client} id={e.id} title={e.title} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
                 )}
