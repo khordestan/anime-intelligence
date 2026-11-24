@@ -3,8 +3,10 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +41,15 @@ var analysisFields = []struct {
 	{"studios", []string{"studio", "studios", "animated", "production"}},
 }
 
+type CatalogFieldSelector func(context.Context, string, []string) ([]string, string, error)
+
+var ErrAnalysisCapacity = errors.New("analysis capacity reached")
+
 func (h *Handler) Analyze(w http.ResponseWriter, r *http.Request) {
+	h.AnalyzeWithSelector(w, r, nil)
+}
+
+func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, selector CatalogFieldSelector) {
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 	decoder.DisallowUnknownFields()
 	var request struct {
@@ -68,10 +78,9 @@ func (h *Handler) Analyze(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "catalog_unavailable", "Catalog facts are unavailable")
 		return
 	}
-	fields, matched := selectAnalysisFields(request.Question)
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
-	items := make([]catalogAnalysisTitle, 0, len(request.AnimeIDs))
+	detailsList := make([]store.CatalogDetails, 0, len(request.AnimeIDs))
 	for _, id := range request.AnimeIDs {
 		details, found, err := data.CatalogDetails(ctx, id)
 		if err != nil {
@@ -82,17 +91,43 @@ func (h *Handler) Analyze(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "anime_not_found", "Anime was not found")
 			return
 		}
+		detailsList = append(detailsList, details)
+	}
+	cancel()
+
+	engine := "catalog-facts-v1"
+	fields, matched := selectAnalysisFields(request.Question)
+	var model string
+	if selector != nil {
+		allowed := allAnalysisFields()
+		selected, selectedModel, err := selector(r.Context(), request.Question, slices.Clone(allowed))
+		if errors.Is(err, ErrAnalysisCapacity) {
+			w.Header().Set("Retry-After", "60")
+			writeError(w, http.StatusTooManyRequests, "analysis_capacity", "Model-assisted analysis is busy")
+			return
+		}
+		fields, matched, ok = validateSelectedFields(allowed, selected)
+		if err != nil || !ok || strings.TrimSpace(selectedModel) == "" || len(selectedModel) > 128 {
+			writeError(w, http.StatusBadGateway, "analysis_provider_failed", "Model-assisted analysis is unavailable")
+			return
+		}
+		engine, model = "model-selected-catalog-facts-v1", selectedModel
+	}
+	items := make([]catalogAnalysisTitle, 0, len(detailsList))
+	for _, details := range detailsList {
 		item := catalogAnalysisTitle{AnimeID: details.Anime.ID, Title: details.Anime.Title}
 		for _, field := range fields {
 			item.Evidence = append(item.Evidence, projectAnalysisFact(details, field))
 		}
 		items = append(items, item)
 	}
+
 	writeJSON(w, http.StatusOK, struct {
 		Engine       string                 `json:"engine"`
+		Model        string                 `json:"model,omitempty"`
 		TopicMatched bool                   `json:"topicMatched"`
 		Items        []catalogAnalysisTitle `json:"items"`
-	}{Engine: "catalog-facts-v1", TopicMatched: matched, Items: items})
+	}{Engine: engine, Model: model, TopicMatched: matched, Items: items})
 }
 
 func selectAnalysisFields(question string) ([]string, bool) {
@@ -112,11 +147,37 @@ func selectAnalysisFields(question string) ([]string, bool) {
 	}
 	matched := len(selected) > 0
 	if !matched {
-		for _, field := range analysisFields {
-			selected = append(selected, field.key)
-		}
+		selected = allAnalysisFields()
 	}
 	return selected, matched
+}
+
+func allAnalysisFields() []string {
+	selected := make([]string, 0, len(analysisFields))
+	for _, field := range analysisFields {
+		selected = append(selected, field.key)
+	}
+	return selected
+}
+
+func validateSelectedFields(allowed, selected []string) ([]string, bool, bool) {
+	if len(selected) == 0 {
+		return allowed, false, true
+	}
+	chosen := make(map[string]bool, len(allowed))
+	for _, key := range selected {
+		if chosen[key] || !slices.Contains(allowed, key) {
+			return nil, false, false
+		}
+		chosen[key] = true
+	}
+	fields := make([]string, 0, len(selected))
+	for _, field := range allowed {
+		if chosen[field] {
+			fields = append(fields, field)
+		}
+	}
+	return fields, true, true
 }
 
 func projectAnalysisFact(details store.CatalogDetails, field string) catalogAnalysisFact {

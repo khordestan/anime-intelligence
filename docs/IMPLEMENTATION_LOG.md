@@ -1070,3 +1070,10 @@ Validation for `8957fac` (PR #52): [CI](https://github.com/khordestan/anime-inte
 
 - Added read-only sourced catalog evidence for bounded questions about one or two chosen titles. The deterministic selector only projects six public fields and preserves known zeroes and field-level source choices.
 - Go checks, frontend unit tests, build, typecheck and both focused browser tests passed. A live loopback smoke test verified two-title evidence output. Hosted checks pending.
+
+Validation for `f55c4e9` (PR #53): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45414917744) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45414917674) passed. The PR merged as `c976376`.
+
+## 2026-11-24 — Model-assisted catalog field selection
+
+- Added an optional Responses API selector behind a verified-session endpoint, owner and process limits, and a dashboard opt-in. The model selects allowed fields while the application supplies facts and provenance.
+- Local Go checks, PostgreSQL authorization and admission limits under the race detector, frontend unit tests, build, typecheck and both analyst browser tests passed. Provider transport was synthetic. Hosted checks pending.

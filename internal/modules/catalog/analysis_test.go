@@ -66,3 +66,28 @@ func TestAnalyzeRejectsUnboundedAndAmbiguousRequests(t *testing.T) {
 		}
 	}
 }
+
+func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
+	handler := NewHandler(analysisCatalog{})
+	for _, tc := range []struct {
+		fields []string
+		status int
+	}{
+		{[]string{"episodeCount"}, 200},
+		{[]string{"episodeCount", "episodeCount"}, 502},
+		{[]string{"synopsis"}, 502},
+	} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog/assisted",
+			strings.NewReader(`{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
+		handler.AnalyzeWithSelector(response, request, func(_ context.Context, question string, allowed []string) ([]string, string, error) {
+			if question != "How long?" || len(allowed) != 6 {
+				t.Fatalf("unexpected provider input: %q %v", question, allowed)
+			}
+			return tc.fields, "synthetic-1", nil
+		})
+		if response.Code != tc.status || strings.Contains(response.Body.String(), "Hidden") {
+			t.Fatalf("unexpected response: %d %s", response.Code, response.Body)
+		}
+	}
+}

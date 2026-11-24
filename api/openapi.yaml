@@ -22,6 +22,7 @@ paths:
                   version: { type: string }
                   status: { type: string }
                   authenticationRequired: { type: boolean }
+                  assistedCatalogAnalysisAvailable: { type: boolean, description: Model-assisted catalog topic selection is configured. }
                   globalEssentialsAvailable: { type: boolean, description: A reviewed Essentials manifest is loaded. }
                   emailVerificationRequired: { type: boolean, description: True in PostgreSQL mode. Tracker and rating operations require emailVerified in addition to a valid session. }
                   identityDeliveryAvailable: { type: boolean, description: True only when the PostgreSQL runtime has explicit identity delivery configuration. }
@@ -71,6 +72,35 @@ paths:
         "200": { description: Engine version and topicMatched flag plus title evidence with field, values and available provider and observation time. Empty values mean unknown. Long value lists are capped at 20 and marked truncated. }
         "400": { description: Invalid question or selection }
         "404": { description: One or more selected anime are missing }
+  /api/v1/analysis/catalog/assisted:
+    post:
+      summary: Use a configured model to select catalog topics for the verified caller
+      description: Only the question and public allowed field keys go to the provider. The application generates the response from catalog evidence and reports the model identifier.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question, animeIds]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 400, description: UTF-8 input capped at 400 bytes. }
+                animeIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 2
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+      responses:
+        "200": { description: Sourced catalog evidence with model selection provenance }
+        "400": { description: Invalid question or selection }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Model assistance unavailable or selected anime not found }
+        "429": { description: Request budget exhausted or model work already at capacity }
+        "502": { description: Model unavailable or invalid topic selection }
   /api/v1/anime:
     get:
       summary: Search or browse the public catalog

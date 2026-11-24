@@ -30,6 +30,10 @@ func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, deliver
 }
 
 func NewPostgresRouterWithEssentials(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service, essentials []intelligence.EssentialsMatch) http.Handler {
+	return NewPostgresRouterWithAnalyst(logger, db, delivery, essentials, nil)
+}
+
+func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service, essentials []intelligence.EssentialsMatch, selector catalog.CatalogFieldSelector) http.Handler {
 	mux := http.NewServeMux()
 	registerGlobalEssentials(mux, essentials)
 	mux.HandleFunc("GET /readyz", readinessHandler("postgresql", db.Ready))
@@ -37,7 +41,7 @@ func NewPostgresRouterWithEssentials(logger *slog.Logger, db *postgres.DB, deliv
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "postgresql"})
 	})
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true, "identityDeliveryAvailable": delivery != nil, "globalEssentialsAvailable": len(essentials) > 0, "emailVerificationRequired": true})
+		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true, "identityDeliveryAvailable": delivery != nil, "globalEssentialsAvailable": len(essentials) > 0, "assistedCatalogAnalysisAvailable": selector != nil, "emailVerificationRequired": true})
 	})
 	c := catalog.NewHandler(db.Repository(""))
 	mux.HandleFunc("GET /api/v1/anime", c.List)
@@ -111,6 +115,16 @@ func NewPostgresRouterWithEssentials(logger *slog.Logger, db *postgres.DB, deliv
 			}
 			fn(w, r, token, u)
 		}
+	}
+	if selector != nil {
+		budget := &analysisBudget{}
+		mux.HandleFunc("POST /api/v1/analysis/catalog/assisted", protect(func(w http.ResponseWriter, r *http.Request, _ string, u postgres.User) {
+			if !u.EmailVerified {
+				authError(w, http.StatusForbidden, "email_verification_required")
+				return
+			}
+			c.AnalyzeWithSelector(w, r, budget.forOwner(u.ID, selector))
+		}))
 	}
 	registerIdentityRoutes(mux, db, delivery, gate, protect)
 	registerReleaseRoutes(mux,db,protect)

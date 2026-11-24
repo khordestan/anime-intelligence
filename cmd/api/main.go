@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"github.com/khordestan/anime-intelligence/internal/httpapi"
+	"github.com/khordestan/anime-intelligence/internal/modules/catalog"
+	"github.com/khordestan/anime-intelligence/internal/platform/analystopenai"
 	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
 	"github.com/khordestan/anime-intelligence/internal/platform/store"
@@ -21,6 +23,15 @@ func main() {
 	if configErr != nil {
 		logger.Error("identity mail requires PostgreSQL and complete valid delivery configuration")
 		os.Exit(1)
+	}
+	var selector catalog.CatalogFieldSelector
+	if key, model := os.Getenv("ANALYST_OPENAI_API_KEY"), os.Getenv("ANALYST_OPENAI_MODEL"); key != "" || model != "" {
+		provider, err := analystopenai.New(key, model)
+		if err != nil || dsn == "" {
+			logger.Error("model-assisted analysis requires PostgreSQL and valid provider configuration")
+			os.Exit(1)
+		}
+		selector = provider.Select
 	}
 	var handler http.Handler
 	storage := "local-file"
@@ -56,7 +67,7 @@ func main() {
 			delivery = identitymail.NewDurableService(outbox, sender, logger)
 			defer delivery.Close()
 		}
-		handler = httpapi.NewPostgresRouterWithEssentials(logger, db, delivery, essentials)
+		handler = httpapi.NewPostgresRouterWithAnalyst(logger, db, delivery, essentials, selector)
 		storage = "postgresql"
 	} else {
 		if essentialsPath != "" {

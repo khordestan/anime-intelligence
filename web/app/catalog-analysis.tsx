@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiClient } from "../lib/api";
 
 type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean };
-type Analysis = { topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
+type Analysis = { model?: string; topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
 
 const labels: Record<string, string> = {
   mediaType: "Format",
@@ -15,8 +15,9 @@ const labels: Record<string, string> = {
   studios: "Studios",
 };
 
-export default function CatalogAnalysis({ client, animeID }: { client: ApiClient; animeID: string }) {
+export default function CatalogAnalysis({ client, animeID, assistedAvailable }: { client: ApiClient; animeID: string; assistedAvailable?: boolean }) {
   const [question, setQuestion] = useState("");
+  const [assisted, setAssisted] = useState(false);
   const [result, setResult] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -31,7 +32,7 @@ export default function CatalogAnalysis({ client, animeID }: { client: ApiClient
     setResult(null);
     setFailed(false);
     try {
-      const response = await client.request<Analysis>("/analysis/catalog", {
+      const response = await client.request<Analysis>(assistedAvailable && assisted ? "/analysis/catalog/assisted" : "/analysis/catalog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: question.trim(), animeIds: [animeID] }),
@@ -55,6 +56,11 @@ export default function CatalogAnalysis({ client, animeID }: { client: ApiClient
             className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" />
         </label>
         <p className="text-slate-400">Ask about format, release year, status, episode count, genres or studios.</p>
+        {assistedAvailable && <label className="block">
+          <input type="checkbox" checked={assisted} disabled={busy}
+            onChange={event => setAssisted(event.target.checked)} className="mr-2" />
+          Let OpenAI select topics using your question
+        </label>}
         <button type="submit" disabled={busy || !question.trim()} className="underline disabled:opacity-50">
           {busy ? "Looking up facts…" : "Show evidence"}
         </button>
@@ -62,6 +68,7 @@ export default function CatalogAnalysis({ client, animeID }: { client: ApiClient
       {failed && <p role="status" className="mt-2 text-rose-200">Could not load catalog evidence. Try again.</p>}
       {result && (
         <section aria-label="Catalog evidence" className="mt-3">
+          {result.model && <p className="mb-2">Topics selected by {result.model}</p>}
           {!result.topicMatched && <p className="mb-2">That topic is unavailable. Here are the supported catalog facts.</p>}
           {result.items.map(item => (
             <dl key={item.animeId} className="space-y-2">

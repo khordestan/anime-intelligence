@@ -15,8 +15,8 @@ type Details = {
   relations: { animeId: string; type: string; title?: string; mediaType?: string; status?: string }[];
   episodes: { provider?: string; number: number; track: string; scheduledAt?: string; releasedAt?: string; revision: number }[];
 };
-export default function CatalogDetails({ client, id, title, onError }: {
-  client: ApiClient; id: string; title: string; onError: (error: unknown) => void;
+export default function CatalogDetails({ client, id, title, onError, assistedAnalysis }: {
+  client: ApiClient; id: string; title: string; assistedAnalysis?: boolean; onError: (error: unknown) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
@@ -66,7 +66,7 @@ export default function CatalogDetails({ client, id, title, onError }: {
           {!!details.relations.length && <div className="flex flex-wrap gap-3">
             {details.relations.map(relation => <button key={relation.type + relation.animeId} disabled={busy} onClick={() => void load(relation.animeId)} className="text-xs text-violet-200 underline">View {relation.type.toLowerCase().replaceAll("_", " ")}{relation.title ? `: ${relation.title}` : " details"}{relation.mediaType ? ` · ${relation.mediaType}` : ""}{relation.status ? ` · ${relation.status}` : ""}</button>)}
           </div>}
-          <CatalogAnalysis key={"analysis:" + details.anime.id} client={client} animeID={details.anime.id} />
+          <CatalogAnalysis key={"analysis:" + details.anime.id} client={client} animeID={details.anime.id} assistedAvailable={assistedAnalysis} />
           <CatalogContinuity key={details.anime.id} client={client} id={details.anime.id} title={details.anime.title} onSelect={nextId => void load(nextId)} onError={onError} />
           <h5 className="pt-2 text-xs font-semibold">Episode schedule</h5>
           {!details.episodes.length && <p className="text-xs text-slate-400">No episode schedule is available.</p>}
