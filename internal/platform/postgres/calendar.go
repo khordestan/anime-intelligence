@@ -35,10 +35,11 @@ func(r *Repository) calendarSnapshot(ctx context.Context,from time.Time,days int
  if _,err=tx.Exec(ctx,`SET LOCAL statement_timeout='2s'`);err!=nil{return out,err}
  // Resolve tracks before selecting latest revisions, then apply the window.
  // Filtering dates before DISTINCT ON could revive a superseded schedule.
- rows,err:=tx.Query(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track) AS (
- SELECT anime_id,anime_id,release_track FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
+ // Calendar reachability depends on the title and track, regardless of anchor.
+ rows,err:=tx.Query(ctx,`WITH RECURSIVE franchise(anime_id,release_track) AS (
+ SELECT anime_id,release_track FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
  UNION
- SELECT f.origin,CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track
+ SELECT CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track
  FROM franchise f JOIN anime_relations r ON r.relation_type IN ('PREQUEL','SEQUEL')
  AND (r.source_anime_id=f.anime_id OR r.target_anime_id=f.anime_id)
 ),targets(anime_id,release_track) AS (
