@@ -20,7 +20,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 | Catalog freshness and coverage | Reviewed imports, opt-in bounded jobs, exact mappings, review/retraction tools and metrics | Licensed comprehensive sources, broader people/character data, confirmed availability, active operations and quality objectives |
 | Season-level library | Canonical title-level progress, ratings, relations and viewing passes | Finer season and rating conventions, franchise corrections and more bulk editing |
 | Alerts | Verified-owner in-app episode and season-announcement notices, follow pagination and an upcoming schedule calendar | Delay/movie alert rules, explicit corrections, background channels and operational delivery |
-| Recommendations | PostgreSQL Personal Match, offline evaluator, and paginated evidence-backed Discovery with filtering and dismissals | Global Essentials, deliberate exploration beyond evidence coverage, representative judgments and feedback learning |
+| Recommendations | PostgreSQL Personal Match, offline evaluators, opt-in Global Essentials and paginated Discovery with evidence navigation and dismissals | Reviewed Essentials corpus, deliberate exploration beyond evidence coverage, representative judgments and feedback learning |
 | Production operations | Security tests, recovery drill, bounded diagnostics and monitoring examples | Independent review, ingress abuse controls, load testing, activated monitoring, real backup/recovery and deployment workflows |
 
 ## Milestone 0 — Runnable foundation
@@ -156,7 +156,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Tool-constrained AI analyst
 - [ ] Evidence-grounded explanations
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
-- [ ] Discovery feedback experience
+- [x] Discovery hide/restore and add-to-Planning feedback
+- [ ] Discovery feedback beyond hide/restore and library actions
 - [ ] LLM provider abstraction and usage controls
 
 ## Milestone 7 — Production readiness

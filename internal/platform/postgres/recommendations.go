@@ -296,7 +296,13 @@ func (r *Repository) PersonalMatchDismissals(ctx context.Context, after string) 
 	return out, tx.Commit(ctx)
 }
 
+type DiscoveryFeature struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
 type DiscoveryTitle struct {
+	FeaturedEvidence []DiscoveryFeature `json:"featuredEvidence"`
 	SupportedFeatures []string `json:"supportedFeatures"`
 	AnimeID string `json:"animeId"`
 	Title string `json:"title"`
@@ -350,11 +356,12 @@ func (r *Repository) DiscoverByFeature(ctx context.Context, limit int, after *Di
 			ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC
 		), supported AS (
 			SELECT anime_id,count(*) AS feature_count,
-				(array_agg(display_name ORDER BY value*confidence DESC,feature_key))[1:4] AS feature_names
+				(array_agg(display_name ORDER BY value*confidence DESC,feature_key))[1:4] AS feature_names,
+				(array_agg(feature_key ORDER BY value*confidence DESC,feature_key))[1:4] AS feature_keys
 			FROM latest WHERE value>0 GROUP BY anime_id
 			HAVING $5::text='' OR bool_or(feature_key=$5)
 		)
-		SELECT a.id::text,a.canonical_title,s.feature_count,s.feature_names
+		SELECT a.id::text,a.canonical_title,s.feature_count,s.feature_names,s.feature_keys
 		FROM supported s JOIN anime a ON a.id=s.anime_id
 		WHERE $3::bigint=0 OR s.feature_count<$3 OR (s.feature_count=$3 AND a.id>NULLIF($4,'')::uuid)
 		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID, featureKey)
@@ -365,8 +372,13 @@ func (r *Repository) DiscoverByFeature(ctx context.Context, limit int, after *Di
 		items := []DiscoveryTitle{}
 		for rows.Next() {
 			var item DiscoveryTitle
-			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount, &item.SupportedFeatures); err != nil {
+			var featureKeys []string
+			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount, &item.SupportedFeatures, &featureKeys); err != nil {
 				return DiscoveryPage{}, err
+			}
+			item.FeaturedEvidence = make([]DiscoveryFeature, 0, len(featureKeys))
+			for j, key := range featureKeys {
+				item.FeaturedEvidence = append(item.FeaturedEvidence, DiscoveryFeature{Key: key, Name: item.SupportedFeatures[j]})
 			}
 			items = append(items, item)
 		}

@@ -546,7 +546,7 @@ paths:
           description: Feature key from nextCursor when paging a filtered result.
           schema: { type: string, maxLength: 128 }
       responses:
-        "200": { description: Items with animeId, title, positive curated evidenceCount and up to four supportedFeatures, plus nextCursor when another page exists }
+        "200": { description: Items with animeId, title, positive curated evidenceCount and up to four supportedFeatures names with matching featuredEvidence key/name pairs, plus nextCursor when another page exists }
         "400": { description: Invalid Discovery cursor or feature filter }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }

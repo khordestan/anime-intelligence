@@ -6,7 +6,7 @@ import { ApiClient } from "../lib/api";
 type Preference = { key: string; name: string; category: string; weight: number | null };
 type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number } };
 type HiddenMatch = { animeId: string; title: string };
-type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[] };
+type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[]; featuredEvidence?: { key: string; name: string }[] };
 type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount"> & { featureKey?: string };
 type DiscoveryPage = { items: DiscoveryTitle[]; nextCursor?: DiscoveryCursor };
 type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
@@ -265,7 +265,21 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
               {discovery.items.map(title => <li key={title.animeId} className="rounded-xl bg-white/5 p-3">
                 <p className="text-sm font-medium">{title.title}</p>
                 <p className="text-xs text-slate-400">{title.evidenceCount} supported {title.evidenceCount === 1 ? "feature" : "features"}</p>
-                {title.supportedFeatures?.length ? <p className="mt-1 text-xs text-slate-300">{title.supportedFeatures.join(" · ")}</p> : null}
+                {title.featuredEvidence?.length ? (
+                  <ul aria-label={"Explore features for " + title.title} className="mt-1 flex flex-wrap gap-2">
+                    {title.featuredEvidence.map(feature => (
+                      <li key={feature.key}>
+                        <button type="button" disabled={busy || discoveryFeature === feature.key}
+                          aria-label={"Explore " + feature.name} onClick={() => void filterDiscovery(feature.key)}
+                          className="text-xs underline disabled:no-underline">
+                          {feature.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : title.supportedFeatures?.length ? (
+                  <p className="mt-1 text-xs text-slate-300">{title.supportedFeatures.join(" · ")}</p>
+                ) : null}
                 <button type="button" disabled={busy} aria-label={"Plan to watch " + title.title}
                   onClick={() => void planTitle(title)} className="mr-3 mt-2 text-xs underline disabled:opacity-50">Plan to watch</button>
                 <button type="button" disabled={busy} aria-label={"Hide discovery title " + title.title} onClick={() => void setDismissed(title, true)}

@@ -56,6 +56,10 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if err != nil || len(secondPage.Items) != 1 || secondPage.Items[0].AnimeID != weak || secondPage.NextCursor != nil {
 		t.Fatalf("second discovery page: %+v err=%v", secondPage, err)
 	}
+	if got := discovered[0].FeaturedEvidence; len(got) != 1 || got[0].Key != "synthetic.power" || got[0].Name != "Synthetic power" {
+		t.Fatalf("unexpected featured evidence: %+v", got)
+	}
+
 	filtered, err := a.DiscoverByFeature(ctx, 1, nil, "synthetic.power")
 	if err != nil || len(filtered.Items) != 1 || filtered.Items[0].AnimeID != strong ||
 		filtered.NextCursor == nil || filtered.NextCursor.FeatureKey != "synthetic.power" {

@@ -53,7 +53,7 @@ async function mockMatches(page: Page, hold = false) {
         return respond({ items: [{ animeId: "synthetic-next", title: "Synthetic mystery sequel", evidenceCount: 1 }] });
       }
       return respond({
-        items: [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 1, supportedFeatures: ["Synthetic mystery"] }],
+        items: [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 1, supportedFeatures: ["Synthetic mystery"], featuredEvidence: [{ key: "synthetic.mystery", name: "Synthetic mystery" }] }],
         nextCursor: featureKey ? { animeId: "synthetic-match", evidenceCount: 1, featureKey } : undefined,
       });
     }
@@ -130,9 +130,11 @@ test("Discovery works before adding preferences and respects hidden titles", asy
   await panel.getByRole("button", { name: "Explore titles", exact: true }).click();
   const discovery = panel.getByRole("region", { name: "Discovery titles" });
   await expect(discovery.getByText("1 supported feature")).toBeVisible();
-  await expect(discovery.getByRole("listitem").getByText("Synthetic mystery", { exact: true })).toBeVisible();
+  const explore = discovery.getByRole("button", { name: "Explore Synthetic mystery" });
+  await expect(explore).toBeVisible();
   const filter = discovery.getByLabel("Filter by feature");
-  await filter.selectOption("synthetic.mystery");
+  await explore.click();
+  await expect(filter).toHaveValue("synthetic.mystery");
   await discovery.getByRole("button", { name: "Load more discovery titles" }).click();
   await expect(discovery.getByText("Synthetic mystery sequel")).toBeVisible();
   await filter.selectOption("");
