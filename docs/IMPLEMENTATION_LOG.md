@@ -1063,3 +1063,10 @@ Validation for `41b85d1` (PR #51): [CI](https://github.com/khordestan/anime-inte
 
 - Added explicit publication of reviewed offline schedule moves and per-follow owner consent. Consent does not replay earlier changes. Notices preserve source, track and prior/current unconfirmed schedule times. Migration 000024 defaults existing follows to off, and downgrade guards retained consent.
 - Local `make check`, PostgreSQL consent/publication and rollback guard regression under the race detector, frontend unit tests, typecheck, build and eight focused browser tests passed. Hosted checks pending.
+
+Validation for `8957fac` (PR #52): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45413876616) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45413876912) passed, including migration and recovery jobs. The PR merged as `4afffb8`.
+
+## 2026-11-24 — Catalog evidence tool
+
+- Added read-only sourced catalog evidence for bounded questions about one or two chosen titles. The deterministic selector only projects six public fields and preserves known zeroes and field-level source choices.
+- Go checks, frontend unit tests, build, typecheck and both focused browser tests passed. A live loopback smoke test verified two-title evidence output. Hosted checks pending.

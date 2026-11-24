@@ -157,6 +157,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Feedback learning and representative evaluation datasets
 
 ## Milestone 6 — AI and discovery
+- [x] Read-only catalog evidence tool with bounded topic selection and source attribution
 - [ ] Tool-constrained AI analyst
 - [ ] Evidence-grounded explanations
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
