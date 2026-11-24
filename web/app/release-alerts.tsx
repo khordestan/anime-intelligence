@@ -21,6 +21,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const [cursor, setCursor] = useState("");
   const [nextCursor, setNextCursor] = useState("");
   const [catchingUp, setCatchingUp] = useState(false);
+  const [oldestPendingAt, setOldestPendingAt] = useState<string | undefined>();
   const [preferences, setPreferences] = useState<Record<string, string>>({});
   const [scopes, setScopes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -39,7 +40,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
     const query = params.toString();
     const [f, n] = await Promise.all([
       client.request<{ items: Follow[] }>("/follows"),
-      client.request<{ items: Notice[]; unreadCount?: number; nextCursor?: string; materialization?: { created: number; hasMore: boolean } }>("/notifications" + (query ? "?" + query : "")),
+      client.request<{ items: Notice[]; unreadCount?: number; nextCursor?: string; materialization?: { created: number; hasMore: boolean; oldestPendingAt?: string } }>("/notifications" + (query ? "?" + query : "")),
     ]);
     if (!alive.current || current !== revision.current) return;
     unreadFilter.current = onlyUnread;
@@ -49,6 +50,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
     setUnreadCount(n.unreadCount ?? null);
     setCursor(pageCursor); setNextCursor(n.nextCursor ?? "");
     setCatchingUp(!pageCursor && n.materialization?.hasMore === true);
+    setOldestPendingAt(n.materialization?.oldestPendingAt);
   }, [client]);
   const refresh = useCallback(async (pageCursor = "", onlyUnread = unreadFilter.current, collapsed = false) => {
     if (inFlight.current) return;
@@ -126,7 +128,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
         <p className="mt-2 text-sm text-slate-400">Checks every minute while this dashboard tab is visible and you are on the latest page. Episode notices require confirmed releases; linked-season follows also include new announcements. Scheduled times can change.</p>
         <button disabled={busy} onClick={() => void refresh()} className="mt-3 text-sm underline disabled:opacity-50">{cursor ? "Back to latest alerts" : "Refresh alerts"}</button>
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
-        {!cursor && catchingUp && <p className="mt-2 text-sm text-amber-200">More release alerts are waiting. Refresh alerts to continue catching up; each check adds up to 100 notifications.</p>}
+        {!cursor && catchingUp && <p className="mt-2 text-sm text-amber-200">More release alerts are waiting. {oldestPendingAt && <>The oldest pending release is from {new Date(oldestPendingAt).toLocaleString()}. </>}Refresh alerts to check the next batch.</p>}
         <h3 className="mt-5 font-medium">Followed releases</h3>
         {titles.size === 0 && <p className="mt-2 text-sm text-slate-400">Add an anime to your library to follow its releases.</p>}
         <ul className="mt-3 space-y-3">

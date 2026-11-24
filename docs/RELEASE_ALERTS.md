@@ -20,7 +20,7 @@ Verified accounts can open Manage release alerts, subscribe library titles, sele
 
 ## Remaining work
 
-Follow pagination, backlog age/metrics, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
+Follow pagination, operator backlog metrics, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
 
 ## Linked-season follows
 
@@ -39,7 +39,7 @@ See [followed schedule calendar](RELEASE_CALENDAR.md) for a separate owner-scope
 
 The latest-page query selects at most 101 distinct eligible events in occurrence-time/ID order and inserts at most 100. Insertion and materialization status share that single statement under the existing owner/advisory locks and transaction. The extra candidate sets hasMore; overlapping follow paths cannot inflate it because candidates are distinct events. Existing notices, nonmatching tracks, unrelated titles and pre-subscription events are excluded before the cap.
 
-hasMore describes eligibility at this poll's query snapshot, not an exact backlog count or a promise about later arrivals. created counts successful new inserts, not unread/returned notices. nextCursor continues to mean older already materialized history; it is independent of pending events. History pages omit materialization and never drain the backlog. All status is owner scoped and verified-email protected.
+hasMore describes eligibility at this poll's query snapshot, not an exact backlog count or a promise about later arrivals. created counts successful new inserts, not unread/returned notices. nextCursor continues to mean older already materialized history; it is independent of pending events. If another eligible event exists, `oldestPendingAt` is its occurrence time. It reflects the first event beyond the batch from that snapshot. History pages omit materialization and never drain the backlog. All status is owner scoped and verified-email protected.
 
 The dashboard displays a catch-up notice on the latest page when hasMore is true. Manual Refresh alerts or the existing one-minute polling continues with another bounded batch. It does not loop immediately or create a background delivery channel. Successful polls replace the status; failed refreshes preserve the previous page/status for retry. History hides the catch-up notice and account changes reset it.
 

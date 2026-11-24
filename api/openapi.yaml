@@ -344,6 +344,7 @@ paths:
                     properties:
                       created: { type: integer, minimum: 0, maximum: 100 }
                       hasMore: { type: boolean }
+                      oldestPendingAt: { type: string, format: date-time, description: Occurrence time of the oldest eligible event beyond the current batch }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/notifications:
