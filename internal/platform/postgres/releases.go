@@ -231,16 +231,22 @@ func (r *Repository) readNotificationPage(ctx context.Context, cursor string, un
 	if cursor=="" {
 	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return out,err}
 	status:=NotificationMaterialization{}
- err=tx.QueryRow(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track,created_at,schedule_notices_since) AS (
-SELECT anime_id,anime_id,release_track,created_at,schedule_notices_since FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
+ // For one reachable title, track and scope, an event needs any qualifying
+ // subscription. The aggregate retains the earliest follow and consent;
+ // the schema ensures that consent cannot precede its own follow.
+ err=tx.QueryRow(ctx,`WITH RECURSIVE franchise(anime_id,release_track,created_at,schedule_notices_since) AS (
+SELECT anime_id,release_track,created_at,schedule_notices_since FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
 UNION
-SELECT f.origin,CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track,f.created_at,f.schedule_notices_since
+SELECT CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track,f.created_at,f.schedule_notices_since
 FROM franchise f JOIN anime_relations r ON r.relation_type IN ('PREQUEL','SEQUEL')
 AND (r.source_anime_id=f.anime_id OR r.target_anime_id=f.anime_id)
-), targets(anime_id,release_track,created_at,schedule_notices_since,scope) AS (
+), reachable(anime_id,release_track,created_at,schedule_notices_since,scope) AS (
 SELECT anime_id,release_track,created_at,schedule_notices_since,'ANIME' FROM user_follows WHERE user_id=$1 AND follow_scope='ANIME'
 UNION
 SELECT anime_id,release_track,created_at,schedule_notices_since,'FRANCHISE' FROM franchise
+), targets AS (
+SELECT anime_id,release_track,min(created_at) AS created_at,min(schedule_notices_since) AS schedule_notices_since,scope
+FROM reachable GROUP BY anime_id,release_track,scope
 ), eligible AS MATERIALIZED (
 SELECT DISTINCT e.id AS event_id,
 CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced'

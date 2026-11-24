@@ -176,7 +176,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Production ingress configuration, independent security review and broader observability
 - [x] Synthetic PostgreSQL logical restore/key recovery and offline credential-fencing CI drill
 - [ ] Real backup/key storage, post-snapshot deletion/security reconciliation, PITR and recovery objectives
-- [x] Synthetic PostgreSQL release backlog burst and isolation test
+- [x] Synthetic PostgreSQL release backlog bursts, isolation and overlapping franchise-path performance test
 - [ ] Representative load and reliability tests
 - [x] Browser auth/account-switch/local-mode tests and transport race tests
 - [x] Full-stack browser tests against the real PostgreSQL API (dedicated disposable CI database and restricted runtime role)

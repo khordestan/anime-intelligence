@@ -1105,3 +1105,10 @@ Validation for `ac8610f` (PR #57): [CI](https://github.com/khordestan/anime-inte
 
 - Added an owner-scoped mode that ranks by eligible positive features missing from the titles in the current library. Cursor mode and feature filter stay bound to each page.
 - Local Go checks, both focused PostgreSQL recommendation tests under the race detector, frontend unit tests, build, typecheck and all five focused browser tests passed. Hosted checks pending.
+
+Validation for `caef3cf` (PR #58): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45419074034) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45419073827) passed. The PR merged as `700bf23`.
+
+## 2026-11-24 — Overlapping franchise performance
+
+- Coalesced equivalent calendar paths and aggregated eligible release targets by title, track and scope before joining events. The earliest valid follow and consent boundaries retain the existing eligibility rules.
+- Local Go checks and linked-season, schedule consent and 128-title/80-follow PostgreSQL regressions passed. Across three local race runs per revision, median synthetic calendar reads fell from 72.4 to 7.3 ms and three-poll alert catch-up fell from 573.7 to 236.0 ms. These measurements are from the disposable fixture. Hosted checks pending.
