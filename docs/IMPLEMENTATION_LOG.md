@@ -1007,3 +1007,10 @@ Validation for `d8b8b43` (PR #43): [CI](https://github.com/khordestan/anime-inte
 
 - Added candidate and relevant-title eligibility counts and recall ceiling at k. Evaluated five films using independent public award results and critics' poll inclusion. The single-source pilot reached its coverage ceiling and left representative evaluation open.
 - Local `make check` passed with VCS stamping disabled for the linked worktree. The pilot reproduced the expected one eligible relevant title out of three. Local PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Hosted checks pending.
+
+Validation for `8db4d94` (PR #44): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45408374539) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45408374397) passed. The PR merged as `b0bd258`.
+
+## 2026-11-24 — Explore an evidence feature from Discovery
+
+- Added canonical feature keys alongside the existing top-four Discovery feature names. Result cards use those keys to apply the existing filter and reset the paging cursor.
+- Local `make check`, dependency install, frontend unit tests, build and typecheck passed. All five focused Personal Match and Discovery browser tests passed. PostgreSQL integration tests skipped locally without `TEST_DATABASE_URL`. Hosted checks pending.
