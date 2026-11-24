@@ -990,6 +990,11 @@ Validation for `daac704276d539b9987310823357814ee726d716`: all seven [CI jobs](h
 - Baseline a13073a24021094bfb7d5ff84f85f64d2cfecad2 CI 44080181072 and Security 44080181088 passed on inspection. Local Go/Node unavailable; exact implementation hosted checks pending.
 - No real metadata, secrets, account/watch data, provider requests, source/host activation or deployment.
 
+## 2026-11-24 — Offline catalog field presence
+
+- Added opt-in snapshot field and per-track row counts to catalog-check. Scheduled timestamps and confirmed releases are counted independently, and known zero episode totals count as present.
+- Local `make check` passed with VCS stamping disabled for the linked worktree. The CLI smoke test verified the unchanged default response and reported counts. Local PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Hosted checks pending.
+
 ## 2026-11-24 — Offline Global Essentials baseline
 
 - Added a deterministic public-recognition ranker and an offline, bounded fixture evaluator with a title-order baseline. The report includes evidence citations and measures missed held-out titles even when they lack qualifying evidence.
