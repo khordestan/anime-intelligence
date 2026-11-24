@@ -1112,3 +1112,10 @@ Validation for `caef3cf` (PR #58): [CI](https://github.com/khordestan/anime-inte
 
 - Coalesced equivalent calendar paths and aggregated eligible release targets by title, track and scope before joining events. The earliest valid follow and consent boundaries retain the existing eligibility rules.
 - Local Go checks and linked-season, schedule consent and 128-title/80-follow PostgreSQL regressions passed. Across three local race runs per revision, median synthetic calendar reads fell from 72.4 to 7.3 ms and three-poll alert catch-up fell from 573.7 to 236.0 ms. These measurements are from the disposable fixture. Hosted checks pending.
+
+Validation for PR #59 passed in [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45419831716) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45419831838). It merged as `a459fda`.
+
+## 2026-11-24 — Shared SMTP transport
+
+- Extracted the authenticated, certificate-verified SMTP transport for reuse by future release delivery. Identity message rendering and proof handling stay in the identity mail package.
+- Local `make check` passed. Hosted checks pending.
