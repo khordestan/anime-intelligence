@@ -1,6 +1,6 @@
 # Anime Intelligence — project context
 
-Last updated: 2026-11-17. GitHub `main` is the source of truth. Update this document alongside implementation changes; use Git history and Actions for exact commit and validation status. This file contains no real user data or operational credentials.
+Start with [current progress](../PROGRESS.md), the [roadmap](../ROADMAP.md) and [development rules](../AGENTS.md). This document preserves architecture decisions and development history. Use Git history and Actions for exact commit and validation status.
 
 ## Goal and working agreement
 
@@ -12,8 +12,8 @@ Build a detailed, current anime catalog with personal tracking, explainable tast
 | --- | --- |
 | API | Go 1.26 modular monolith, versioned REST under `/api/v1`; `cmd/api`, `internal/httpapi`, domain handlers in `internal/modules` |
 | Persistence | Request-aware `store.Repository`; PostgreSQL via pgx for multi-user runtime, JSON file only for single-user local development |
-| Database | Embedded checksummed transactional migrations `000001`–`000022`; advisory migration lock; separate administrator and restricted runtime roles |
-| Identity | Argon2id passwords; random opaque bearer sessions; database stores digests; transaction-local identity and forced RLS on fourteen private tables |
+| Database | Embedded checksummed transactional migrations `000001`–`000023`; advisory migration lock; separate administrator and restricted runtime roles |
+| Identity | Argon2id passwords; random opaque bearer sessions; database stores digests; transaction-local identity and forced RLS on private tables |
 | Dashboard | Next.js 16 / React; in-memory bearer/proof handling, cancellation and account-revision checks prevent stale responses crossing accounts |
 | Mail | Optional certificate-verified implicit-TLS SMTP; AES-256-GCM encrypted PostgreSQL request inbox and mail outbox; admission commits before HTTP 202; leased workers with bounded persisted retries |
 | Catalog operations | Read-only catalog-status reports source age/never-synced/future-clock flags, independent per-title age/unobserved counts, field-presence coverage and aggregate latest schedules without private data; optional diagnostics-only role |
@@ -192,3 +192,5 @@ Both recommendation lanes can add a title to My Library as Planning through add-
 Discovery uses keyset pagination by descending evidence count and ascending catalog UUID, with Load more in the dashboard.
 
 Discovery cards now name up to four curated features behind their evidence counts. The OpenAPI description includes pagination parameters and response fields.
+
+Discovery feature filtering, the oldest pending release timestamp and opt-in follow pagination are now implemented. The [handoff checkpoint](../PROGRESS.md) links to the tested PR heads.
