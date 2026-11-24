@@ -190,3 +190,58 @@ func TestNotificationHistoryStableBoundariesAndOwnerIsolation(t *testing.T){
   if spec.status==200&&(!strings.Contains(w.Body.String(),`"nextCursor"`)||w.Header().Get("Cache-Control")!="no-store"){t.Fatal("history response contract")}
  }
 }
+
+func TestNotificationBatchReportsOldestPendingRelease(t *testing.T) {
+	db, owner, _, _ := testDB(t)
+	ctx := context.Background()
+	session, err := db.Register(ctx, "alerts-backlog@example.test", "synthetic-alerts-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyAccount(t, db, session.Token)
+	repo := db.Repository(session.Token)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	const provider = "alerts-backlog-fixture"
+	if _, err := owner.Exec(ctx, `INSERT INTO data_sources(provider_key,display_name,enabled,policy_url)
+		VALUES($1,'Synthetic backlog',true,'https://example.test/policy')`, provider); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := feed.Snapshot{Version: 1, Provider: provider, ObservedAt: now.Add(-2 * time.Hour), Titles: []feed.Title{
+		{ExternalID: "series", Title: "Synthetic Release Backlog", MediaType: "TV", Status: "RELEASING"},
+	}}
+	if _, err := catalogsync.Import(ctx, owner, snapshot, now); err != nil {
+		t.Fatal(err)
+	}
+	var animeID string
+	if err := owner.QueryRow(ctx, `SELECT anime_id::text FROM anime_external_ids WHERE provider=$1`, provider).Scan(&animeID); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := repo.Follow(ctx, animeID, "SUB"); err != nil || !ok {
+		t.Fatalf("follow: ok=%t err=%v", ok, err)
+	}
+	if _, err := owner.Exec(ctx, `UPDATE user_follows SET created_at=$1 WHERE anime_id=$2`, now.Add(-90*time.Minute), animeID); err != nil {
+		t.Fatal(err)
+	}
+	firstRelease := now.Add(-time.Hour)
+	snapshot.ObservedAt = now.Add(-10 * time.Minute)
+	for episode := 1; episode <= 102; episode++ {
+		released := firstRelease.Add(time.Duration(episode-1) * time.Second)
+		snapshot.Titles[0].Episodes = append(snapshot.Titles[0].Episodes, feed.Episode{Number: episode, Track: "SUB", ReleasedAt: &released})
+	}
+	if result, err := catalogsync.Import(ctx, owner, snapshot, now); err != nil || result.ReleaseEvents != 102 {
+		t.Fatalf("import releases: %+v err=%v", result, err)
+	}
+
+	page, err := repo.NotificationSummary(ctx)
+	status := page.Materialization
+	want := firstRelease.Add(100 * time.Second)
+	if err != nil || status == nil || status.Created != 100 || !status.HasMore ||
+		status.OldestPendingAt == nil || !status.OldestPendingAt.Equal(want) {
+		t.Fatalf("first notification batch: %+v status=%+v err=%v", page, status, err)
+	}
+	page, err = repo.NotificationSummary(ctx)
+	status = page.Materialization
+	if err != nil || status == nil || status.Created != 2 || status.HasMore || status.OldestPendingAt != nil {
+		t.Fatalf("drained notification batch: %+v status=%+v err=%v", page, status, err)
+	}
+}

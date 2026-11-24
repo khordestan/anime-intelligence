@@ -87,6 +87,7 @@ func (r *Repository) UnfollowScope(ctx context.Context,id,scope string) (bool,er
 type NotificationMaterialization struct {
  Created int `json:"created"`
  HasMore bool `json:"hasMore"`
+ OldestPendingAt *time.Time `json:"oldestPendingAt,omitempty"`
 }
 type NotificationPage struct {
 	UnreadCount int64 `json:"unreadCount"`
@@ -175,7 +176,9 @@ ORDER BY created_at,event_id LIMIT 100
 ON CONFLICT(user_id,event_id,channel) WHERE event_id IS NOT NULL DO NOTHING
 RETURNING id
 )
-SELECT (SELECT count(*) FROM inserted),(SELECT count(*) FROM eligible)>100`,u.ID).Scan(&status.Created,&status.HasMore)
+SELECT (SELECT count(*) FROM inserted), pending.created_at IS NOT NULL, pending.created_at
+FROM (SELECT 1) AS result
+LEFT JOIN LATERAL (SELECT created_at FROM eligible ORDER BY created_at,event_id OFFSET 100 LIMIT 1) AS pending ON true`,u.ID).Scan(&status.Created,&status.HasMore,&status.OldestPendingAt)
  if err==nil{out.Materialization=&status}
 	if err!=nil {return out,err}
 	}
