@@ -22,6 +22,7 @@ paths:
                   version: { type: string }
                   status: { type: string }
                   authenticationRequired: { type: boolean }
+                  globalEssentialsAvailable: { type: boolean, description: A reviewed Essentials manifest is loaded. }
                   emailVerificationRequired: { type: boolean, description: True in PostgreSQL mode. Tracker and rating operations require emailVerified in addition to a valid session. }
                   identityDeliveryAvailable: { type: boolean, description: True only when the PostgreSQL runtime has explicit identity delivery configuration. }
   /healthz:
@@ -484,6 +485,42 @@ paths:
         "400": { description: Invalid catalog ID }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
+  /api/v1/recommendations/essentials:
+    get:
+      summary: List the reviewed Global Essentials ranking
+      responses:
+        "200":
+          description: Ranked public evidence snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [algorithmVersion, items]
+                properties:
+                  algorithmVersion: { type: string }
+                  items:
+                    type: array
+                    maxItems: 100
+                    items:
+                      type: object
+                      required: [animeId, title, evidenceKinds, publisherCount, evidence]
+                      properties:
+                        animeId: { type: string, format: uuid }
+                        title: { type: string }
+                        evidenceKinds: { type: integer, minimum: 1, maximum: 2 }
+                        publisherCount: { type: integer, minimum: 1, maximum: 20 }
+                        evidence:
+                          type: array
+                          minItems: 1
+                          maxItems: 20
+                          items:
+                            type: object
+                            required: [kind, publisherId, sourceUrl]
+                            properties:
+                              kind: { enum: [JURIED_AWARD_WIN, INSTITUTIONAL_SELECTION] }
+                              publisherId: { type: string }
+                              sourceUrl: { type: string, format: uri }
+        "404": { description: Global Essentials is unavailable in this runtime }
   /api/v1/recommendations/discovery:
     get:
       security: [{ bearerAuth: [] }]
@@ -516,7 +553,7 @@ paths:
   /api/v1/recommendations:
     get:
       summary: Evidence-backed Personal Match ranking for the verified owner
-      description: Uses declared preferences and up to 1000 own series ratings against at most 500 title-ordered untracked candidates. Only referenced curated non-spoiler series observations qualify. Empty evidence produces an empty list. A key-ordered profile of at most 256 active non-spoiler features separates declared and own-rating-derived weight/confidence signals. Raw references, rated-title lists and private record identifiers are not returned. Scores are algorithmic compatibility scores, not probabilities.
+      description: Uses declared preferences and up to 1000 own series ratings against at most 500 untracked candidates prioritized by eligible profile feature overlap. Only referenced curated non-spoiler series observations qualify. Empty evidence produces an empty list. A key-ordered profile of at most 256 active non-spoiler features separates declared and own-rating-derived weight/confidence signals. Raw references, rated-title lists and private record identifiers are not returned. Scores are algorithmic compatibility scores, not probabilities.
       security: [{ bearerAuth: [] }]
       parameters:
         - in: query

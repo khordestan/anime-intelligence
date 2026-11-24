@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/khordestan/anime-intelligence/internal/modules/catalog"
+ "github.com/khordestan/anime-intelligence/internal/modules/intelligence"
 	"github.com/khordestan/anime-intelligence/internal/modules/tracker"
 	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/password"
@@ -25,13 +26,18 @@ func NewPostgresRouter(logger *slog.Logger, db *postgres.DB) http.Handler {
 	return NewPostgresRouterWithIdentity(logger, db, nil)
 }
 func NewPostgresRouterWithIdentity(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service) http.Handler {
+	return NewPostgresRouterWithEssentials(logger, db, delivery, nil)
+}
+
+func NewPostgresRouterWithEssentials(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service, essentials []intelligence.EssentialsMatch) http.Handler {
 	mux := http.NewServeMux()
+	registerGlobalEssentials(mux, essentials)
 	mux.HandleFunc("GET /readyz", readinessHandler("postgresql", db.Ready))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok", "storage": "postgresql"})
 	})
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true, "identityDeliveryAvailable": delivery != nil, "emailVerificationRequired": true})
+		writeJSON(w, 200, map[string]any{"name": "Anime Intelligence API", "version": "v1", "status": "development", "authenticationRequired": true, "identityDeliveryAvailable": delivery != nil, "globalEssentialsAvailable": len(essentials) > 0, "emailVerificationRequired": true})
 	})
 	c := catalog.NewHandler(db.Repository(""))
 	mux.HandleFunc("GET /api/v1/anime", c.List)
