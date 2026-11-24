@@ -121,6 +121,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 
 ## Milestone 4 — Release intelligence
 - [x] Transactional offline schedule ingestion and revision history
+- [x] Public episode schedule revision pages with per-track source attribution
 - [x] Opt-in bounded Wikidata factual synchronization with persisted source due time
 - [x] Durable explicit-ID Wikidata jobs, per-title scheduling, bounded retries and fenced atomic import acknowledgement
 - [ ] Broad approved metadata/availability synchronization and catalog discovery

@@ -122,6 +122,29 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Anime' }
         "404": { description: Anime not found }
+  /api/v1/anime/{id}/episodes/{number}/schedule-history:
+    get:
+      summary: Read schedule revisions for one episode and release track
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: number
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 100000 }
+        - in: query
+          name: track
+          required: true
+          schema: { type: string, enum: [RAW, SUB, DUB, UNKNOWN] }
+        - in: query
+          name: beforeRevision
+          description: Return strictly older revisions. Pass nextBeforeRevision from the previous response.
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200": { description: Up to 20 schedule revisions newest first with their source and independent scheduledAt and releasedAt facts. Includes nextBeforeRevision when more history exists. An unavailable episode or track returns empty items. }
+        "400": { description: Invalid title ID, episode number, release track or revision cursor }
   /api/v1/anime/{id}/details:
     get:
       summary: Public catalog enrichment, continuity relations and current episode schedules
