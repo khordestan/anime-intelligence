@@ -78,17 +78,24 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 			authError(w, 400, "invalid_feature")
 			return
 		}
+		for _, flag := range []string{"unfamiliar", "afterUnfamiliar"} {
+			if values, present := query[flag]; present && (len(values) != 1 || (values[0] != "true" && values[0] != "false")) {
+				authError(w, 400, "invalid_discovery_order")
+				return
+			}
+		}
+		unfamiliar := query.Get("unfamiliar") == "true"
 		var cursor *postgres.DiscoveryCursor
-		if query.Has("after") || query.Has("afterCount") || query.Has("afterFeature") {
+		if query.Has("after") || query.Has("afterCount") || query.Has("afterFeature") || query.Has("afterUnfamiliar") {
 			id := query.Get("after")
 			count, err := strconv.Atoi(query.Get("afterCount"))
-			if err != nil || count < 1 || !validSessionID(id) || len(query["after"]) != 1 || len(query["afterCount"]) != 1 || len(query["afterFeature"]) > 1 || query.Get("afterFeature") != featureKey {
+			if err != nil || count < 1 || !validSessionID(id) || len(query["after"]) != 1 || len(query["afterCount"]) != 1 || len(query["afterFeature"]) > 1 || query.Get("afterFeature") != featureKey || (query.Get("afterUnfamiliar") == "true") != unfamiliar {
 				authError(w, 400, "invalid_discovery_cursor")
 				return
 			}
-			cursor = &postgres.DiscoveryCursor{AnimeID: id, EvidenceCount: count, FeatureKey: featureKey}
+			cursor = &postgres.DiscoveryCursor{AnimeID: id, EvidenceCount: count, FeatureKey: featureKey, Unfamiliar: unfamiliar}
 		}
-		page, err := db.Repository(token).DiscoverByFeature(r.Context(), limit, cursor, featureKey)
+		page, err := db.Repository(token).DiscoverWithOptions(r.Context(), limit, cursor, featureKey, unfamiliar)
 		if err != nil {
 			matchError(w, err)
 			return

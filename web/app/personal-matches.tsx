@@ -6,8 +6,8 @@ import { ApiClient } from "../lib/api";
 type Preference = { key: string; name: string; category: string; weight: number | null };
 type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number } };
 type HiddenMatch = { animeId: string; title: string };
-type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[]; featuredEvidence?: { key: string; name: string }[] };
-type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount"> & { featureKey?: string };
+type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[]; unfamiliarCount?: number; featuredEvidence?: { key: string; name: string }[] };
+type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount"> & { featureKey?: string; unfamiliar?: boolean };
 type DiscoveryPage = { items: DiscoveryTitle[]; nextCursor?: DiscoveryCursor };
 type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
@@ -18,6 +18,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
   const [lastDismissed, setLastDismissed] = useState<HiddenMatch | null>(null);
   const [discovery, setDiscovery] = useState<DiscoveryPage | null>(null);
   const [discoveryFeature, setDiscoveryFeature] = useState("");
+  const [discoveryUnfamiliar, setDiscoveryUnfamiliar] = useState(false);
   const [hidden, setHidden] = useState<HiddenMatches | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [profile, setProfile] = useState<Signal[]>([]);
@@ -134,25 +135,28 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
       if (alive.current && current === revision.current) setBusy(false);
     }
   }
-  function discoveryPath(featureKey: string, after?: DiscoveryCursor) {
+  function discoveryPath(featureKey: string, after?: DiscoveryCursor, unfamiliar = discoveryUnfamiliar) {
     const query = new URLSearchParams();
     if (featureKey) query.set("featureKey", featureKey);
+    if (unfamiliar) query.set("unfamiliar", "true");
     if (after) {
       query.set("after", after.animeId);
       query.set("afterCount", String(after.evidenceCount));
       if (after.featureKey) query.set("afterFeature", after.featureKey);
+      if (after.unfamiliar) query.set("afterUnfamiliar", "true");
     }
     return "/recommendations/discovery" + (query.size ? "?" + query : "");
   }
 
-  async function filterDiscovery(featureKey: string) {
+  async function filterDiscovery(featureKey: string, unfamiliar = discoveryUnfamiliar) {
     const current = ++revision.current;
     setBusy(true);
     setMessage("");
     try {
-      const page = await client.request<DiscoveryPage>(discoveryPath(featureKey));
+      const page = await client.request<DiscoveryPage>(discoveryPath(featureKey, undefined, unfamiliar));
       if (alive.current && current === revision.current) {
         setDiscoveryFeature(featureKey);
+        setDiscoveryUnfamiliar(unfamiliar);
         setDiscovery(page);
       }
     } catch (error) {
@@ -252,7 +256,14 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
           className="mt-2 text-xs underline disabled:opacity-50">{discovery !== null ? "Close Discovery" : "Explore titles"}</button>
         {discovery !== null && (
           <section aria-label="Discovery titles" className="mt-3">
-            <p className="text-sm text-slate-400">Untracked titles ordered by the number of curated features with evidence.</p>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={discoveryUnfamiliar} disabled={busy}
+                onChange={event => void filterDiscovery(discoveryFeature, event.target.checked)} />
+              Explore features missing from my library
+            </label>
+            <p className="mt-1 text-sm text-slate-400">
+              {discoveryUnfamiliar ? "Ranks by curated features with no positive evidence on titles in your library." : "Ranks untracked titles by curated evidence coverage."}
+            </p>
             <label className="mt-3 block text-sm">Filter by feature
               <select value={discoveryFeature} disabled={busy} onChange={event => void filterDiscovery(event.target.value)}
                 className="ml-2 rounded-lg border border-white/10 bg-slate-950 p-2">
@@ -265,6 +276,9 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
               {discovery.items.map(title => <li key={title.animeId} className="rounded-xl bg-white/5 p-3">
                 <p className="text-sm font-medium">{title.title}</p>
                 <p className="text-xs text-slate-400">{title.evidenceCount} supported {title.evidenceCount === 1 ? "feature" : "features"}</p>
+                {title.unfamiliarCount !== undefined && <p className="text-xs text-slate-400">
+                  {title.unfamiliarCount} {title.unfamiliarCount === 1 ? "feature" : "features"} missing from your library
+                </p>}
                 {title.featuredEvidence?.length ? (
                   <ul aria-label={"Explore features for " + title.title} className="mt-1 flex flex-wrap gap-2">
                     {title.featuredEvidence.map(feature => (
