@@ -1084,3 +1084,10 @@ Validation for `eac3f43` (PR #54): [CI](https://github.com/khordestan/anime-inte
 
 - Added a second-title catalog picker, side-by-side sourced facts and numeric comparisons only where both episode counts or release years are known.
 - Local Go checks, frontend unit tests, build, typecheck and both focused browser tests passed. Hosted checks pending.
+
+Validation for `c405f68` (PR #55): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45416542335) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45416542427) passed. The PR merged as `87079b2`.
+
+## 2026-11-24 — Loopback ingress rehearsal
+
+- Added a disabled loopback Nginx example and an isolated container smoke check. The example bounds credential and assisted-analysis request intake independently and strips inbound forwarding headers.
+- The local Docker smoke test passed with the pinned Nginx 1.30 image. The test exercised allowed traffic, shared identity-path throttling, local dashboard CORS and unaffected catalog and analysis requests. No listener was published. Hosted checks pending.

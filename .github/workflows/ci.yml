@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 jobs:
+  ingress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check-ingress.sh
   backend:
     runs-on: ubuntu-latest
     steps:
