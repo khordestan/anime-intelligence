@@ -21,7 +21,8 @@ func applySelectedSchedules(ctx context.Context,tx pgx.Tx,s feed.Snapshot,source
   if errors.Is(err,pgx.ErrNoRows){return Result{},ErrConflict}
   if err!=nil{return Result{},err}
   var total *int
-  if err=tx.QueryRow(ctx,`SELECT episode_count FROM anime WHERE id=$1 FOR UPDATE`,id).Scan(&total);err!=nil{return Result{},err}
+  var mediaType string
+  if err=tx.QueryRow(ctx,`SELECT episode_count,media_type FROM anime WHERE id=$1 FOR UPDATE`,id).Scan(&total,&mediaType);err!=nil{return Result{},err}
   var previous time.Time
   err=tx.QueryRow(ctx,`SELECT observed_at FROM catalog_schedule_observations
  WHERE source_id=$1 AND anime_id=$2 FOR UPDATE`,source,id).Scan(&previous)
@@ -31,7 +32,7 @@ func applySelectedSchedules(ctx context.Context,tx pgx.Tx,s feed.Snapshot,source
   for _,episode:=range title.Episodes{
    // A conflicting season match must not stretch an authoritative known total.
    if total!=nil&&episode.Number>*total{return Result{},ErrConflict}
-   revisions,events,err:=syncEpisode(ctx,tx,source,id,episode,s.ObservedAt,previous,known)
+   revisions,events,err:=syncEpisode(ctx,tx,source,id,mediaType,episode,s.ObservedAt,previous,known)
    if err!=nil{return Result{},err}
    out.ScheduleRevisions+=revisions;out.ReleaseEvents+=events
   }

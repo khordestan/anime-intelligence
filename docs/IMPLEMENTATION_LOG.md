@@ -1042,3 +1042,10 @@ Validation for `81bc8b5` (PR #48): [CI](https://github.com/khordestan/anime-inte
 
 - Added a bounded public schedule history API and an explicit detail-panel action. Each record preserves its release track, historical timestamps and source attribution.
 - Local `make check` passed. The focused PostgreSQL API test passed under the race detector. Frontend unit tests, build, typecheck and all three focused schedule and attribution browser tests passed. Hosted checks pending.
+
+Validation for `938a697` (PR #49): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45411595795) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45411595440) passed. The PR merged as `f117513`.
+
+## 2026-11-24 — Confirmed movie notices
+
+- Captured canonical format when recording a release event and labeled confirmed first movie releases in-app. The existing event and notification keys, track matching, subscription boundaries and baseline rules still apply.
+- Local `make check` passed. Three focused PostgreSQL release tests passed under the race detector, covering movie confirmation versus elapsed schedules, subsequent format corrections, concurrent catch-up and owner isolation. Hosted checks pending.

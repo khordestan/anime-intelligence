@@ -122,7 +122,7 @@ VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) D
 		comparison:=titleObserved
 		if !known {comparison=previous}
 		for _,episode:=range title.Episodes {
-			revision,event,err:=syncEpisode(ctx,tx,source,id,episode,s.ObservedAt,comparison,!previous.IsZero())
+			revision,event,err:=syncEpisode(ctx,tx,source,id,effective.MediaType,episode,s.ObservedAt,comparison,!previous.IsZero())
 			if err!=nil {return out,err}
 			out.ScheduleRevisions+=revision
 			out.ReleaseEvents+=event
@@ -143,7 +143,7 @@ ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.
 func equalTime(a,b *time.Time) bool {
 	return (a==nil && b==nil) || (a!=nil && b!=nil && a.Truncate(time.Microsecond).Equal(b.Truncate(time.Microsecond)))
 }
-func syncEpisode(ctx context.Context,tx pgx.Tx,source,id string,e feed.Episode,observed,previous time.Time,eligible bool) (int,int,error) {
+func syncEpisode(ctx context.Context,tx pgx.Tx,source,id,mediaType string,e feed.Episode,observed,previous time.Time,eligible bool) (int,int,error) {
 	var revision int
 	var scheduled,released *time.Time
 	var authority string
@@ -174,7 +174,8 @@ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,id,e.Number,e.Track,e.ScheduledAt,actual,sta
 		Number int `json:"number"`
 		Track string `json:"track"`
 		ReleasedAt time.Time `json:"releasedAt"`
-	}{e.Number,e.Track,*actual})
+		MediaType string `json:"mediaType"`
+	}{e.Number,e.Track,*actual,mediaType})
 	tag,err:=tx.Exec(ctx,`INSERT INTO domain_events(event_key,event_type,aggregate_type,aggregate_id,payload,occurred_at)
 VALUES($1,'EPISODE_RELEASED','ANIME',$2,$3,$4) ON CONFLICT(event_key) DO NOTHING`,key,id,payload,*actual)
 	return 1,int(tag.RowsAffected()),err

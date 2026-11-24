@@ -222,11 +222,15 @@ UNION
 SELECT anime_id,release_track,created_at,'FRANCHISE' FROM franchise
 ), eligible AS MATERIALIZED (
 SELECT DISTINCT e.id AS event_id,
-CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced' ELSE 'New episode released' END AS notice_title,
+CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced'
+     WHEN kind.movie_release THEN 'Movie released' ELSE 'New episode released' END AS notice_title,
 CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN a.canonical_title || ' · A new linked season has been announced.'
+     WHEN kind.movie_release THEN a.canonical_title || ' · Release confirmed (' || COALESCE(e.payload->>'track','UNKNOWN') || ')'
 ELSE a.canonical_title || ' · Episode ' || COALESCE(e.payload->>'number','?') || ' (' || COALESCE(e.payload->>'track','UNKNOWN') || ')' END AS notice_body,
 e.occurred_at AS created_at
 FROM domain_events e JOIN targets f ON f.anime_id=e.aggregate_id JOIN anime a ON a.id=e.aggregate_id
+CROSS JOIN LATERAL (SELECT e.event_type='EPISODE_RELEASED' AND e.payload->>'mediaType'='MOVIE'
+  AND e.payload->>'number'='1' AS movie_release) kind
 WHERE e.aggregate_type='ANIME' AND e.occurred_at>=f.created_at
 AND ((e.event_type='EPISODE_RELEASED' AND (f.release_track='ALL' OR f.release_track=e.payload->>'track'))
 OR (e.event_type='SEASON_ANNOUNCED' AND f.scope='FRANCHISE'))
