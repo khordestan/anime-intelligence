@@ -13,6 +13,8 @@ import (
 var ErrNotificationCursor = errors.New("invalid notification cursor")
 var ErrReleaseTrack = errors.New("invalid release track")
 var ErrFollowScope = errors.New("invalid follow scope")
+var ErrFollowCursor = errors.New("invalid follow cursor")
+var ErrFollowPageSize = errors.New("invalid follow page size")
 var ErrFollowLimit = errors.New("follow limit reached")
 
 type Follow struct {
@@ -29,21 +31,59 @@ type Notification struct {
 	ReadAt *time.Time `json:"readAt,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
-func (r *Repository) Follows(ctx context.Context) ([]Follow,error) {
-	tx,u,err:=r.db.productTx(ctx,r.token)
-	if err!=nil {return nil,err}
+type FollowPage struct {
+	Items      []Follow
+	NextCursor string
+}
+
+func (r *Repository) Follows(ctx context.Context) ([]Follow, error) {
+	page, err := r.FollowPage(ctx, "", 1000)
+	return page.Items, err
+}
+
+func (r *Repository) FollowPage(ctx context.Context, cursor string, limit int) (FollowPage, error) {
+	out := FollowPage{Items: []Follow{}}
+	if limit < 1 || limit > 1000 {
+		return out, ErrFollowPageSize
+	}
+	tx, owner, err := r.db.productTx(ctx, r.token)
+	if err != nil {
+		return out, err
+	}
 	defer rollback(tx)
-	rows,err:=tx.Query(ctx,`SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.created_at FROM user_follows f JOIN anime a ON a.id=f.anime_id WHERE f.user_id=$1 ORDER BY f.created_at DESC,f.id LIMIT 1000`,u.ID)
-	if err!=nil {return nil,err}
-	out:=[]Follow{}
+
+	before, afterID, err := parseReleaseCursor(cursor)
+	if err != nil {
+		return out, ErrFollowCursor
+	}
+	rows, err := tx.Query(ctx, `SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.created_at,f.id::text
+		FROM user_follows f JOIN anime a ON a.id=f.anime_id
+		WHERE f.user_id=$1 AND ($2::timestamptz IS NULL OR f.created_at<$2 OR (f.created_at=$2 AND f.id>$3::uuid))
+		ORDER BY f.created_at DESC,f.id LIMIT $4`, owner.ID, before, afterID, limit+1)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+
+	var lastID string
 	for rows.Next() {
-		var f Follow
-		if err=rows.Scan(&f.AnimeID,&f.Title,&f.Track,&f.Scope,&f.CreatedAt);err!=nil {rows.Close();return nil,err}
-		out=append(out,f)
+		var follow Follow
+		var id string
+		if err := rows.Scan(&follow.AnimeID, &follow.Title, &follow.Track, &follow.Scope, &follow.CreatedAt, &id); err != nil {
+			return out, err
+		}
+		if len(out.Items) == limit {
+			out.NextCursor = releaseCursor(out.Items[limit-1].CreatedAt, lastID)
+			break
+		}
+		out.Items = append(out.Items, follow)
+		lastID = id
 	}
 	rows.Close()
-	if err=rows.Err();err!=nil {return nil,err}
-	return out,tx.Commit(ctx)
+	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	return out, tx.Commit(ctx)
 }
 func (r *Repository) Follow(ctx context.Context,id,track string) (bool,error) {
 	return r.FollowScope(ctx,id,track,"ANIME")
@@ -94,10 +134,10 @@ type NotificationPage struct {
 	Items []Notification `json:"items"`
 	NextCursor string `json:"nextCursor,omitempty"`
 }
-func notificationCursor(n Notification) string {
-	return base64.RawURLEncoding.EncodeToString([]byte(n.CreatedAt.UTC().Format(time.RFC3339Nano)+"|"+n.ID))
+func releaseCursor(createdAt time.Time, id string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(createdAt.UTC().Format(time.RFC3339Nano) + "|" + id))
 }
-func parseNotificationCursor(cursor string)(*time.Time,*string,error){
+func parseReleaseCursor(cursor string)(*time.Time,*string,error){
 	if cursor==""{return nil,nil,nil}
 	if len(cursor)>256{return nil,nil,ErrNotificationCursor}
 	b,err:=base64.RawURLEncoding.DecodeString(cursor)
@@ -140,7 +180,7 @@ func (r *Repository) readNotificationPage(ctx context.Context, cursor string, un
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return out,err}
 	defer rollback(tx)
-	before,beforeID,err:=parseNotificationCursor(cursor)
+	before,beforeID,err:=parseReleaseCursor(cursor)
 	if err!=nil{return out,err}
 	if _,err=tx.Exec(ctx,`SET LOCAL statement_timeout='2s'`);err!=nil {return out,err}
 	if cursor=="" {
@@ -210,7 +250,7 @@ SELECT (SELECT count(*) FROM inserted),(SELECT count(*) FROM eligible)>100`,u.ID
 	}
 	rows.Close()
 	if err=rows.Err();err!=nil {return out,err}
-	if len(out.Items)>100{out.Items=out.Items[:100];out.NextCursor=notificationCursor(out.Items[99])}
+	if len(out.Items)>100{out.Items=out.Items[:100];out.NextCursor=releaseCursor(out.Items[99].CreatedAt, out.Items[99].ID)}
 	return out,tx.Commit(ctx)
 }
 func (r *Repository) ReadNotification(ctx context.Context,id string) (bool,error) {

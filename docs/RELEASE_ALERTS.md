@@ -5,7 +5,7 @@ Migration 000012 adds per-follow track preferences and durable per-user/event/ch
 ## API
 
 - PUT /api/v1/follows/{animeId} with {"track":"SUB"} subscribes; RAW, DUB, UNKNOWN and ALL are also supported.
-- GET /api/v1/follows returns up to 1000 owned subscriptions.
+- GET /api/v1/follows returns up to 1000 owned subscriptions by default. Use `?limit=50` to opt into paging with a limit from 1 to 100. Pass `nextCursor` as `cursor` to continue, and retain `limit` if you chose a page size other than 50. Pages sort by newest subscription time and then follow UUID. A cursor provides a boundary within the caller's own follows.
 - DELETE /api/v1/follows/{animeId} removes only the caller's subscription.
 - GET /api/v1/notifications returns a materialization object with created (notices inserted by this poll, 0–100) and hasMore (another eligible event was observed beyond that batch). It materializes up to 100 eligible events and returns the newest 100 owned in-app notices with nextCursor when older materialized notices exist. GET /api/v1/notifications?cursor=... returns the next history page without materializing new events and omits materialization because it does not check the backlog. Invalid cursors return 400; cursors select a time/ID boundary and never an account. Every page rechecks the authenticated verified owner.
 - PATCH /api/v1/notifications/{id}/read marks an owned notice read idempotently. Foreign and missing IDs both return 404.

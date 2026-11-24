@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
 	"github.com/khordestan/anime-intelligence/internal/platform/store"
@@ -10,6 +11,10 @@ import (
 
 func releaseError(w http.ResponseWriter,err error) {
 	switch {
+	case errors.Is(err, postgres.ErrFollowPageSize):
+		authError(w, 400, "invalid_follow_page_size")
+	case errors.Is(err, postgres.ErrFollowCursor):
+		authError(w, 400, "invalid_follow_cursor")
 	case errors.Is(err,postgres.ErrNotificationCursor): authError(w,400,"invalid_notification_cursor")
 	case errors.Is(err,store.ErrEmailUnverified): authError(w,403,"email_verification_required")
 	case errors.Is(err,postgres.ErrUnauthorized): authError(w,401,"unauthorized")
@@ -21,9 +26,34 @@ func releaseError(w http.ResponseWriter,err error) {
 }
 func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(http.ResponseWriter,*http.Request,string,postgres.User)) http.HandlerFunc) {
 	mux.HandleFunc("GET /api/v1/follows",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
-		items,err:=db.Repository(token).Follows(r.Context())
-		if err!=nil {releaseError(w,err);return}
-		writeJSON(w,200,map[string]any{"items":items,"count":len(items),"limit":1000})
+		query := r.URL.Query()
+		cursor := query.Get("cursor")
+		limit := 1000
+		if query.Has("limit") || query.Has("cursor") {
+			limit = 50
+			if query.Has("limit") {
+				value, err := strconv.Atoi(query.Get("limit"))
+				if err != nil || value < 1 || value > 100 || len(query["limit"]) != 1 {
+					authError(w, 400, "invalid_follow_page_size")
+					return
+				}
+				limit = value
+			}
+			if query.Has("cursor") && (cursor == "" || len(query["cursor"]) != 1) {
+				authError(w, 400, "invalid_follow_cursor")
+				return
+			}
+		}
+		page, err := db.Repository(token).FollowPage(r.Context(), cursor, limit)
+		if err != nil {
+			releaseError(w, err)
+			return
+		}
+		response := map[string]any{"items": page.Items, "count": len(page.Items), "limit": limit}
+		if page.NextCursor != "" {
+			response["nextCursor"] = page.NextCursor
+		}
+		writeJSON(w, 200, response)
 	}))
 	mux.HandleFunc("PUT /api/v1/follows/{id}",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")

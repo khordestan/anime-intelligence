@@ -258,8 +258,18 @@ paths:
     get:
       summary: List owned anime release subscriptions
       security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: limit
+          description: Opt into pagination with this page size. Cursor-only requests default to 50.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - in: query
+          name: cursor
+          description: Continue from nextCursor in the previous response.
+          schema: { type: string, maxLength: 256 }
       responses:
-        "200": { description: Up to 1000 owned subscriptions with track and creation time }
+        "200": { description: Owned subscriptions with track and creation time. Defaults to up to 1000 subscriptions without pagination parameters. Paged results include nextCursor when more subscriptions exist. }
+        "400": { description: Invalid follow cursor or page size }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/follows/{id}:
