@@ -43,3 +43,5 @@ GET /api/v1/recommendations/dismissals lists the verified caller's hidden titles
 GET /api/v1/recommendations/discovery returns untracked, unhidden titles for the verified caller. It works before any preferences or ratings are available. Titles are ordered by the number of distinct positive features supported by their latest eligible curated observations, with canonical ID as a stable tie-breaker. Evidence counts describe catalog coverage. The endpoint defaults to 20 titles and accepts limits from 1 to 50. Hiding or restoring a title affects its eligibility in both Personal Match and Discovery.
 
 Discovery includes `nextCursor` when more titles are available. Pass its `animeId` as `after` and its `evidenceCount` as `afterCount`. The dashboard appends further pages and deduplicates titles if catalog evidence changes between requests.
+
+Discovery shows up to four feature names per title, ordered by the product of the curated feature value and confidence, with feature key breaking ties. Names come from the same eligible positive observations used for the evidence count.

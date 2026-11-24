@@ -190,3 +190,5 @@ Discovery is available without a taste profile. It orders untracked, unhidden ca
 Both recommendation lanes can add a title to My Library as Planning through add-only import, which preserves existing tracker entries.
 
 Discovery uses keyset pagination by descending evidence count and ascending catalog UUID, with Load more in the dashboard.
+
+Discovery cards now name up to four curated features behind their evidence counts. The OpenAPI description includes pagination parameters and response fields.

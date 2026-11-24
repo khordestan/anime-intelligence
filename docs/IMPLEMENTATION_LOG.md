@@ -1,5 +1,9 @@
 # Implementation Log
 
+## 2026-11-24 — Discovery evidence labels
+
+Added bounded curated feature names to each Discovery title and documented the existing cursor fields in OpenAPI. Extended the PostgreSQL regression. Hosted CI is pending.
+
 ## 2026-11-23 — Discovery pagination
 
 Added a cursor for Discovery and a dashboard load-more action. Extended PostgreSQL coverage for stable pagination across tied evidence counts. Hosted CI is pending.

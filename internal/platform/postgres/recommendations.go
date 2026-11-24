@@ -297,6 +297,7 @@ func (r *Repository) PersonalMatchDismissals(ctx context.Context, after string) 
 }
 
 type DiscoveryTitle struct {
+	SupportedFeatures []string `json:"supportedFeatures"`
 	AnimeID string `json:"animeId"`
 	Title string `json:"title"`
 	EvidenceCount int `json:"evidenceCount"`
@@ -336,16 +337,18 @@ func (r *Repository) DiscoverPage(ctx context.Context, limit int, after *Discove
 		}
 		defer rollback(tx)
 		rows, err := tx.Query(ctx, `WITH latest AS (
-			SELECT DISTINCT ON (o.anime_id,o.feature_id) o.anime_id,o.feature_id,o.value
+			SELECT DISTINCT ON (o.anime_id,o.feature_id) o.anime_id,o.feature_id,o.value,o.confidence,f.feature_key,f.display_name
 			FROM anime_feature_observations o JOIN anime_features f ON f.id=o.feature_id
 			WHERE `+eligibleRecommendationObservation+`
 			  AND NOT EXISTS (SELECT 1 FROM user_anime ua WHERE ua.user_id=$1 AND ua.anime_id=o.anime_id)
 			  AND NOT EXISTS (SELECT 1 FROM personal_match_dismissals d WHERE d.user_id=$1 AND d.anime_id=o.anime_id)
 			ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC
 		), supported AS (
-			SELECT anime_id,count(*) AS feature_count FROM latest WHERE value>0 GROUP BY anime_id
+			SELECT anime_id,count(*) AS feature_count,
+				(array_agg(display_name ORDER BY value*confidence DESC,feature_key))[1:4] AS feature_names
+			FROM latest WHERE value>0 GROUP BY anime_id
 		)
-		SELECT a.id::text,a.canonical_title,s.feature_count
+		SELECT a.id::text,a.canonical_title,s.feature_count,s.feature_names
 		FROM supported s JOIN anime a ON a.id=s.anime_id
 		WHERE $3::bigint=0 OR s.feature_count<$3 OR (s.feature_count=$3 AND a.id>NULLIF($4,'')::uuid)
 		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID)
@@ -356,7 +359,7 @@ func (r *Repository) DiscoverPage(ctx context.Context, limit int, after *Discove
 		items := []DiscoveryTitle{}
 		for rows.Next() {
 			var item DiscoveryTitle
-			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount); err != nil {
+			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount, &item.SupportedFeatures); err != nil {
 				return DiscoveryPage{}, err
 			}
 			items = append(items, item)
