@@ -1098,3 +1098,10 @@ Validation for `063a4c5` (PR #56): [CI](https://github.com/khordestan/anime-inte
 
 - Moved the per-owner and deployment request budgets into an atomic PostgreSQL reservation. The per-process concurrency bound still applies. Owner budget records are forced-RLS scoped and included in account export and deletion.
 - Local `make check` passed. The real PostgreSQL regression passed three runs under the race detector with separate router instances, owner and deployment caps, and private usage export and deletion. Hosted checks pending.
+
+Validation for `ac8610f` (PR #57): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45418221160) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45418221069) passed, including explicit migrations, database integration and logical recovery. The full local PostgreSQL runtime suite also passed under the race detector. The PR merged as `5b6d2ca`.
+
+## 2026-11-24 — Discovery beyond library evidence
+
+- Added an owner-scoped mode that ranks by eligible positive features missing from the titles in the current library. Cursor mode and feature filter stay bound to each page.
+- Local Go checks, both focused PostgreSQL recommendation tests under the race detector, frontend unit tests, build, typecheck and all five focused browser tests passed. Hosted checks pending.

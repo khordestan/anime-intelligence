@@ -47,3 +47,8 @@ Discovery includes `nextCursor` when more titles are available. Pass its `animeI
 Discovery shows up to four feature names per title, ordered by the product of the curated feature value and confidence, with feature key breaking ties. Names come from the same eligible positive observations used for the evidence count. The response also includes paired keys and names in `featuredEvidence`, which the dashboard uses to apply that exact feature filter from a result.
 
 Use `featureKey` to require positive evidence for a feature from the preferences taxonomy. Other eligible features still contribute to the title's evidence count and ranking. For filtered pagination, send the same `featureKey` and the cursor's `featureKey` as `afterFeature`. Unknown keys have no results.
+
+
+Select **Explore features missing from my library** or pass `unfamiliar=true` to rank by the number of supported features with no positive eligible evidence on titles you have saved. A title needs at least one such feature. The mode uses only the verified caller's library and does not interpret absence as a dislike. The existing feature filter still applies. Featured labels show unfamiliar evidence first and each row reports `unfamiliarCount` as well as the full `evidenceCount`.
+
+A cursor in this mode carries `unfamiliar: true` and its `evidenceCount` refers to the unfamiliar ranking count. Send that count as `afterCount` and send `afterUnfamiliar=true` together with `unfamiliar=true`. Switching modes starts from the first page. With an empty or unevidenced library, every eligible positive feature is unfamiliar.

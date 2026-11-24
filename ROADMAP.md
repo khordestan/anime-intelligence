@@ -148,7 +148,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Evidence-backed cold-start Discovery lane with keyset pagination, curated feature labels/filtering and add to Planning
 - [x] Offline Global Essentials ranking rubric and evaluator
 - [x] Optional Global Essentials API and dashboard lane for reviewed manifests
-- [ ] Reviewed Global Essentials evidence and evaluation corpus, and richer Discovery ranking
+- [x] Discovery ranking by curated features missing from the caller’s library
+- [ ] Reviewed Global Essentials corpus and representative Discovery ranking evaluation
 - [x] Confirmed in-app movie release notices for eligible follows
 - [x] Opt-in in-app notices for reviewed earlier and later schedule moves
 - [ ] Release delay or cancellation notices backed by explicit authoritative evidence

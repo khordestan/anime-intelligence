@@ -45,6 +45,18 @@ async function mockMatches(page: Page, hold = false) {
       const featureKey = url.searchParams.get("featureKey");
       const after = url.searchParams.get("after");
       if (planned.has(token) || dismissed.has(token)) return respond({ items: [] });
+      if (url.searchParams.get("unfamiliar") === "true") {
+        if (after) {
+          expect(after).toBe("synthetic-match");
+          expect(url.searchParams.get("afterCount")).toBe("1");
+          expect(url.searchParams.get("afterUnfamiliar")).toBe("true");
+          return respond({ items: [{ animeId: "synthetic-novel", title: "Synthetic unfamiliar sequel", evidenceCount: 2, unfamiliarCount: 1 }] });
+        }
+        return respond({
+          items: [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 2, unfamiliarCount: 1 }],
+          nextCursor: { animeId: "synthetic-match", evidenceCount: 1, unfamiliar: true },
+        });
+      }
       if (after) {
         if (after !== "synthetic-match" || featureKey !== "synthetic.mystery" ||
           url.searchParams.get("afterFeature") !== featureKey || url.searchParams.get("afterCount") !== "1") {
@@ -139,6 +151,13 @@ test("Discovery works before adding preferences and respects hidden titles", asy
   await expect(discovery.getByText("Synthetic mystery sequel")).toBeVisible();
   await filter.selectOption("");
   await expect(discovery.getByText("Synthetic mystery sequel")).toHaveCount(0);
+  const unfamiliar = discovery.getByRole("checkbox", { name: "Explore features missing from my library" });
+  await unfamiliar.click();
+  await expect(discovery.getByText("1 feature missing from your library")).toBeVisible();
+  await discovery.getByRole("button", { name: "Load more discovery titles" }).click();
+  await expect(discovery.getByText("Synthetic unfamiliar sequel")).toBeVisible();
+  await unfamiliar.click();
+  await expect(discovery.getByText("Synthetic unfamiliar sequel")).toHaveCount(0);
   await discovery.getByRole("button", { name: "Hide discovery title Synthetic account match" }).click();
   await expect(discovery.getByText("No eligible discovery titles yet.")).toBeVisible();
 });

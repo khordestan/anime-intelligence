@@ -307,6 +307,7 @@ type DiscoveryTitle struct {
 	AnimeID string `json:"animeId"`
 	Title string `json:"title"`
 	EvidenceCount int `json:"evidenceCount"`
+	UnfamiliarCount int `json:"unfamiliarCount,omitempty"`
 }
 
 // DiscoverTitles offers eligible catalog titles even before a taste profile exists.
@@ -319,6 +320,7 @@ type DiscoveryCursor struct {
 	AnimeID string `json:"animeId"`
 	EvidenceCount int `json:"evidenceCount"`
 	FeatureKey string `json:"featureKey,omitempty"`
+	Unfamiliar bool `json:"unfamiliar,omitempty"`
 }
 
 type DiscoveryPage struct {
@@ -331,6 +333,10 @@ func (r *Repository) DiscoverPage(ctx context.Context, limit int, after *Discove
 }
 
 func (r *Repository) DiscoverByFeature(ctx context.Context, limit int, after *DiscoveryCursor, featureKey string) (DiscoveryPage, error) {
+	return r.DiscoverWithOptions(ctx, limit, after, featureKey, false)
+}
+
+func (r *Repository) DiscoverWithOptions(ctx context.Context, limit int, after *DiscoveryCursor, featureKey string, unfamiliar bool) (DiscoveryPage, error) {
 	if limit < 1 || limit > 50 {
 		limit = 20
 	}
@@ -354,17 +360,28 @@ func (r *Repository) DiscoverByFeature(ctx context.Context, limit int, after *Di
 			  AND NOT EXISTS (SELECT 1 FROM user_anime ua WHERE ua.user_id=$1 AND ua.anime_id=o.anime_id)
 			  AND NOT EXISTS (SELECT 1 FROM personal_match_dismissals d WHERE d.user_id=$1 AND d.anime_id=o.anime_id)
 			ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC
+		), known_latest AS (
+			SELECT DISTINCT ON (o.anime_id,o.feature_id) o.feature_id,o.value
+			FROM user_anime ua
+			JOIN anime_feature_observations o ON o.anime_id=ua.anime_id
+			JOIN anime_features f ON f.id=o.feature_id
+			WHERE $6::boolean AND ua.user_id=$1 AND `+eligibleRecommendationObservation+`
+			ORDER BY o.anime_id,o.feature_id,o.observed_at DESC,o.id DESC
+		), known AS (
+			SELECT DISTINCT feature_id FROM known_latest WHERE value>0
 		), supported AS (
 			SELECT anime_id,count(*) AS feature_count,
-				(array_agg(display_name ORDER BY value*confidence DESC,feature_key))[1:4] AS feature_names,
-				(array_agg(feature_key ORDER BY value*confidence DESC,feature_key))[1:4] AS feature_keys
-			FROM latest WHERE value>0 GROUP BY anime_id
-			HAVING $5::text='' OR bool_or(feature_key=$5)
+				CASE WHEN $6 THEN count(*) FILTER (WHERE k.feature_id IS NULL) ELSE count(*) END AS rank_count,
+				(array_agg(display_name ORDER BY ($6 AND k.feature_id IS NULL) DESC,value*confidence DESC,feature_key))[1:4] AS feature_names,
+				(array_agg(feature_key ORDER BY ($6 AND k.feature_id IS NULL) DESC,value*confidence DESC,feature_key))[1:4] AS feature_keys
+			FROM latest LEFT JOIN known k USING(feature_id)
+			WHERE value>0 GROUP BY anime_id
+			HAVING ($5::text='' OR bool_or(feature_key=$5)) AND (NOT $6 OR bool_or(k.feature_id IS NULL))
 		)
-		SELECT a.id::text,a.canonical_title,s.feature_count,s.feature_names,s.feature_keys
+		SELECT a.id::text,a.canonical_title,s.feature_count,s.rank_count,s.feature_names,s.feature_keys
 		FROM supported s JOIN anime a ON a.id=s.anime_id
-		WHERE $3::bigint=0 OR s.feature_count<$3 OR (s.feature_count=$3 AND a.id>NULLIF($4,'')::uuid)
-		ORDER BY s.feature_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID, featureKey)
+		WHERE $3::bigint=0 OR s.rank_count<$3 OR (s.rank_count=$3 AND a.id>NULLIF($4,'')::uuid)
+		ORDER BY s.rank_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID, featureKey, unfamiliar)
 		if err != nil {
 			return DiscoveryPage{}, err
 		}
@@ -373,8 +390,12 @@ func (r *Repository) DiscoverByFeature(ctx context.Context, limit int, after *Di
 		for rows.Next() {
 			var item DiscoveryTitle
 			var featureKeys []string
-			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount, &item.SupportedFeatures, &featureKeys); err != nil {
+			var rankCount int
+			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount, &rankCount, &item.SupportedFeatures, &featureKeys); err != nil {
 				return DiscoveryPage{}, err
+			}
+			if unfamiliar {
+				item.UnfamiliarCount = rankCount
 			}
 			item.FeaturedEvidence = make([]DiscoveryFeature, 0, len(featureKeys))
 			for j, key := range featureKeys {
@@ -389,7 +410,11 @@ func (r *Repository) DiscoverByFeature(ctx context.Context, limit int, after *Di
 		if len(items) > limit {
 			last := items[limit-1]
 			page.Items = items[:limit]
-			page.NextCursor = &DiscoveryCursor{AnimeID: last.AnimeID, EvidenceCount: last.EvidenceCount, FeatureKey: featureKey}
+			rankCount := last.EvidenceCount
+			if unfamiliar {
+				rankCount = last.UnfamiliarCount
+			}
+			page.NextCursor = &DiscoveryCursor{AnimeID: last.AnimeID, EvidenceCount: rankCount, FeatureKey: featureKey, Unfamiliar: unfamiliar}
 		}
 		return page, tx.Commit(ctx)
 	})

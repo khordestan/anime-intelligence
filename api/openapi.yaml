@@ -638,8 +638,16 @@ paths:
           name: afterFeature
           description: Feature key from nextCursor when paging a filtered result.
           schema: { type: string, maxLength: 128 }
+        - in: query
+          name: unfamiliar
+          description: Rank by eligible features with no positive evidence on titles in the caller's library.
+          schema: { type: boolean, default: false }
+        - in: query
+          name: afterUnfamiliar
+          description: Supply true when nextCursor.unfamiliar is true. In that mode afterCount is the unfamiliar feature count.
+          schema: { type: boolean }
       responses:
-        "200": { description: Items with animeId, title, positive curated evidenceCount and up to four supportedFeatures names with matching featuredEvidence key/name pairs, plus nextCursor when another page exists }
+        "200": { description: Items with animeId, title, positive curated evidenceCount and up to four supportedFeatures names with matching featuredEvidence key/name pairs, unfamiliarCount in unfamiliar mode, plus nextCursor when another page exists }
         "400": { description: Invalid Discovery cursor or feature filter }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
