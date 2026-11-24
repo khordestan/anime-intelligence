@@ -1,0 +1,2 @@
+DROP TABLE catalog_analysis_global_budget;
+DROP TABLE catalog_analysis_owner_budget;

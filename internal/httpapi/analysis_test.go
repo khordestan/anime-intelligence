@@ -1,26 +1,30 @@
 package httpapi
 
 import (
+	"context"
+	"errors"
 	"testing"
-	"time"
+
+	"github.com/khordestan/anime-intelligence/internal/modules/catalog"
 )
 
-func TestAnalysisBudgetLimitsOwnerAndInFlightWork(t *testing.T) {
-	b := &analysisBudget{}
-	now := time.Now()
-	if !b.acquire("a", now) || !b.acquire("b", now) || b.acquire("c", now) {
-		t.Fatal("concurrency limit did not apply")
+func TestAnalysisBudgetDoesNotReserveWhenLocalSlotsAreFull(t *testing.T) {
+	slots := make(chan struct{}, 1)
+	slots <- struct{}{}
+	reserved := 0
+	called := 0
+	selectFields := boundedAnalysisSelector(slots, func(context.Context) (bool, error) {
+		reserved++
+		return true, nil
+	}, func(context.Context, string, []string) ([]string, string, error) {
+		called++
+		return []string{"episodeCount"}, "test", nil
+	})
+	if _, _, err := selectFields(context.Background(), "How long?", nil); !errors.Is(err, catalog.ErrAnalysisCapacity) || reserved != 0 {
+		t.Fatalf("full process spent a shared allowance: %v, %d", err, reserved)
 	}
-	b.release()
-	b.release()
-	for range 2 {
-		if !b.acquire("a", now) {
-			t.Fatal("owner limit applied too early")
-		}
-		b.release()
+	<-slots
+	if _, _, err := selectFields(context.Background(), "How long?", nil); err != nil || reserved != 1 || called != 1 || len(slots) != 0 {
+		t.Fatalf("selector failed: %v, reserves=%d calls=%d slots=%d", err, reserved, called, len(slots))
 	}
-	if b.acquire("a", now) || !b.acquire("a", now.Add(time.Minute)) {
-		t.Fatal("owner window did not reset")
-	}
-	b.release()
 }

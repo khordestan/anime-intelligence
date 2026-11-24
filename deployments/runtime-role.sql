@@ -50,3 +50,7 @@ GRANT SELECT(anime_id,provider,external_id) ON anime_external_ids TO anime_runti
 GRANT SELECT(anime_id,field,revision,mode,source_id,observed_at) ON catalog_field_choices TO anime_runtime;
 
 GRANT SELECT,INSERT,DELETE ON personal_match_dismissals TO anime_runtime;
+
+-- Shared analyst limits store only bounded counters and a time window.
+GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO anime_runtime;
+GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO anime_runtime;

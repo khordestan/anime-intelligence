@@ -166,7 +166,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Discovery hide/restore and add-to-Planning feedback
 - [ ] Discovery feedback beyond hide/restore and library actions
 - [x] LLM provider abstraction, OpenAI adapter and process-local usage controls
-- [ ] Distributed usage controls and representative model evaluation
+- [x] Shared PostgreSQL model budgets across API replicas
+- [ ] Representative model evaluation and deployment quota tuning
 
 ## Milestone 7 — Production readiness
 - [x] Request-log redaction and bounded live dependency/security-schema readiness checks
