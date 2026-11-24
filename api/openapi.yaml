@@ -481,8 +481,17 @@ paths:
         - in: query
           name: limit
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+        - in: query
+          name: after
+          description: Catalog ID from nextCursor. Supply with afterCount.
+          schema: { type: string, format: uuid }
+        - in: query
+          name: afterCount
+          description: Evidence count from nextCursor. Supply with after.
+          schema: { type: integer, minimum: 1 }
       responses:
-        "200": { description: Items with animeId, title and positive curated evidenceCount }
+        "200": { description: Items with animeId, title, positive curated evidenceCount and up to four supportedFeatures, plus nextCursor when another page exists }
+        "400": { description: Invalid Discovery cursor }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/recommendations:

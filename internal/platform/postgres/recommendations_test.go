@@ -45,7 +45,7 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 		if _,err:=repo.Add(ctx,watched,"COMPLETED",12);err!=nil{t.Fatal(err)}
 	}
 	discovered, err := a.DiscoverTitles(ctx, 20)
-	if err != nil || len(discovered) != 2 || discovered[0].AnimeID != strong || discovered[1].AnimeID != weak || discovered[0].EvidenceCount != 1 {
+	if err != nil || len(discovered) != 2 || discovered[0].AnimeID != strong || discovered[1].AnimeID != weak || discovered[0].EvidenceCount != 1 || len(discovered[0].SupportedFeatures) != 1 || discovered[0].SupportedFeatures[0] != "Synthetic power" {
 		t.Fatalf("cold-start discovery: %+v err=%v", discovered, err)
 	}
 	firstPage, err := a.DiscoverPage(ctx, 1, nil)
