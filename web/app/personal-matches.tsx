@@ -7,7 +7,7 @@ type Preference = { key: string; name: string; category: string; weight: number 
 type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number } };
 type HiddenMatch = { animeId: string; title: string };
 type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[] };
-type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount">;
+type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount"> & { featureKey?: string };
 type DiscoveryPage = { items: DiscoveryTitle[]; nextCursor?: DiscoveryCursor };
 type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
@@ -17,6 +17,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [lastDismissed, setLastDismissed] = useState<HiddenMatch | null>(null);
   const [discovery, setDiscovery] = useState<DiscoveryPage | null>(null);
+  const [discoveryFeature, setDiscoveryFeature] = useState("");
   const [hidden, setHidden] = useState<HiddenMatches | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [profile, setProfile] = useState<Signal[]>([]);
@@ -29,7 +30,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
       client.request<{ items: Preference[] }>("/preferences"),
       client.request<{ items: Match[]; profile?: Signal[] }>("/recommendations"),
       includeHidden ? client.request<HiddenMatches>("/recommendations/dismissals") : Promise.resolve(null),
-      includeDiscovery ? client.request<DiscoveryPage>("/recommendations/discovery") : Promise.resolve(null),
+      includeDiscovery ? client.request<DiscoveryPage>(discoveryPath(discoveryFeature)) : Promise.resolve(null),
     ]);
     if (!alive.current || current !== revision.current) return;
     setHidden(h);
@@ -133,13 +134,43 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
       if (alive.current && current === revision.current) setBusy(false);
     }
   }
+  function discoveryPath(featureKey: string, after?: DiscoveryCursor) {
+    const query = new URLSearchParams();
+    if (featureKey) query.set("featureKey", featureKey);
+    if (after) {
+      query.set("after", after.animeId);
+      query.set("afterCount", String(after.evidenceCount));
+      if (after.featureKey) query.set("afterFeature", after.featureKey);
+    }
+    return "/recommendations/discovery" + (query.size ? "?" + query : "");
+  }
+
+  async function filterDiscovery(featureKey: string) {
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    try {
+      const page = await client.request<DiscoveryPage>(discoveryPath(featureKey));
+      if (alive.current && current === revision.current) {
+        setDiscoveryFeature(featureKey);
+        setDiscovery(page);
+      }
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not filter Discovery titles. Try again.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
+  }
+
   async function loadMoreDiscovery(after: DiscoveryCursor) {
     const current = ++revision.current;
     setBusy(true);
     setMessage("");
-    const query = new URLSearchParams({ after: after.animeId, afterCount: String(after.evidenceCount) });
     try {
-      const page = await client.request<DiscoveryPage>("/recommendations/discovery?" + query);
+      const page = await client.request<DiscoveryPage>(discoveryPath(discoveryFeature, after));
       if (alive.current && current === revision.current) {
         setDiscovery(existing => {
           const previous = existing?.items ?? [];
@@ -222,6 +253,13 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
         {discovery !== null && (
           <section aria-label="Discovery titles" className="mt-3">
             <p className="text-sm text-slate-400">Untracked titles ordered by the number of curated features with evidence.</p>
+            <label className="mt-3 block text-sm">Filter by feature
+              <select value={discoveryFeature} disabled={busy} onChange={event => void filterDiscovery(event.target.value)}
+                className="ml-2 rounded-lg border border-white/10 bg-slate-950 p-2">
+                <option value="">All features</option>
+                {preferences.map(feature => <option key={feature.key} value={feature.key}>{feature.name}</option>)}
+              </select>
+            </label>
             {discovery.items.length === 0 && <p className="mt-2 text-sm text-slate-400">No eligible discovery titles yet.</p>}
             <ul className="mt-3 space-y-2">
               {discovery.items.map(title => <li key={title.animeId} className="rounded-xl bg-white/5 p-3">
