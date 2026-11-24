@@ -23,13 +23,15 @@ type Follow struct {
 	Title string `json:"title"`
 	Track string `json:"track"`
 	Scope string `json:"scope"`
+ ScheduleNotices bool `json:"scheduleNotices"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 type Notification struct {
 	ID string `json:"id"`
 	Title string `json:"title"`
 	Body string `json:"body"`
-	ReadAt *time.Time `json:"readAt,omitempty"`
+	Provider string `json:"provider,omitempty"`
+ ReadAt *time.Time `json:"readAt,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 type FollowPage struct {
@@ -57,7 +59,7 @@ func (r *Repository) FollowPage(ctx context.Context, cursor string, limit int) (
 	if err != nil {
 		return out, ErrFollowCursor
 	}
-	rows, err := tx.Query(ctx, `SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.created_at,f.id::text
+	rows, err := tx.Query(ctx, `SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.schedule_notices_since IS NOT NULL,f.created_at,f.id::text
 		FROM user_follows f JOIN anime a ON a.id=f.anime_id
 		WHERE f.user_id=$1 AND ($2::timestamptz IS NULL OR f.created_at<$2 OR (f.created_at=$2 AND f.id>$3::uuid))
 		ORDER BY f.created_at DESC,f.id LIMIT $4`, owner.ID, before, afterID, limit+1)
@@ -70,7 +72,7 @@ func (r *Repository) FollowPage(ctx context.Context, cursor string, limit int) (
 	for rows.Next() {
 		var follow Follow
 		var id string
-		if err := rows.Scan(&follow.AnimeID, &follow.Title, &follow.Track, &follow.Scope, &follow.CreatedAt, &id); err != nil {
+		if err := rows.Scan(&follow.AnimeID, &follow.Title, &follow.Track, &follow.Scope, &follow.ScheduleNotices, &follow.CreatedAt, &id); err != nil {
 			return out, err
 		}
 		if len(out.Items) == limit {
@@ -94,11 +96,11 @@ func (r *Repository) FollowForTitle(ctx context.Context, id string) (Follow, boo
 		return follow, false, err
 	}
 	defer rollback(tx)
-	err = tx.QueryRow(ctx, `SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.created_at
+	err = tx.QueryRow(ctx, `SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.schedule_notices_since IS NOT NULL,f.created_at
 		FROM user_follows f JOIN anime a ON a.id=f.anime_id
 		WHERE f.user_id=$1 AND f.anime_id=$2
 		ORDER BY f.created_at DESC, f.id LIMIT 1`, owner.ID, id).
-		Scan(&follow.AnimeID, &follow.Title, &follow.Track, &follow.Scope, &follow.CreatedAt)
+		Scan(&follow.AnimeID, &follow.Title, &follow.Track, &follow.Scope, &follow.ScheduleNotices, &follow.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return follow, false, nil
 	}
@@ -112,6 +114,10 @@ func (r *Repository) Follow(ctx context.Context,id,track string) (bool,error) {
 	return r.FollowScope(ctx,id,track,"ANIME")
 }
 func (r *Repository) FollowScope(ctx context.Context,id,track,scope string) (bool,error) {
+	return r.FollowWithSettings(ctx, id, track, scope, nil)
+}
+
+func (r *Repository) FollowWithSettings(ctx context.Context, id, track, scope string, scheduleNotices *bool) (bool, error) {
 	if scope!="ANIME" && scope!="FRANCHISE" {return false,ErrFollowScope}
 	switch track {case "RAW","SUB","DUB","UNKNOWN","ALL":default:return false,ErrReleaseTrack}
 	tx,u,err:=r.db.productTx(ctx,r.token)
@@ -125,11 +131,26 @@ func (r *Repository) FollowScope(ctx context.Context,id,track,scope string) (boo
 	var count int
 	if err=tx.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM user_follows WHERE user_id=$1 AND anime_id=$2), (SELECT count(*) FROM user_follows WHERE user_id=$1)`,u.ID,id).Scan(&already,&count);err!=nil {return false,err}
 	if !already && count>=1000 {return false,ErrFollowLimit}
-	var started time.Time
-	if err=tx.QueryRow(ctx,`SELECT COALESCE(min(created_at),now()) FROM user_follows WHERE user_id=$1 AND anime_id=$2`,u.ID,id).Scan(&started);err!=nil {return false,err}
+	var started, now time.Time
+	var since *time.Time
+	var sameSettings bool
+	err = tx.QueryRow(ctx, `SELECT COALESCE(min(created_at),statement_timestamp()), statement_timestamp(), max(schedule_notices_since),
+		COALESCE(bool_or(follow_scope=$3 AND release_track=$4), false)
+		FROM user_follows WHERE user_id=$1 AND anime_id=$2`, u.ID, id, scope, track).
+		Scan(&started, &now, &since, &sameSettings)
+	if err != nil {
+		return false, err
+	}
+	if scheduleNotices != nil && !*scheduleNotices {
+		since = nil
+	} else if (scheduleNotices != nil && since == nil) || (since != nil && !sameSettings) {
+		since = &now
+	}
 	if _,err=tx.Exec(ctx,`DELETE FROM user_follows WHERE user_id=$1 AND anime_id=$2 AND follow_scope<>$3`,u.ID,id,scope);err!=nil {return false,err}
-	_,err=tx.Exec(ctx,`INSERT INTO user_follows(user_id,anime_id,follow_scope,release_track,created_at) VALUES($1,$2,$3,$4,$5)
-ON CONFLICT(user_id,anime_id,follow_scope) DO UPDATE SET release_track=excluded.release_track`,u.ID,id,scope,track,started)
+	_,err=tx.Exec(ctx,`INSERT INTO user_follows(user_id,anime_id,follow_scope,release_track,created_at,schedule_notices_since)
+VALUES($1,$2,$3,$4,$5,$6)
+ON CONFLICT(user_id,anime_id,follow_scope) DO UPDATE SET
+  release_track=excluded.release_track,schedule_notices_since=excluded.schedule_notices_since`,u.ID,id,scope,track,started,since)
 	if err!=nil {return false,err}
 	return true,tx.Commit(ctx)
 }
@@ -210,22 +231,26 @@ func (r *Repository) readNotificationPage(ctx context.Context, cursor string, un
 	if cursor=="" {
 	if _,err=tx.Exec(ctx,`SELECT pg_advisory_xact_lock(hashtextextended($1,742019685))`,u.ID);err!=nil {return out,err}
 	status:=NotificationMaterialization{}
- err=tx.QueryRow(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track,created_at) AS (
-SELECT anime_id,anime_id,release_track,created_at FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
+ err=tx.QueryRow(ctx,`WITH RECURSIVE franchise(origin,anime_id,release_track,created_at,schedule_notices_since) AS (
+SELECT anime_id,anime_id,release_track,created_at,schedule_notices_since FROM user_follows WHERE user_id=$1 AND follow_scope='FRANCHISE'
 UNION
-SELECT f.origin,CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track,f.created_at
+SELECT f.origin,CASE WHEN r.source_anime_id=f.anime_id THEN r.target_anime_id ELSE r.source_anime_id END,f.release_track,f.created_at,f.schedule_notices_since
 FROM franchise f JOIN anime_relations r ON r.relation_type IN ('PREQUEL','SEQUEL')
 AND (r.source_anime_id=f.anime_id OR r.target_anime_id=f.anime_id)
-), targets(anime_id,release_track,created_at,scope) AS (
-SELECT anime_id,release_track,created_at,'ANIME' FROM user_follows WHERE user_id=$1 AND follow_scope='ANIME'
+), targets(anime_id,release_track,created_at,schedule_notices_since,scope) AS (
+SELECT anime_id,release_track,created_at,schedule_notices_since,'ANIME' FROM user_follows WHERE user_id=$1 AND follow_scope='ANIME'
 UNION
-SELECT anime_id,release_track,created_at,'FRANCHISE' FROM franchise
+SELECT anime_id,release_track,created_at,schedule_notices_since,'FRANCHISE' FROM franchise
 ), eligible AS MATERIALIZED (
 SELECT DISTINCT e.id AS event_id,
 CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced'
-     WHEN kind.movie_release THEN 'Movie released' ELSE 'New episode released' END AS notice_title,
+     WHEN kind.movie_release THEN 'Movie released'
+     WHEN e.event_type='SCHEDULE_CHANGED' AND e.payload->>'direction'='LATER' THEN 'Schedule moved later'
+     WHEN e.event_type='SCHEDULE_CHANGED' THEN 'Schedule moved earlier' ELSE 'New episode released' END AS notice_title,
 CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN a.canonical_title || ' · A new linked season has been announced.'
      WHEN kind.movie_release THEN a.canonical_title || ' · Release confirmed (' || COALESCE(e.payload->>'track','UNKNOWN') || ')'
+WHEN e.event_type='SCHEDULE_CHANGED' THEN a.canonical_title || ' · Episode ' || (e.payload->>'number') || ' (' ||
+  (e.payload->>'track') || ') · Unconfirmed schedule: ' || (e.payload->>'previousSchedule') || ' → ' || (e.payload->>'currentSchedule')
 ELSE a.canonical_title || ' · Episode ' || COALESCE(e.payload->>'number','?') || ' (' || COALESCE(e.payload->>'track','UNKNOWN') || ')' END AS notice_body,
 e.occurred_at AS created_at
 FROM domain_events e JOIN targets f ON f.anime_id=e.aggregate_id JOIN anime a ON a.id=e.aggregate_id
@@ -233,7 +258,9 @@ CROSS JOIN LATERAL (SELECT e.event_type='EPISODE_RELEASED' AND e.payload->>'medi
   AND e.payload->>'number'='1' AS movie_release) kind
 WHERE e.aggregate_type='ANIME' AND e.occurred_at>=f.created_at
 AND ((e.event_type='EPISODE_RELEASED' AND (f.release_track='ALL' OR f.release_track=e.payload->>'track'))
-OR (e.event_type='SEASON_ANNOUNCED' AND f.scope='FRANCHISE'))
+OR (e.event_type='SEASON_ANNOUNCED' AND f.scope='FRANCHISE')
+OR (e.event_type='SCHEDULE_CHANGED' AND e.occurred_at>=f.schedule_notices_since
+  AND (f.release_track='ALL' OR f.release_track=e.payload->>'track')))
 AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.user_id=$1 AND n.event_id=e.id AND n.channel='IN_APP')
 ORDER BY e.occurred_at,e.id LIMIT 101
 ), inserted AS (
@@ -249,32 +276,34 @@ LEFT JOIN LATERAL (SELECT created_at FROM eligible ORDER BY created_at,event_id 
  if err==nil{out.Materialization=&status}
 	if err!=nil {return out,err}
 	}
-	rows, err := tx.Query(ctx, `SELECT page.id::text,page.title,page.body,page.read_at,page.created_at,total.unread
+	rows, err := tx.Query(ctx, `SELECT page.id::text,page.title,page.body,page.read_at,page.created_at,page.provider,total.unread
 	FROM (
 		SELECT count(*) AS unread FROM notifications
 		WHERE user_id=$1 AND channel='IN_APP' AND read_at IS NULL
 	) total
 	LEFT JOIN LATERAL (
-		SELECT id,title,body,read_at,created_at FROM notifications
-		WHERE user_id=$1 AND channel='IN_APP' AND (NOT $4::boolean OR read_at IS NULL)
-		  AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
-		ORDER BY created_at DESC,id DESC LIMIT $5
+		SELECT n.id,n.title,n.body,n.read_at,n.created_at,
+			COALESCE(CASE WHEN e.event_type='SCHEDULE_CHANGED' THEN e.payload->>'provider' END, '') AS provider
+		FROM notifications n LEFT JOIN domain_events e ON e.id=n.event_id
+		WHERE n.user_id=$1 AND n.channel='IN_APP' AND (NOT $4::boolean OR n.read_at IS NULL)
+		  AND ($2::timestamptz IS NULL OR (n.created_at,n.id)<($2::timestamptz,$3::uuid))
+		ORDER BY n.created_at DESC,n.id DESC LIMIT $5
 	) page ON true
 	ORDER BY page.created_at DESC,page.id DESC`, u.ID, before, beforeID, unreadOnly, pageLimit)
 	if err != nil {
 		return out, err
 	}
 	for rows.Next() {
-		var id, title, body *string
+		var id, title, body, provider *string
 		var createdAt, readAt *time.Time
-		if err = rows.Scan(&id, &title, &body, &readAt, &createdAt, &out.UnreadCount); err != nil {
+		if err = rows.Scan(&id, &title, &body, &readAt, &createdAt, &provider, &out.UnreadCount); err != nil {
 			rows.Close()
 			return out, err
 		}
 		// An empty page still returns the account-wide total from the same snapshot.
 		if id != nil {
 			out.Items = append(out.Items, Notification{
-				ID: *id, Title: *title, Body: *body, ReadAt: readAt, CreatedAt: *createdAt,
+				ID: *id, Title: *title, Body: *body, Provider: *provider, ReadAt: readAt, CreatedAt: *createdAt,
 			})
 		}
 	}

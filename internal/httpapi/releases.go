@@ -75,11 +75,11 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 	mux.HandleFunc("PUT /api/v1/follows/{id}",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")
 		if !validSessionID(id) {authError(w,400,"invalid_anime_id");return}
-		var body struct {Track string `json:"track"`; Scope string `json:"scope"`}
+		var body struct {Track string `json:"track"`; Scope string `json:"scope"`; ScheduleNotices *bool `json:"scheduleNotices"`}
 		if decodeAuth(w,r,&body)!=nil {authError(w,400,"invalid_json");return}
 		if body.Track=="" {body.Track="SUB"}
 		if body.Scope=="" {body.Scope="ANIME"}
-		found,err:=db.Repository(token).FollowScope(r.Context(),id,body.Track,body.Scope)
+		found,err:=db.Repository(token).FollowWithSettings(r.Context(),id,body.Track,body.Scope,body.ScheduleNotices)
 		if err!=nil {releaseError(w,err);return}
 		if !found {authError(w,404,"anime_not_found");return}
 		w.WriteHeader(204)

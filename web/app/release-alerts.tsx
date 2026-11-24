@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiClient, ApiError } from "../lib/api";
+import ProviderCredit from "./provider-credit";
 
-type Follow = { animeId: string; title: string; track: string; scope?: "ANIME" | "FRANCHISE"; createdAt: string };
+type Follow = { animeId: string; title: string; track: string; scope?: "ANIME" | "FRANCHISE"; scheduleNotices?: boolean; createdAt: string };
 type FollowPage = { items: Follow[]; nextCursor?: string };
-type Notice = { id: string; title: string; body: string; createdAt: string; readAt?: string };
+type Notice = { id: string; title: string; body: string; createdAt: string; readAt?: string; provider?: string };
 const tracks = ["SUB", "DUB", "RAW", "UNKNOWN", "ALL"];
 
 function followPath(cursor: string) {
@@ -45,6 +46,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const [oldestPendingAt, setOldestPendingAt] = useState<string | undefined>();
   const [preferences, setPreferences] = useState<Record<string, string>>({});
   const [scopes, setScopes] = useState<Record<string, string>>({});
+  const [schedulePreferences, setSchedulePreferences] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const alive = useRef(true);
@@ -142,7 +144,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
       }
     }
   }
-  async function mutate(path: string, method: string, body?: object) {
+  async function mutate(path: string, method: string, body?: object, scheduleDraftID?: string) {
     if (inFlight.current) return;
     inFlight.current = true;
     const current = ++revision.current;
@@ -156,6 +158,13 @@ export default function ReleaseAlerts({ client, library, onError }: {
       });
       if (!alive.current || current !== revision.current) return;
       await read(current, cursor);
+      if (alive.current && current === revision.current && scheduleDraftID) {
+        setSchedulePreferences(drafts => {
+          const next = { ...drafts };
+          delete next[scheduleDraftID];
+          return next;
+        });
+      }
       if (alive.current && current === revision.current) setMessage("Release alerts updated.");
     } catch (error) {
       if (alive.current && current === revision.current) {
@@ -219,11 +228,17 @@ export default function ReleaseAlerts({ client, library, onError }: {
                 className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs">
                 {tracks.map(track => <option key={track} value={track}>{track === "ALL" ? "All tracks" : track}</option>)}
               </select>
-              <button disabled={busy} aria-label={(follow ? "Save release track " : "Follow releases ") + title}
-                onClick={() => void mutate("/follows/" + id, "PUT", { track: preferences[id] ?? follow?.track ?? "SUB", scope: scopes[id] ?? follow?.scope ?? "ANIME" })}
-                className="text-xs text-violet-200 underline disabled:opacity-50">{follow ? "Save track" : "Follow releases"}</button>
+              <label className="flex items-center gap-1 text-xs">
+                <input type="checkbox" aria-label={"Schedule changes " + title} disabled={busy}
+                  checked={schedulePreferences[id] ?? follow?.scheduleNotices ?? false}
+                  onChange={event => setSchedulePreferences(current => ({ ...current, [id]: event.target.checked }))} />
+                Schedule changes
+              </label>
+              <button disabled={busy} aria-label={(follow ? "Save release settings " : "Follow releases ") + title}
+                onClick={() => void mutate("/follows/" + id, "PUT", { track: preferences[id] ?? follow?.track ?? "SUB", scope: scopes[id] ?? follow?.scope ?? "ANIME", scheduleNotices: schedulePreferences[id] ?? follow?.scheduleNotices ?? false }, id)}
+                className="text-xs text-violet-200 underline disabled:opacity-50">{follow ? "Save settings" : "Follow releases"}</button>
               {follow && <button disabled={busy} aria-label={"Stop alerts " + title}
-                onClick={() => void mutate("/follows/" + id + "?scope=" + (follow.scope ?? "ANIME"), "DELETE")} className="text-xs text-rose-200 underline disabled:opacity-50">Stop alerts</button>}
+                onClick={() => void mutate("/follows/" + id + "?scope=" + (follow.scope ?? "ANIME"), "DELETE", undefined, id)} className="text-xs text-rose-200 underline disabled:opacity-50">Stop alerts</button>}
             </li>;
           })}
         </ul>
@@ -254,6 +269,9 @@ export default function ReleaseAlerts({ client, library, onError }: {
           {notices.map(notice => <li key={notice.id} className="rounded-xl bg-white/5 p-3">
             <p className="text-sm font-medium">{notice.title} {!notice.readAt && <span className="ml-2 text-xs text-violet-200">Unread</span>}</p>
             <p className="mt-1 text-sm text-slate-300">{notice.body}</p>
+            {notice.provider && <p className="mt-1 text-xs text-slate-400">
+              {notice.provider === "tvmaze" ? <ProviderCredit provider="tvmaze" /> : "Source: " + notice.provider}
+            </p>}
             <p className="mt-1 text-xs text-slate-500">{new Date(notice.createdAt).toLocaleString()}</p>
             {!notice.readAt && <button disabled={busy} onClick={() => void mutate("/notifications/" + notice.id + "/read", "PATCH")}
               className="mt-2 text-xs underline disabled:opacity-50">Mark as read</button>}

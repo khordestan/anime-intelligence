@@ -1054,3 +1054,12 @@ Validation for `938a697` (PR #49): [CI](https://github.com/khordestan/anime-inte
 
 - Captured canonical format when recording a release event and labeled confirmed first movie releases in-app. The existing event and notification keys, track matching, subscription boundaries and baseline rules still apply.
 - Local `make check` passed. Three focused PostgreSQL release tests passed under the race detector, covering movie confirmation versus elapsed schedules, subsequent format corrections, concurrent catch-up and owner isolation. Hosted checks pending.
+
+Validation for `105f6d6` (PR #50): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45412162377) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45412162363) passed. The PR merged as `58dd57b`.
+
+Validation for `41b85d1` (PR #51): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45412567346) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45412567580) passed. The PR merged as `34fff33`.
+
+## 2026-11-24 — Opt-in in-app schedule-move notices
+
+- Added explicit publication of reviewed offline schedule moves and per-follow owner consent. Consent does not replay earlier changes. Notices preserve source, track and prior/current unconfirmed schedule times. Migration 000024 defaults existing follows to off, and downgrade guards retained consent.
+- Local `make check`, PostgreSQL consent/publication and rollback guard regression under the race detector, frontend unit tests, typecheck, build and eight focused browser tests passed. Hosted checks pending.

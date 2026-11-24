@@ -12,7 +12,7 @@ import (
 // applySelectedSchedules uses only existing exact provider mappings. A first
 // scoped observation baselines historical confirmations independently for each
 // title. Missing fields never claim metadata authority or retract confirmations.
-func applySelectedSchedules(ctx context.Context,tx pgx.Tx,s feed.Snapshot,source string)(Result,error){
+func applySelectedSchedules(ctx context.Context,tx pgx.Tx,s feed.Snapshot,source string,options ImportOptions)(Result,error){
  out:=Result{SchedulesOnly:true}
  for _,title:=range s.Titles{
   var id string
@@ -29,12 +29,19 @@ func applySelectedSchedules(ctx context.Context,tx pgx.Tx,s feed.Snapshot,source
   known:=err==nil
   if err!=nil&&!errors.Is(err,pgx.ErrNoRows){return Result{},err}
   if known&&!s.ObservedAt.After(previous){return Result{},ErrStale}
+  observation := episodeObservation{
+   source: source, provider: s.Provider, animeID: id, mediaType: mediaType,
+   observed: s.ObservedAt, previous: previous, eligible: known,
+   scheduleChanges: options.ScheduleChangeEvents,
+  }
   for _,episode:=range title.Episodes{
    // A conflicting season match must not stretch an authoritative known total.
    if total!=nil&&episode.Number>*total{return Result{},ErrConflict}
-   revisions,events,err:=syncEpisode(ctx,tx,source,id,mediaType,episode,s.ObservedAt,previous,known)
+   result,err:=syncEpisode(ctx,tx,observation,episode)
    if err!=nil{return Result{},err}
-   out.ScheduleRevisions+=revisions;out.ReleaseEvents+=events
+   out.ScheduleRevisions += result.revisions
+   out.ReleaseEvents += result.releases
+   out.ScheduleChangeEvents += result.scheduleChanges
   }
   if _,err=tx.Exec(ctx,`INSERT INTO catalog_schedule_observations(source_id,anime_id,observed_at)
  VALUES($1,$2,$3) ON CONFLICT(source_id,anime_id) DO UPDATE SET observed_at=excluded.observed_at`,source,id,s.ObservedAt);err!=nil{return Result{},err}

@@ -150,7 +150,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Optional Global Essentials API and dashboard lane for reviewed manifests
 - [ ] Reviewed Global Essentials evidence and evaluation corpus, and richer Discovery ranking
 - [x] Confirmed in-app movie release notices for eligible follows
-- [ ] Authorized release notices for delays and schedule changes
+- [x] Opt-in in-app notices for reviewed earlier and later schedule moves
+- [ ] Release delay or cancellation notices backed by explicit authoritative evidence
 - [ ] Recommendation and alert dashboards for finer controls where the API already supports them
 - [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline
 - [ ] Feedback learning and representative evaluation datasets
