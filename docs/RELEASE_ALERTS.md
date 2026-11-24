@@ -6,6 +6,7 @@ Migration 000012 adds per-follow track preferences and durable per-user/event/ch
 
 - PUT /api/v1/follows/{animeId} with {"track":"SUB"} subscribes; RAW, DUB, UNKNOWN and ALL are also supported.
 - GET /api/v1/follows returns up to 1000 owned subscriptions by default. Use `?limit=50` to opt into paging with a limit from 1 to 100. Pass `nextCursor` as `cursor` to continue, and retain `limit` if you chose a page size other than 50. Pages sort by newest subscription time and then follow UUID. A cursor provides a boundary within the caller's own follows.
+- GET /api/v1/follows/{animeId} returns the caller's subscription for one title. A title without an owned subscription returns 404.
 - DELETE /api/v1/follows/{animeId} removes only the caller's subscription.
 - GET /api/v1/notifications returns a materialization object with created (notices inserted by this poll, 0–100) and hasMore (another eligible event was observed beyond that batch). It materializes up to 100 eligible events and returns the newest 100 owned in-app notices with nextCursor when older materialized notices exist. GET /api/v1/notifications?cursor=... returns the next history page without materializing new events and omits materialization because it does not check the backlog. Invalid cursors return 400; cursors select a time/ID boundary and never an account. Every page rechecks the authenticated verified owner.
 - PATCH /api/v1/notifications/{id}/read marks an owned notice read idempotently. Foreign and missing IDs both return 404.
@@ -16,11 +17,11 @@ Materialization occurs on authenticated polling; it is not background mail, push
 
 ## Dashboard
 
-Verified accounts can open Manage release alerts, subscribe library titles, select a release track, stop alerts and mark notices read. The visible dashboard polls every minute while viewing the latest page, including while the panel is collapsed. Collapsed polls request notification state only and show the unread total beside the panel button. Opening the panel refreshes subscriptions and the current inbox. The panel has a manual refresh button. Older notifications opens one history page at a time; automatic refresh pauses there until Back to latest alerts is selected. Failed page requests preserve the current page and can be retried. Marking a historical notice read preserves the page. It resets on account changes and rejects stale results. Local mode and unverified accounts do not expose the panel. Credentials and notices are never stored in browser storage.
+Verified accounts can open Manage release alerts, subscribe library titles, select a release track, stop alerts and mark notices read. The visible dashboard polls every minute while viewing the latest page, including while the panel is collapsed. Collapsed polls request notification state only and show the unread total beside the panel button. Opening the panel refreshes the current subscriptions page and inbox. Subscriptions use pages of up to 50. Newest follows and Older follows navigate the subscriptions without polling the inbox. With multiple pages, choose a library title to read and manage its current subscription even when it falls outside the displayed page. The panel has a manual refresh button. Older notifications opens one history page at a time; automatic refresh pauses there until Back to latest alerts is selected. Failed page requests preserve the current page and can be retried. Marking a historical notice read preserves the page. It resets on account changes and rejects stale results. Local mode and unverified accounts do not expose the panel. Credentials and notices are never stored in browser storage.
 
 ## Remaining work
 
-Follow pagination, operator backlog metrics, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
+Operator backlog metrics, franchise curation/retractions, region/language availability and background delivery channels remain pending. Network source synchronization is not enabled. Ingestion still requires explicit reviewed offline snapshots. Public deployment remains unauthorized.
 
 ## Linked-season follows
 

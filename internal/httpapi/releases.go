@@ -55,6 +55,23 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 		}
 		writeJSON(w, 200, response)
 	}))
+	mux.HandleFunc("GET /api/v1/follows/{id}", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		id := r.PathValue("id")
+		if !validSessionID(id) {
+			authError(w, http.StatusBadRequest, "invalid_anime_id")
+			return
+		}
+		follow, found, err := db.Repository(token).FollowForTitle(r.Context(), id)
+		if err != nil {
+			releaseError(w, err)
+			return
+		}
+		if !found {
+			authError(w, http.StatusNotFound, "follow_not_found")
+			return
+		}
+		writeJSON(w, http.StatusOK, follow)
+	}))
 	mux.HandleFunc("PUT /api/v1/follows/{id}",protect(func(w http.ResponseWriter,r *http.Request,token string,_ postgres.User){
 		id:=r.PathValue("id")
 		if !validSessionID(id) {authError(w,400,"invalid_anime_id");return}

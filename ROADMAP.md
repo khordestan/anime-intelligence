@@ -127,7 +127,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Durable post-baseline season-announcement and confirmed episode-release detection
 - [x] Owner-scoped polling in-app episode notifications and per-follow release tracks
 - [x] Dashboard notification controls, unread filters/counts, bulk read and backlog catch-up timestamp
-- [x] Opt-in keyset pagination for the verified follows API
+- [x] Keyset pagination for the verified follows API and dashboard, with per-title subscription lookup
 - [x] Followed schedule calendar with latest revisions, track/scope filters and explicit unconfirmed labels
 - [ ] Background delivery channels
 - [x] Durable canonical release-event and owned notification duplicate suppression

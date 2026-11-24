@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
-	"strings"
 	"errors"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 )
 
 var ErrNotificationCursor = errors.New("invalid notification cursor")
@@ -85,6 +86,28 @@ func (r *Repository) FollowPage(ctx context.Context, cursor string, limit int) (
 	}
 	return out, tx.Commit(ctx)
 }
+// FollowForTitle resolves the caller's current subscription without paging.
+func (r *Repository) FollowForTitle(ctx context.Context, id string) (Follow, bool, error) {
+	var follow Follow
+	tx, owner, err := r.db.productTx(ctx, r.token)
+	if err != nil {
+		return follow, false, err
+	}
+	defer rollback(tx)
+	err = tx.QueryRow(ctx, `SELECT f.anime_id::text,a.canonical_title,f.release_track,f.follow_scope,f.created_at
+		FROM user_follows f JOIN anime a ON a.id=f.anime_id
+		WHERE f.user_id=$1 AND f.anime_id=$2
+		ORDER BY f.created_at DESC, f.id LIMIT 1`, owner.ID, id).
+		Scan(&follow.AnimeID, &follow.Title, &follow.Track, &follow.Scope, &follow.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return follow, false, nil
+	}
+	if err != nil {
+		return follow, false, err
+	}
+	return follow, true, tx.Commit(ctx)
+}
+
 func (r *Repository) Follow(ctx context.Context,id,track string) (bool,error) {
 	return r.FollowScope(ctx,id,track,"ANIME")
 }

@@ -1,11 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiClient } from "../lib/api";
+import { ApiClient, ApiError } from "../lib/api";
 
 type Follow = { animeId: string; title: string; track: string; scope?: "ANIME" | "FRANCHISE"; createdAt: string };
+type FollowPage = { items: Follow[]; nextCursor?: string };
 type Notice = { id: string; title: string; body: string; createdAt: string; readAt?: string };
 const tracks = ["SUB", "DUB", "RAW", "UNKNOWN", "ALL"];
+
+function followPath(cursor: string) {
+  return "/follows?limit=50" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : "");
+}
+
+async function followForTitle(client: ApiClient, id: string) {
+  if (!id) return null;
+  try {
+    return await client.request<Follow>("/follows/" + encodeURIComponent(id));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
 
 export default function ReleaseAlerts({ client, library, onError }: {
   client: ApiClient;
@@ -14,6 +29,12 @@ export default function ReleaseAlerts({ client, library, onError }: {
 }) {
   const [open, setOpen] = useState(false);
   const [follows, setFollows] = useState<Follow[]>([]);
+  const [followCursor, setFollowCursor] = useState("");
+  const followPageCursor = useRef("");
+  const [nextFollowCursor, setNextFollowCursor] = useState("");
+  const [selectedID, setSelectedID] = useState("");
+  const selectedTitleID = useRef("");
+  const [selectedFollow, setSelectedFollow] = useState<Follow | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const unreadFilter = useRef(false);
   const [unreadCount, setUnreadCount] = useState<number | null>(null);
@@ -38,14 +59,17 @@ export default function ReleaseAlerts({ client, library, onError }: {
     if (pageCursor) params.set("cursor", pageCursor);
     if (onlyUnread) params.set("unreadOnly", "true");
     const query = params.toString();
-    const [f, n] = await Promise.all([
-      client.request<{ items: Follow[] }>("/follows"),
+    const [f, n, selected] = await Promise.all([
+      client.request<FollowPage>(followPath(followPageCursor.current)),
       client.request<{ items: Notice[]; unreadCount?: number; nextCursor?: string; materialization?: { created: number; hasMore: boolean; oldestPendingAt?: string } }>("/notifications" + (query ? "?" + query : "")),
+      followForTitle(client, selectedTitleID.current),
     ]);
     if (!alive.current || current !== revision.current) return;
     unreadFilter.current = onlyUnread;
     setUnreadOnly(onlyUnread);
     setFollows(f.items);
+    setNextFollowCursor(f.nextCursor ?? "");
+    setSelectedFollow(selected);
     setNotices(n.items);
     setUnreadCount(n.unreadCount ?? null);
     setCursor(pageCursor); setNextCursor(n.nextCursor ?? "");
@@ -85,6 +109,39 @@ export default function ReleaseAlerts({ client, library, onError }: {
     }, 60_000);
     return () => clearInterval(timer);
   }, [open, refresh, cursor]);
+  async function changeFollowView(next: { cursor: string } | { animeId: string }) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    try {
+      if ("cursor" in next) {
+        const page = await client.request<FollowPage>(followPath(next.cursor));
+        if (!alive.current || current !== revision.current) return;
+        followPageCursor.current = next.cursor;
+        setFollowCursor(next.cursor);
+        setFollows(page.items);
+        setNextFollowCursor(page.nextCursor ?? "");
+      } else {
+        const follow = await followForTitle(client, next.animeId);
+        if (!alive.current || current !== revision.current) return;
+        selectedTitleID.current = next.animeId;
+        setSelectedID(next.animeId);
+        setSelectedFollow(follow);
+      }
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not load release subscriptions. Try again.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) {
+        inFlight.current = false;
+        setBusy(false);
+      }
+    }
+  }
   async function mutate(path: string, method: string, body?: object) {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -112,8 +169,14 @@ export default function ReleaseAlerts({ client, library, onError }: {
       }
     }
   }
-  const titles = new Map(library.map(item => [item.animeId, item.title]));
-  for (const follow of follows) titles.set(follow.animeId, follow.title);
+  const pagedFollows = Boolean(followCursor || nextFollowCursor);
+  const displayedFollows = new Map(follows.map(item => [item.animeId, item]));
+  if (selectedFollow) displayedFollows.set(selectedFollow.animeId, selectedFollow);
+  const titles = new Map<string, string>();
+  for (const item of library) {
+    if (!pagedFollows || item.animeId === selectedID) titles.set(item.animeId, item.title);
+  }
+  for (const follow of displayedFollows.values()) titles.set(follow.animeId, follow.title);
   return (
     <section aria-label="Release alerts" className="mt-8 rounded-2xl border border-white/10 bg-white/[.03] p-5">
       <button aria-expanded={open} aria-controls="release-alert-panel" onClick={() => setOpen(!open)}
@@ -130,10 +193,20 @@ export default function ReleaseAlerts({ client, library, onError }: {
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
         {!cursor && catchingUp && <p className="mt-2 text-sm text-amber-200">More release alerts are waiting. {oldestPendingAt && <>The oldest pending release is from {new Date(oldestPendingAt).toLocaleString()}. </>}Refresh alerts to check the next batch.</p>}
         <h3 className="mt-5 font-medium">Followed releases</h3>
-        {titles.size === 0 && <p className="mt-2 text-sm text-slate-400">Add an anime to your library to follow its releases.</p>}
+        {pagedFollows && library.length > 0 && (
+          <label className="mt-2 block text-sm">
+            Release settings for a library title
+            <select value={selectedID} disabled={busy} onChange={event => void changeFollowView({ animeId: event.target.value })}
+              className="ml-2 rounded-lg border border-white/10 bg-slate-900 p-2 text-xs">
+              <option value="">Choose a title</option>
+              {library.map(item => <option key={item.animeId} value={item.animeId}>{item.title}</option>)}
+            </select>
+          </label>
+        )}
+        {titles.size === 0 && <p className="mt-2 text-sm text-slate-400">{pagedFollows ? "No followed releases on this page." : "Add an anime to your library to follow its releases."}</p>}
         <ul className="mt-3 space-y-3">
           {Array.from(titles, ([id, title]) => {
-            const follow = follows.find(item => item.animeId === id);
+            const follow = displayedFollows.get(id);
             return <li key={id} className="flex flex-wrap items-center gap-3 rounded-xl bg-white/5 p-3">
               <span className="grow text-sm">{title}</span>
               <select aria-label={"Release scope " + title} value={scopes[id] ?? follow?.scope ?? "ANIME"} disabled={busy}
@@ -154,6 +227,14 @@ export default function ReleaseAlerts({ client, library, onError }: {
             </li>;
           })}
         </ul>
+        {(followCursor || nextFollowCursor) && (
+          <div className="mt-3 flex flex-wrap gap-3 text-sm">
+            {followCursor && <button type="button" disabled={busy} onClick={() => void changeFollowView({ cursor: "" })}
+              className="underline disabled:opacity-50">Newest follows</button>}
+            {nextFollowCursor && <button type="button" disabled={busy} onClick={() => void changeFollowView({ cursor: nextFollowCursor })}
+              className="underline disabled:opacity-50">Older follows</button>}
+          </div>
+        )}
         <h3 className="mt-5 font-medium">{cursor ? "Notification history" : "Recent notifications"}</h3>
         {unreadCount !== null && <p className="mt-2 text-sm text-slate-400">Unread alerts: {unreadCount}</p>}
         {(unreadCount === null ? notices.length > 0 : unreadCount > 0) && (
@@ -179,7 +260,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
           </li>)}
         </ul>
         {nextCursor && <button disabled={busy} onClick={() => void refresh(nextCursor)} className="mt-3 text-sm underline disabled:opacity-50">Older notifications</button>}
-        <p className="mt-4 text-xs text-slate-500">Showing up to 1,000 follows and 100 notifications per page. Email and push alerts are not enabled.</p>
+        <p className="mt-4 text-xs text-slate-500">Showing up to 50 follows and 100 notifications per page. Email and push alerts are not enabled.</p>
       </div>}
     </section>
   );
