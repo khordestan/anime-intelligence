@@ -57,3 +57,11 @@ Notification pages include `unreadCount`, the number of the caller's unread in-a
 The dashboard pauses scheduled polling while its tab is hidden or a history page is selected. This delivers badges while the dashboard is visible. Delivery when the app is closed still requires a background channel.
 
 GET /api/v1/notifications/summary performs the same bounded latest-page materialization and returns only the unread total and materialization status. Collapsed dashboard polling uses this endpoint and does not download individual notifications.
+
+## Opt into schedule changes
+
+Schedule notices are off for new follows. Select **Schedule changes** and save the release settings to enable them for an existing or new follow. The follow API exposes `scheduleNotices` and preserves existing consent when an update omits it. Changing track or scope starts a new schedule notice window. Clearing consent stops new notices and preserves previously materialized history. Verified email and owner scope apply.
+
+Migration 000024 adds the consent timestamp. The upgrade keeps existing follows opted out. Rollback refuses to discard retained consent. Schedule notices still use the per-poll batch cap and the existing notification ledger. They state whether a published schedule moved earlier or later and include the before and after times and source. A change is an unconfirmed schedule revision.
+
+Enable source publication only for a reviewed offline snapshot with permission for this notice use. Pass `-schedule-change-events` to `catalog-import`, with `-preview` for an atomic rehearsal. Two known observed schedules on the same title, episode and track must differ, and the release must still be unconfirmed. A baseline, newly known time, removed time, unchanged time or confirmed release creates no schedule notice event. Events use the snapshot observation time and canonical revision key. Runtime polling checks the later of follow start and schedule notice consent, so a new consent does not replay earlier moves. Queued providers do not enable this option.

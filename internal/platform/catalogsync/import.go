@@ -22,6 +22,7 @@ var (
 )
 type ImportOptions struct {
  SchedulesOnly bool // Requires existing reviewed identities; never writes metadata.
+ ScheduleChangeEvents bool // Explicitly approved offline schedule event publication.
 	Preview bool
 	Archive bool // Operator must separately approve historical retention rights.
 }
@@ -32,6 +33,7 @@ type Result struct {
 	Titles int `json:"titles"`
 	SeasonAnnouncements int `json:"seasonAnnouncements"`
 	ScheduleRevisions int `json:"scheduleRevisions"`
+	ScheduleChangeEvents int `json:"scheduleChangeEvents,omitempty"`
 	ReleaseEvents int `json:"releaseEvents"`
 	UnresolvedRelations int `json:"unresolvedRelations"`
 }
@@ -80,7 +82,7 @@ func applyTx(ctx context.Context,tx pgx.Tx,s feed.Snapshot,options ImportOptions
 	if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,err}
 	if !previous.IsZero() && !s.ObservedAt.After(previous) {return out,ErrStale}
  if options.SchedulesOnly{
-  out,err=applySelectedSchedules(ctx,tx,s,source)
+  out,err=applySelectedSchedules(ctx,tx,s,source,options)
   if err!=nil{return Result{},err}
   if _,err=tx.Exec(ctx,`INSERT INTO catalog_sync_state(source_id,observed_at) VALUES($1,$2)
  ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.ObservedAt);err!=nil{return Result{},err}
@@ -121,11 +123,19 @@ VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) D
 		}
 		comparison:=titleObserved
 		if !known {comparison=previous}
-		for _,episode:=range title.Episodes {
-			revision,event,err:=syncEpisode(ctx,tx,source,id,effective.MediaType,episode,s.ObservedAt,comparison,!previous.IsZero())
-			if err!=nil {return out,err}
-			out.ScheduleRevisions+=revision
-			out.ReleaseEvents+=event
+		observation := episodeObservation{
+			source: source, provider: s.Provider, animeID: id, mediaType: effective.MediaType,
+			observed: s.ObservedAt, previous: comparison, eligible: !previous.IsZero(),
+			scheduleChanges: options.ScheduleChangeEvents,
+		}
+		for _, episode := range title.Episodes {
+			result, err := syncEpisode(ctx, tx, observation, episode)
+			if err != nil {
+				return out, err
+			}
+			out.ScheduleRevisions += result.revisions
+			out.ReleaseEvents += result.releases
+			out.ScheduleChangeEvents += result.scheduleChanges
 		}
 		if options.Archive{
    archived,err:=archiveMetadata(ctx,tx,source,id,s.Provider,s.ObservedAt,title)
@@ -143,30 +153,51 @@ ON CONFLICT(source_id) DO UPDATE SET observed_at=excluded.observed_at`,source,s.
 func equalTime(a,b *time.Time) bool {
 	return (a==nil && b==nil) || (a!=nil && b!=nil && a.Truncate(time.Microsecond).Equal(b.Truncate(time.Microsecond)))
 }
-func syncEpisode(ctx context.Context,tx pgx.Tx,source,id,mediaType string,e feed.Episode,observed,previous time.Time,eligible bool) (int,int,error) {
+type episodeObservation struct {
+	source, provider, animeID, mediaType string
+	observed, previous                   time.Time
+	eligible, scheduleChanges           bool
+}
+
+type episodeSyncResult struct {
+	revisions, releases, scheduleChanges int
+}
+
+func syncEpisode(ctx context.Context, tx pgx.Tx, observation episodeObservation, e feed.Episode) (episodeSyncResult, error) {
+	var result episodeSyncResult
+	id := observation.animeID
 	var revision int
 	var scheduled,released *time.Time
 	var authority string
 	err:=tx.QueryRow(ctx,`SELECT revision,scheduled_at,actual_released_at,COALESCE(source_id::text,'') FROM airing_schedule
 WHERE anime_id=$1 AND episode_number=$2 AND release_track=$3 ORDER BY revision DESC LIMIT 1 FOR UPDATE`,id,e.Number,e.Track).Scan(&revision,&scheduled,&released,&authority)
-	if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return 0,0,err}
-	if revision>0 && authority!=source {return 0,0,ErrConflict}
+	if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return result, err}
+	if revision>0 && authority!=observation.source {return result, ErrConflict}
 	// Missing confirmation cannot retract a previously confirmed release.
 	actual:=e.ReleasedAt
 	if actual==nil {actual=released}
 	if revision>0 && equalTime(scheduled,e.ScheduledAt) && equalTime(released,actual) {
-		_,err=tx.Exec(ctx,`UPDATE airing_schedule SET last_verified_at=$4 WHERE anime_id=$1 AND episode_number=$2 AND release_track=$3 AND revision=$5`,id,e.Number,e.Track,observed,revision)
-		return 0,0,err
+		_,err=tx.Exec(ctx,`UPDATE airing_schedule SET last_verified_at=$4 WHERE anime_id=$1 AND episode_number=$2 AND release_track=$3 AND revision=$5`,id,e.Number,e.Track,observation.observed,revision)
+		return result, err
 	}
 	status:="UNKNOWN"
 	if e.ScheduledAt!=nil {status="SCHEDULED"}
 	if actual!=nil {status="RELEASED"}
 	if _,err=tx.Exec(ctx,`INSERT INTO airing_schedule(anime_id,episode_number,release_track,scheduled_at,actual_released_at,schedule_status,source_id,last_verified_at,revision)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,id,e.Number,e.Track,e.ScheduledAt,actual,status,source,observed,revision+1);err!=nil {return 0,0,err}
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,id,e.Number,e.Track,e.ScheduledAt,actual,status,observation.source,observation.observed,revision+1);err!=nil {return result, err}
+	result.revisions = 1
+	if observation.scheduleChanges && observation.eligible && !observation.previous.IsZero() &&
+		scheduled != nil && e.ScheduledAt != nil && actual == nil && !equalTime(scheduled, e.ScheduledAt) {
+		inserted, err := insertScheduleChangeEvent(ctx, tx, observation, e, *scheduled, revision+1)
+		if err != nil {
+			return result, err
+		}
+		result.scheduleChanges = inserted
+	}
 	// First provider imports baseline history. A new title can still report a
 	// genuinely new first release since the prior provider observation; known
 	// titles compare their own prior observation rather than unrelated updates.
-	if !eligible || previous.IsZero() || released!=nil || actual==nil || !actual.Truncate(time.Microsecond).After(previous) {return 1,0,nil}
+	if !observation.eligible || observation.previous.IsZero() || released!=nil || actual==nil || !actual.Truncate(time.Microsecond).After(observation.previous) {return result,nil}
 	identity,_:=json.Marshal([]any{"EPISODE_RELEASED",id,e.Number,e.Track})
 	sum:=sha256.Sum256(identity)
 	key:="episode:"+hex.EncodeToString(sum[:])
@@ -175,10 +206,11 @@ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,id,e.Number,e.Track,e.ScheduledAt,actual,sta
 		Track string `json:"track"`
 		ReleasedAt time.Time `json:"releasedAt"`
 		MediaType string `json:"mediaType"`
-	}{e.Number,e.Track,*actual,mediaType})
+	}{e.Number,e.Track,*actual,observation.mediaType})
 	tag,err:=tx.Exec(ctx,`INSERT INTO domain_events(event_key,event_type,aggregate_type,aggregate_id,payload,occurred_at)
 VALUES($1,'EPISODE_RELEASED','ANIME',$2,$3,$4) ON CONFLICT(event_key) DO NOTHING`,key,id,payload,*actual)
-	return 1,int(tag.RowsAffected()),err
+	result.releases = int(tag.RowsAffected())
+	return result, err
 }
 func syncRelations(ctx context.Context,tx pgx.Tx,source,provider string) (int,error) {
 	// Revisit retained observations so a later partial feed can resolve a target
