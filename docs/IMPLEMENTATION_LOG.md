@@ -1000,3 +1000,10 @@ Validation for `daac704276d539b9987310823357814ee726d716`: all seven [CI jobs](h
 - The offline baseline from PR #42 passed [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45406330117) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45406329929) on `091b6f4` and merged.
 - PostgreSQL startup now validates an optional reviewed manifest against catalog IDs and titles. The public API and dashboard display the bounded, evidence-linked snapshot.
 - Local `make check`, frontend dependency install, unit tests, production build and typecheck passed. PostgreSQL integration tests skipped locally without `TEST_DATABASE_URL`. Hosted checks and the full local browser run are pending.
+
+Validation for `d8b8b43` (PR #43): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45407707023) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45407706857) passed. All 45 local mocked browser tests passed, including signed-out Essentials access and the evidence link. The PR merged as `625ff78`.
+
+## 2026-11-24 — Global Essentials evidence coverage
+
+- Added candidate and relevant-title eligibility counts and recall ceiling at k. Evaluated five films using independent public award results and critics' poll inclusion. The single-source pilot reached its coverage ceiling and left representative evaluation open.
+- Local `make check` passed with VCS stamping disabled for the linked worktree. The pilot reproduced the expected one eligible relevant title out of three. Local PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Hosted checks pending.

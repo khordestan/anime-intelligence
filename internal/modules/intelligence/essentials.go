@@ -106,12 +106,21 @@ type EssentialsEvaluation struct {
 	Relevant   []string              `json:"relevant"`
 }
 
+type EssentialsCoverage struct {
+	Candidates         int     `json:"candidates"`
+	EligibleCandidates int     `json:"eligibleCandidates"`
+	Relevant           int     `json:"relevant"`
+	EligibleRelevant   int     `json:"eligibleRelevant"`
+	RecallCeilingAtK   float64 `json:"recallCeilingAtK"`
+}
+
 type EssentialsReport struct {
-	AlgorithmVersion string            `json:"algorithmVersion"`
-	K                int               `json:"k"`
-	Ranking          []EssentialsMatch `json:"ranking"`
-	GlobalEssentials RankingMetrics    `json:"globalEssentials"`
-	TitleBaseline    RankingMetrics    `json:"titleBaseline"`
+	AlgorithmVersion string             `json:"algorithmVersion"`
+	K                int                `json:"k"`
+	Coverage         EssentialsCoverage `json:"coverage"`
+	Ranking          []EssentialsMatch  `json:"ranking"`
+	GlobalEssentials RankingMetrics     `json:"globalEssentials"`
+	TitleBaseline    RankingMetrics     `json:"titleBaseline"`
 }
 
 func EvaluateGlobalEssentials(fixture EssentialsEvaluation, k int) (EssentialsReport, error) {
@@ -122,17 +131,27 @@ func EvaluateGlobalEssentials(fixture EssentialsEvaluation, k int) (EssentialsRe
 	if err != nil {
 		return EssentialsReport{}, err
 	}
-	known := make(map[string]bool, len(fixture.Candidates))
+	coverage := EssentialsCoverage{Candidates: len(fixture.Candidates), Relevant: len(fixture.Relevant)}
+	eligible := make(map[string]bool, len(fixture.Candidates))
 	for _, item := range fixture.Candidates {
-		known[item.AnimeID] = true
+		supported := len(item.Evidence) > 0
+		eligible[item.AnimeID] = supported
+		if supported {
+			coverage.EligibleCandidates++
+		}
 	}
 	relevant := make(map[string]struct{}, len(fixture.Relevant))
 	for _, id := range fixture.Relevant {
-		if _, duplicate := relevant[id]; duplicate || !known[id] {
+		supported, known := eligible[id]
+		if _, duplicate := relevant[id]; duplicate || !known {
 			return EssentialsReport{}, errors.New("relevant IDs must be unique candidates")
 		}
 		relevant[id] = struct{}{}
+		if supported {
+			coverage.EligibleRelevant++
+		}
 	}
+	coverage.RecallCeilingAtK = float64(min(k, coverage.EligibleRelevant)) / float64(coverage.Relevant)
 	ids := make([]string, 0, len(ranking))
 	for _, item := range ranking {
 		ids = append(ids, item.AnimeID)
@@ -149,7 +168,7 @@ func EvaluateGlobalEssentials(fixture EssentialsEvaluation, k int) (EssentialsRe
 		baselineIDs = append(baselineIDs, item.AnimeID)
 	}
 	return EssentialsReport{
-		AlgorithmVersion: GlobalEssentialsAlgorithmVersion, K: k, Ranking: ranking,
+		AlgorithmVersion: GlobalEssentialsAlgorithmVersion, K: k, Ranking: ranking, Coverage: coverage,
 		GlobalEssentials: rankingMetrics(ids, relevant, k), TitleBaseline: rankingMetrics(baselineIDs, relevant, k),
 	}, nil
 }
