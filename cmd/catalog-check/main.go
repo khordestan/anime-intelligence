@@ -12,32 +12,50 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/modules/catalog/feed"
 )
 
-func read(path string, now time.Time) (feed.Snapshot,error) {
+func read(path string, now time.Time) (feed.Snapshot, error) {
 	f, err := os.Open(path)
-	if err != nil { return feed.Snapshot{},feed.ErrInvalid }
+	if err != nil {
+		return feed.Snapshot{}, feed.ErrInvalid
+	}
 	defer f.Close()
-	return feed.Decode(f,now)
+	return feed.Decode(f, now)
 }
 func run() error {
-	input := flag.String("input","","Snapshot JSON file (required)")
-	baseline := flag.String("previous","","Optional previous snapshot JSON file")
+	input := flag.String("input", "", "Snapshot JSON file (required)")
+	baseline := flag.String("previous", "", "Optional previous snapshot JSON file")
+	coverage := flag.Bool("coverage", false, "report aggregate field and schedule presence for the snapshot")
 	flag.Parse()
 	now := time.Now().UTC()
-	next, err := read(*input,now)
-	if err != nil { return err }
+	next, err := read(*input, now)
+	if err != nil {
+		return err
+	}
 	var previous *feed.Snapshot
 	if *baseline != "" {
-		s, err := read(*baseline,now)
-		if err != nil { return err }
+		s, err := read(*baseline, now)
+		if err != nil {
+			return err
+		}
 		previous = &s
 	}
-	events,err := feed.Releases(previous,next,now)
-	if err != nil { return err }
+	events, err := feed.Releases(previous, next, now)
+	if err != nil {
+		return err
+	}
+	var report *feed.SnapshotCoverage
+	if *coverage {
+		counts := next.Coverage()
+		report = &counts
+	}
 	return json.NewEncoder(os.Stdout).Encode(struct {
-		Titles int `json:"titles"`
-		Events []feed.Event `json:"events"`
-	}{len(next.Titles),events})
+		Titles   int                    `json:"titles"`
+		Events   []feed.Event           `json:"events"`
+		Coverage *feed.SnapshotCoverage `json:"coverage,omitempty"`
+	}{len(next.Titles), events, report})
 }
 func main() {
-	if run() != nil { fmt.Fprintln(os.Stderr,"catalog validation failed"); os.Exit(1) }
+	if run() != nil {
+		fmt.Fprintln(os.Stderr, "catalog validation failed")
+		os.Exit(1)
+	}
 }

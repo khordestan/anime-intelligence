@@ -27,7 +27,7 @@ Audited 2026-11-24 against [main at c788693](https://github.com/khordestan/anime
 
 1. Build a reviewed public evidence corpus and representative held-out judgments for the [offline Global Essentials baseline](docs/GLOBAL_ESSENTIALS.md), then use the results to assess coverage and the ranking served by the opt-in runtime lane. Improve Discovery exploration using the offline ranking/retrieval evaluator.
 2. Extend release alerts with a separately authorized channel and a bounded durable delivery design. Preserve consent, owner isolation, event deduplication and retry semantics. Start with synthetic end-to-end tests.
-3. Expand catalog coverage through explicitly reviewed source capabilities and permissions, starting with coverage/quality measurements. Treat the current adapters and operator tools as the integration path.
+3. Expand catalog coverage through explicitly reviewed source capabilities and permissions, using the offline feed field-presence report and assessing field accuracy separately. Treat the current adapters and operator tools as the integration path.
 4. Continue production hardening and independently verify authorization, abuse controls and recovery. Public deployment and live source credentials require an authorized environment. Continue synthetic/local work while those dependencies are pending.
 
 ## Verification checkpoint

@@ -55,3 +55,7 @@ Runtime API credentials receive no new catalog write grants. This command curren
 ## Explicit CC0 factual fetch
 
 catalog-fetch retrieves a bounded set of supported Wikidata anime-work items as a neutral feed. It has no database access and activates no scheduled source. See [provider capabilities](PROVIDERS.md) for mapping, CC0 scope and request etiquette. The factual output intentionally leaves release status/availability and unsupported fields unknown; fetch observation time does not prove every upstream statement is current.
+
+## Measure field presence before importing
+
+Run `go run ./cmd/catalog-check -input snapshot.json -coverage` to append aggregate field and per-track row counts to the validation report. Counts cover the validated snapshot and include known zero episode totals. Unknown format, status and release year and missing text or lists contribute zero to their respective fields. Scheduled and confirmed release counts are independent, so a row containing both timestamps contributes to both counts. Reusing the report on different candidate feeds can show which fields each sample covers. It measures recorded presence within the supplied set. Field accuracy, coverage of the wider catalog and licensing require separate review.
