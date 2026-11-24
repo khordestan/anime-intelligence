@@ -24,6 +24,7 @@ func run() error {
 	input := flag.String("input", "", "Snapshot JSON file (required)")
 	baseline := flag.String("previous", "", "Optional previous snapshot JSON file")
 	coverage := flag.Bool("coverage", false, "report aggregate field and schedule presence for the snapshot")
+	changes := flag.Bool("schedule-changes", false, "preview schedule moves between the supplied snapshots")
 	flag.Parse()
 	now := time.Now().UTC()
 	next, err := read(*input, now)
@@ -47,11 +48,20 @@ func run() error {
 		counts := next.Coverage()
 		report = &counts
 	}
+	var scheduleChanges *[]feed.ScheduleChange
+	if *changes {
+		moves, err := feed.ScheduleChanges(previous, next, now)
+		if err != nil {
+			return err
+		}
+		scheduleChanges = &moves
+	}
 	return json.NewEncoder(os.Stdout).Encode(struct {
-		Titles   int                    `json:"titles"`
-		Events   []feed.Event           `json:"events"`
-		Coverage *feed.SnapshotCoverage `json:"coverage,omitempty"`
-	}{len(next.Titles), events, report})
+		Titles          int                    `json:"titles"`
+		Events          []feed.Event           `json:"events"`
+		Coverage        *feed.SnapshotCoverage `json:"coverage,omitempty"`
+		ScheduleChanges *[]feed.ScheduleChange `json:"scheduleChanges,omitempty"`
+	}{len(next.Titles), events, report, scheduleChanges})
 }
 func main() {
 	if run() != nil {

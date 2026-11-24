@@ -995,6 +995,11 @@ Validation for `daac704276d539b9987310823357814ee726d716`: all seven [CI jobs](h
 - Added opt-in snapshot field and per-track row counts to catalog-check. Scheduled timestamps and confirmed releases are counted independently, and known zero episode totals count as present.
 - Local `make check` passed with VCS stamping disabled for the linked worktree. The CLI smoke test verified the unchanged default response and reported counts. Local PostgreSQL integration tests skipped without `TEST_DATABASE_URL`. Hosted checks pending.
 
+## 2026-11-24 — Offline schedule-move preview
+
+- Added opt-in snapshot-pair output for changes to two known unconfirmed times on the same title, episode and track. The preview distinguishes earlier and later moves and leaves release event output unchanged.
+- Local `make check` passed. A synthetic CLI smoke test verified the optional report and unchanged default output. Hosted checks pending.
+
 ## 2026-11-24 — Offline Global Essentials baseline
 
 - Added a deterministic public-recognition ranker and an offline, bounded fixture evaluator with a title-order baseline. The report includes evidence citations and measures missed held-out titles even when they lack qualifying evidence.
