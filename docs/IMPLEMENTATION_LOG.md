@@ -1028,3 +1028,10 @@ Validation for catalog snapshot coverage, `4a1cf1a` (PR #46): [CI](https://githu
 
 - Added a synthetic PostgreSQL regression with sixteen simultaneous polls across two verified owners following the same title on distinct tracks. Each owner drains 230 events within the per-request batch cap, with exactly 230 stored notices and no cross-track rows.
 - Local Go tests, race tests, vet and build passed. The focused PostgreSQL test passed three times under the race detector using a disposable PostgreSQL 17 container. Hosted checks pending.
+
+Validation for `8af6bbf` (PR #47): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45409964608) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45409964239) passed. The database job ran and passed the concurrent catch-up test. The PR merged as `2ee0576`.
+
+## 2026-11-24 — Paged dashboard follows
+
+- The release dashboard reads 50 follows at a time and uses the verified caller's exact subscription lookup for off-page library titles. Follow navigation avoids refreshing or materializing notifications.
+- Local `make check` passed. The focused owner-scoped PostgreSQL lookup and paging test passed under the race detector. Frontend unit tests, typecheck, build and all eight focused release browser tests passed. Hosted checks pending.

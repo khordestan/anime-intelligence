@@ -1,12 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const anime = "10000000-0000-4000-8000-000000000001";
-async function mockReleases(page: Page, holdFirst = false, history = false, backlog = false) {
+async function mockReleases(page: Page, holdFirst = false, history = false, backlog = false, pagedFollows = false) {
   let issued = 0;
   let release = () => {};
   let blocked = false;
   let historyFailed = false;
   let latestChecks = 0;
+  let followPageFailed = false;
   const calls: { path: string; method: string; token: string; body: unknown }[] = [];
   const follows = new Map<string, { animeId: string; title: string; track: string; scope?: string }[]>();
   const notices = new Map<string, { id: string; title: string; body: string; createdAt: string; readAt?: string }[]>();
@@ -28,15 +29,35 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
     if (path === "/auth/login") {
       const id = String(++issued);
       const token = id.padStart(43, "a");
-      follows.set(token, []);
+      follows.set(token, pagedFollows && issued === 1 ? [{ animeId: anime, title: "Synthetic Release Sky", track: "DUB", scope: "FRANCHISE" }] : []);
       notices.set(token, issued === 1 ? [{ id: "notice-one", title: "New episode released", body: "Private synthetic release for account one", createdAt: new Date().toISOString() }] : []);
       return respond({ token, user: { id, email: request.postDataJSON().email, displayName: "", emailVerified: true }, expiresAt: new Date(Date.now() + 86_400_000).toISOString() });
     }
     if (!follows.has(token)) return respond({ error: "unauthorized" }, 401);
     if (path === "/auth/logout") return route.fulfill({ status: 204, headers });
     if (path === "/tracker") return respond({ items: [{ id: "entry", animeId: anime, title: "Synthetic Release Sky", watchStatus: "WATCHING", episodesWatched: 1 }] });
-    if (path === "/follows") return respond({ items: follows.get(token) });
+    if (path === "/follows") {
+      if (pagedFollows && token.endsWith("1")) {
+        expect(url.searchParams.get("limit")).toBe("50");
+        if (url.searchParams.get("cursor") === "older-follows") {
+          if (!followPageFailed) {
+            followPageFailed = true;
+            return respond({ error: "synthetic_retry" }, 500);
+          }
+          return respond({ items: follows.get(token) });
+        }
+        return respond({
+          items: [{ animeId: "other", title: "Newest synthetic follow", track: "SUB" }],
+          nextCursor: "older-follows",
+        });
+      }
+      return respond({ items: follows.get(token) });
+    }
     if (path === "/follows/" + anime) {
+      if (request.method() === "GET") {
+        const follow = follows.get(token)?.find(item => item.animeId === anime);
+        return follow ? respond(follow) : respond({ error: "follow_not_found" }, 404);
+      }
       follows.set(token, request.method() === "DELETE" ? [] : [{ animeId: anime, title: "Synthetic Release Sky", track: request.postDataJSON().track, scope: request.postDataJSON().scope }]);
       return route.fulfill({ status: 204, headers });
     }
@@ -203,4 +224,26 @@ test("visible dashboard checks for unread release alerts with its panel collapse
   expect(api.calls.filter(call => call.path === "/notifications/summary").map(call => call.method)).toEqual(["GET"]);
   expect(api.calls.some(call => call.path === "/notifications")).toBe(false);
   expect(api.calls.some(call => call.path === "/follows")).toBe(false);
+});
+
+test("paged follows retain the current page on error and resolve off-page library settings", async ({ page }) => {
+  const api = await mockReleases(page, false, false, false, true);
+  await page.goto("/");
+  await login(page, "paged-follows@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  await expect(panel.getByText("Newest synthetic follow")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Follow releases Synthetic Release Sky", exact: true })).toHaveCount(0);
+  const older = panel.getByRole("button", { name: "Older follows", exact: true });
+  await older.click();
+  await expect(panel.getByText("Could not load release subscriptions. Try again.")).toBeVisible();
+  await expect(panel.getByText("Newest synthetic follow")).toBeVisible();
+  await older.click();
+  await expect(panel.getByRole("button", { name: "Stop alerts Synthetic Release Sky", exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Newest follows", exact: true }).click();
+  await expect(panel.getByText("Newest synthetic follow")).toBeVisible();
+  await panel.getByLabel("Release settings for a library title").selectOption(anime);
+  await expect(panel.getByLabel("Release track Synthetic Release Sky", { exact: true })).toHaveValue("DUB");
+  await expect(panel.getByLabel("Release scope Synthetic Release Sky", { exact: true })).toHaveValue("FRANCHISE");
+  expect(api.calls.filter(call => call.path === "/notifications")).toHaveLength(1);
 });

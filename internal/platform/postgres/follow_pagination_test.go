@@ -62,15 +62,43 @@ func TestFollowPaginationRetainsOwnerAndTieOrder(t *testing.T) {
 		}
 	}
 
+	ownFollow, found, err := a.FollowForTitle(ctx, two)
+	if err != nil || !found || ownFollow.Track != "SUB" {
+		t.Fatalf("owned lookup: %+v %t %v", ownFollow, found, err)
+	}
+	if _, found, err := b.FollowForTitle(ctx, one); err != nil || found {
+		t.Fatalf("foreign lookup: found=%t err=%v", found, err)
+	}
+
 	handler := httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), db)
-	for _, tc := range []struct{ query string; status int }{
+	for _, tc := range []struct {
+		token, id string
+		status    int
+	}{
+		{first.Token, one, 200},
+		{second.Token, one, 404},
+		{first.Token, "invalid", 400},
+	} {
+		req := httptest.NewRequest("GET", "/api/v1/follows/"+tc.id, nil)
+		req.Header.Set("Authorization", "Bearer "+tc.token)
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		if res.Code != tc.status {
+			t.Fatalf("follow lookup for %s: status=%d body=%s", tc.id, res.Code, res.Body)
+		}
+	}
+
+	for _, tc := range []struct {
+		query  string
+		status int
+	}{
 		{"?limit=1", 200},
 		{"?limit=101", 400},
 		{"?limit=1&limit=2", 400},
 		{"?cursor=invalid", 400},
 	} {
-		req := httptest.NewRequest("GET", "/api/v1/follows" + tc.query, nil)
-		req.Header.Set("Authorization", "Bearer " + first.Token)
+		req := httptest.NewRequest("GET", "/api/v1/follows"+tc.query, nil)
+		req.Header.Set("Authorization", "Bearer "+first.Token)
 		res := httptest.NewRecorder()
 		handler.ServeHTTP(res, req)
 		if res.Code != tc.status || (tc.status == 200 && !strings.Contains(res.Body.String(), `"nextCursor"`)) {

@@ -274,6 +274,20 @@ paths:
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/follows/{id}:
+    get:
+      summary: Get the caller's current release subscription for an anime
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Owned subscription with animeId, title, track, scope and createdAt }
+        "400": { description: Invalid anime identifier }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: No owned subscription for this anime }
     put:
       summary: Follow a season or its linked franchise and choose a release track
       description: Retains the original subscription time on updates and replaces the previous scope for this title. FRANCHISE follows traverse prequel/sequel links and include new-season announcements. Does not replay events before a new subscription.
