@@ -1077,3 +1077,10 @@ Validation for `f55c4e9` (PR #53): [CI](https://github.com/khordestan/anime-inte
 
 - Added an optional Responses API selector behind a verified-session endpoint, owner and process limits, and a dashboard opt-in. The model selects allowed fields while the application supplies facts and provenance.
 - Local Go checks, PostgreSQL authorization and admission limits under the race detector, frontend unit tests, build, typecheck and both analyst browser tests passed. Provider transport was synthetic. Hosted checks pending.
+
+Validation for `eac3f43` (PR #54): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45415671881) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45415671820) passed. The PR merged as `b6859fb`.
+
+## 2026-11-24 — Two-title catalog comparisons
+
+- Added a second-title catalog picker, side-by-side sourced facts and numeric comparisons only where both episode counts or release years are known.
+- Local Go checks, frontend unit tests, build, typecheck and both focused browser tests passed. Hosted checks pending.

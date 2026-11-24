@@ -91,3 +91,21 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestAnalysisComparisonsRequireKnownValues(t *testing.T) {
+	titles := []catalogAnalysisTitle{
+		{AnimeID: "a", Evidence: []catalogAnalysisFact{
+			{Field: "releaseYear", Values: []string{}},
+			{Field: "episodeCount", Values: []string{"0"}},
+		}},
+		{AnimeID: "b", Evidence: []catalogAnalysisFact{
+			{Field: "releaseYear", Values: []string{"2024"}},
+			{Field: "episodeCount", Values: []string{"12"}},
+		}},
+	}
+	got := compareAnalysisFacts(titles)
+	if len(got) != 1 || got[0].Field != "episodeCount" || got[0].Difference != -12 ||
+		len(got[0].AnimeIDs) != 2 || got[0].AnimeIDs[0] != "a" || got[0].AnimeIDs[1] != "b" {
+		t.Fatalf("comparisons: %+v", got)
+	}
+}

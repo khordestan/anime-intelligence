@@ -160,7 +160,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Read-only catalog evidence tool with bounded topic selection and source attribution
 - [x] Opt-in model-assisted catalog topic selection
 - [ ] Tool-constrained analyst for broader queries
-- [ ] Evidence-grounded explanations
+- [x] Two-title catalog comparison with sourced numeric explanations
+- [ ] Evidence-grounded explanations across broader analyst tools
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
 - [x] Discovery hide/restore and add-to-Planning feedback
 - [ ] Discovery feedback beyond hide/restore and library actions

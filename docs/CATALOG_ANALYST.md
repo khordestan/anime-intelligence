@@ -1,8 +1,8 @@
 # Catalog evidence tool
 
-In catalog details, **Ask about catalog facts** selects evidence for a question about the displayed title. It recognizes English terms related to format, release year, episode count, status, genres or studios. When the topic is outside this list, it shows the supported facts with an explicit fallback message.
+In catalog details, **Ask about catalog facts** selects evidence for a question about the displayed title. Open **Compare with another title** to search the catalog, select a second title and view the evidence side by side. It recognizes English terms related to format, release year, episode count, status, genres or studios. When the topic is outside this list, it shows the supported facts with an explicit fallback message.
 
-`POST /api/v1/analysis/catalog` also accepts two distinct canonical IDs for side-by-side evidence. The request takes `question` and `animeIds`. Evidence uses resolved catalog fields and their reviewed field provenance when present. Blank evidence represents an unknown value. A known episode total of zero is returned as zero. Some starter catalog values have no external source. Long genre and studio lists are capped and marked truncated.
+`POST /api/v1/analysis/catalog` also accepts two distinct canonical IDs for side-by-side evidence. The request takes `question` and `animeIds`. Evidence uses resolved catalog fields and their reviewed field provenance when present. Blank evidence represents an unknown value. A known episode total of zero is returned as zero. Some starter catalog values have no external source. Long genre and studio lists are capped and marked truncated. When both titles have a known episode count or release year, the API includes a numeric difference for that field. The dashboard describes the difference beside the underlying facts. Unknown values never participate in a comparison.
 
 The route reads public catalog data through the same repository used by catalog details. It exposes a fixed field list and omits prose, spoiler tags, schedules and all account records. The default engine uses deterministic word matching and does not contact a model provider.
 
