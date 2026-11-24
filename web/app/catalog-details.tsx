@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 import CatalogContinuity from "./catalog-continuity";
 import ProviderCredit from "./provider-credit";
+import ScheduleHistory from "./schedule-history";
 
 type Details = {
   fieldSources?: { field: string; mode: string; revision: number; provider: string; observedAt?: string }[];
@@ -70,6 +71,8 @@ export default function CatalogDetails({ client, id, title, onError }: {
           <ul className="space-y-2">
             {details.episodes.slice(0, limit).map(episode => <li key={episode.number + episode.track} className="text-xs text-slate-400">
               Episode {episode.number} · {episode.track} · {episode.releasedAt ? `Confirmed ${new Date(episode.releasedAt).toLocaleString()}` : episode.scheduledAt ? `Scheduled ${new Date(episode.scheduledAt).toLocaleString()}` : "Time unknown"} · Revision {episode.revision}{episode.provider ? ` · Source: ${episode.provider}` : ""}
+              {episode.revision > 1 && <ScheduleHistory key={episode.revision} client={client} animeID={details.anime.id}
+                number={episode.number} track={episode.track} revision={episode.revision} />}
             </li>)}
           </ul>
           {details.episodes.length > limit && <button onClick={() => setLimit(limit + 20)} className="text-xs underline">Show more episode schedules</button>}

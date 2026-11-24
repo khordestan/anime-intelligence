@@ -1035,3 +1035,10 @@ Validation for `8af6bbf` (PR #47): [CI](https://github.com/khordestan/anime-inte
 
 - The release dashboard reads 50 follows at a time and uses the verified caller's exact subscription lookup for off-page library titles. Follow navigation avoids refreshing or materializing notifications.
 - Local `make check` passed. The focused owner-scoped PostgreSQL lookup and paging test passed under the race detector. Frontend unit tests, typecheck, build and all eight focused release browser tests passed. Hosted checks pending.
+
+Validation for `81bc8b5` (PR #48): [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45410810883) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45410811042) passed. The full local PostgreSQL runtime suite also passed under the race detector against a disposable PostgreSQL 17 instance. The PR merged as `7fff9d7`.
+
+## 2026-11-24 — Catalog schedule revision history
+
+- Added a bounded public schedule history API and an explicit detail-panel action. Each record preserves its release track, historical timestamps and source attribution.
+- Local `make check` passed. The focused PostgreSQL API test passed under the race detector. Frontend unit tests, build, typecheck and all three focused schedule and attribution browser tests passed. Hosted checks pending.

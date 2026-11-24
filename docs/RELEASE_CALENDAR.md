@@ -11,3 +11,9 @@ Results are ordered by scheduled time, title, canonical ID, episode and track. A
 The dashboard provides explicit open/refresh, UTC start and 1/7/14/31-day choices, source/revision labels and an honest no-schedule state. It labels schedules as unconfirmed and keeps data only in memory. Account-keyed remounts and request guards fence late results. Existing runtime grants/schema suffice; no new migration or operational activation.
 
 Comprehensive source coverage, regional availability, source freshness guarantees and background delivery remain separate work. Empty results can mean missing source data or unmatched track preferences, not a guarantee that no episode will air.
+
+## Inspect a change in the catalog
+
+The catalog detail panel shows a Schedule history action when its current episode/track record has an earlier revision. Each earlier record keeps its own scheduled time, confirmed release time when present, observation time and source attribution. The same title may have distinct history on different tracks.
+
+The public endpoint `GET /api/v1/anime/{id}/episodes/{number}/schedule-history?track=SUB` loads up to 20 revisions in descending order. Follow `nextBeforeRevision` with the same title, episode and track. The detail panel starts before its displayed current revision so the history contains earlier records. Browsing revisions has no effect on alert eligibility.
