@@ -169,3 +169,15 @@ still skip without their database configuration. CI explicitly enables the drill
 artifacts. This logical drill does not test physical backups, WAL replay, storage
 failure, secret-manager availability, real delivery, production volume or a live
 recovery objective.
+
+## Synthetic physical recovery
+
+The recovery workflow also starts a disposable PostgreSQL 17 cluster with a private Unix socket and local WAL archive. It takes a physical base backup, commits a new marker, records a named recovery point and then deletes the markers. The recovered cluster replays the archived WAL to the named point. The check requires the post-backup marker to appear and the later deletion to be excluded.
+
+Run the drill locally with Docker and its PostgreSQL 17 image.
+
+```sh
+docker run --rm -i --network none --user postgres postgres:17 bash -s < scripts/check-synthetic-pitr.sh
+```
+
+The script creates and removes a private scratch directory. It uses no existing database or backup storage. Production physical backup and WAL archives require approved encryption, separate access controls, protected retention and integrity checks, recovery rehearsal at representative volume, and post-restore reconciliation before reopening.
