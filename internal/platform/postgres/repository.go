@@ -127,7 +127,7 @@ func updateCycleEntry(ctx context.Context, tx pgx.Tx, ownerID, id string, status
 		return store.Entry{}, false, err
 	}
 	if episodes != nil {
-		_, err = tx.Exec(ctx, `INSERT INTO watch_progress(user_id,anime_id,episodes_watched) VALUES($1,$2,$3) ON CONFLICT(user_id,anime_id) DO UPDATE SET episodes_watched=excluded.episodes_watched,watched_episode_numbers=NULL,updated_at=now()`, ownerID, animeID, *episodes)
+		err = writeAggregateProgress(ctx, tx, ownerID, animeID, *episodes)
 		if err != nil {
 			return store.Entry{}, false, err
 		}
@@ -138,6 +138,12 @@ func updateCycleEntry(ctx context.Context, tx pgx.Tx, ownerID, id string, status
 	}
 	return e, true, nil
 }
+func writeAggregateProgress(ctx context.Context, tx pgx.Tx, ownerID, animeID string, episodes int) error {
+	_, err := tx.Exec(ctx, `INSERT INTO watch_progress(user_id,anime_id,episodes_watched) VALUES($1,$2,$3)
+		ON CONFLICT(user_id,anime_id) DO UPDATE SET episodes_watched=excluded.episodes_watched,watched_episode_numbers=NULL,updated_at=now()`, ownerID, animeID, episodes)
+	return err
+}
+
 func (r *Repository) Rate(ctx context.Context, animeID string, score int) (store.Entry, bool, error) {
 	tx, u, err := r.db.productTx(ctx, r.token)
 	if err != nil {

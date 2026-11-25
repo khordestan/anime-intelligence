@@ -1138,3 +1138,10 @@ Background delivery PR #62 merged as `bf99c3b` after [CI](https://github.com/kho
 
 - Added read-only JSON and Prometheus exposition for aggregate scheduler state.
 - Local make check, focused PostgreSQL race tests and CLI output smoke passed. Hosted checks pending.
+
+Release diagnostics PR #63 merged as `60c6745` after [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45616503283) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45616503218) passed.
+
+## 2026-11-25 — Bulk progress
+
+- Added an atomic one-episode advance for selected count-mode tracker entries. Viewing passes and expected counts fence retries, while exact progress and known totals are protected.
+- Local make check, focused PostgreSQL race tests, frontend unit tests, build, typecheck and the focused bulk-edit browser test passed. Hosted checks pending.

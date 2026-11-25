@@ -749,6 +749,39 @@ paths:
         "401": { description: Missing or invalid session }
         "403": { description: Email verification required }
         "500": { description: Export failed }
+  /api/v1/tracker/bulk-progress:
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Add one watched episode to each selected count-mode entry
+      description: Atomically advances up to 25 owned entries. Checks current viewing pass and watched count. Exact selections and entries at a known total are rejected. Watch statuses stay unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  minItems: 1
+                  maxItems: 25
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, expectedCycle, expectedEpisodesWatched]
+                    properties:
+                      id: { type: string, format: uuid }
+                      expectedCycle: { type: integer, minimum: 1, maximum: 1000 }
+                      expectedEpisodesWatched: { type: integer, minimum: 0, maximum: 99999 }
+      responses:
+        "200": { description: Updated tracker entries in request order }
+        "400": { description: Invalid batch }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Selected entry not found }
+        "409": { description: Viewing pass or progress changed, exact mode selected or known total reached }
   /api/v1/tracker/bulk-status:
     patch:
       security: [{ bearerAuth: [] }]
