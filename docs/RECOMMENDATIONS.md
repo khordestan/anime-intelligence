@@ -38,6 +38,12 @@ PUT /api/v1/recommendations/dismissals/{animeId} hides a canonical catalog title
 
 GET /api/v1/recommendations/dismissals lists the verified caller's hidden titles in catalog UUID order, up to 50 per page. Pass `nextCursor` as `after` to continue. The dashboard's Manage hidden matches control lists and restores these saved titles.
 
+## Evaluate Discovery ranking offline
+
+Run `go run ./cmd/evaluate-discovery -k=10 < suite.json` with a version 1 suite. A case has an `id`, `knownFeatures` from its fixture library, candidate IDs and current eligible positive `features`, and independently judged `relevant` candidate IDs. Set `excluded` on tracked or hidden candidates and supply an optional `feature` to match a Discovery filter.
+
+Coverage ranks all eligible titles by positive feature count. Unfamiliar mode ranks titles by the number of features absent from the fixture library and omits titles with zero unfamiliar features. Both break ties by candidate ID and use the same judged relevant set to compute recall, rank and fill metrics. Use synthetic or approved fixtures. Representative evaluation still needs independent held-out judgments and a catalog with enough reviewed coverage.
+
 ## Discovery
 
 GET /api/v1/recommendations/discovery returns untracked, unhidden titles for the verified caller. It works before any preferences or ratings are available. Titles are ordered by the number of distinct positive features supported by their latest eligible curated observations, with canonical ID as a stable tie-breaker. Evidence counts describe catalog coverage. The endpoint defaults to 20 titles and accepts limits from 1 to 50. Hiding or restoring a title affects its eligibility in both Personal Match and Discovery.

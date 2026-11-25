@@ -160,6 +160,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Offline Global Essentials ranking rubric and evaluator
 - [x] Optional Global Essentials API and dashboard lane for reviewed manifests
 - [x] Discovery ranking by curated features missing from the caller’s library
+- [x] Offline Discovery evaluation of coverage and unfamiliar-feature rankings against held-out judgments
 - [ ] Reviewed Global Essentials corpus and representative Discovery ranking evaluation
 - [x] Confirmed in-app movie release notices for eligible follows
 - [x] Opt-in in-app notices for reviewed earlier and later schedule moves
@@ -180,7 +181,6 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
 - [x] Discovery hide/restore and add-to-Planning feedback
 - [x] Explicit feature feedback from Discovery through the private Personal Match preference controls
-- [ ] Discovery feedback beyond hide/restore and library actions
 - [x] LLM provider abstraction, OpenAI adapter and process-local usage controls
 - [x] Shared PostgreSQL model budgets across API replicas
 - [ ] Representative model evaluation and deployment quota tuning
