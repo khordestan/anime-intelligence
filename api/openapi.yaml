@@ -499,9 +499,13 @@ paths:
           name: unreadOnly
           schema: { type: boolean, default: false }
           description: Filter existing notices before applying the cursor and page limit.
+        - in: query
+          name: kind
+          schema: { type: string, enum: [release, announcement, schedule] }
+          description: Filter returned notices by event kind before pagination. Omit for all kinds. The unread total remains account-wide.
       responses:
         "200": { description: Owned items with id/title/body/createdAt/optional readAt, count, account-wide unreadCount, limit=100 and nextCursor (empty at end) }
-        "400": { description: Invalid notification cursor }
+        "400": { description: Invalid notification cursor or filter }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
   /api/v1/notifications/read-all:

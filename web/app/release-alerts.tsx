@@ -8,6 +8,7 @@ import ReleaseEmailSettings from "./release-email-settings";
 type Follow = { animeId: string; title: string; track: string; scope?: "ANIME" | "FRANCHISE"; scheduleNotices?: boolean; createdAt: string };
 type FollowPage = { items: Follow[]; nextCursor?: string };
 type Notice = { id: string; title: string; body: string; createdAt: string; readAt?: string; provider?: string };
+type NoticeKind = "" | "release" | "announcement" | "schedule";
 const tracks = ["SUB", "DUB", "RAW", "UNKNOWN", "ALL"];
 
 function followPath(cursor: string) {
@@ -39,6 +40,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
   const [selectedFollow, setSelectedFollow] = useState<Follow | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const unreadFilter = useRef(false);
+  const [noticeKind, setNoticeKind] = useState<NoticeKind>("");
+  const kindFilter = useRef<NoticeKind>("");
   const [unreadCount, setUnreadCount] = useState<number | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [cursor, setCursor] = useState("");
@@ -57,10 +60,11 @@ export default function ReleaseAlerts({ client, library, onError }: {
     alive.current = true;
     return () => { alive.current = false; revision.current++; };
   }, []);
-  const read = useCallback(async (current: number, pageCursor = "", onlyUnread = unreadFilter.current) => {
+  const read = useCallback(async (current: number, pageCursor = "", onlyUnread = unreadFilter.current, kind = kindFilter.current) => {
     const params = new URLSearchParams();
     if (pageCursor) params.set("cursor", pageCursor);
     if (onlyUnread) params.set("unreadOnly", "true");
+    if (kind) params.set("kind", kind);
     const query = params.toString();
     const [f, n, selected] = await Promise.all([
       client.request<FollowPage>(followPath(followPageCursor.current)),
@@ -69,6 +73,8 @@ export default function ReleaseAlerts({ client, library, onError }: {
     ]);
     if (!alive.current || current !== revision.current) return;
     unreadFilter.current = onlyUnread;
+    kindFilter.current = kind;
+    setNoticeKind(kind);
     setUnreadOnly(onlyUnread);
     setFollows(f.items);
     setNextFollowCursor(f.nextCursor ?? "");
@@ -79,7 +85,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
     setCatchingUp(!pageCursor && n.materialization?.hasMore === true);
     setOldestPendingAt(n.materialization?.oldestPendingAt);
   }, [client]);
-  const refresh = useCallback(async (pageCursor = "", onlyUnread = unreadFilter.current, collapsed = false) => {
+  const refresh = useCallback(async (pageCursor = "", onlyUnread = unreadFilter.current, collapsed = false, kind = kindFilter.current) => {
     if (inFlight.current) return;
     inFlight.current = true;
     const current = ++revision.current;
@@ -90,7 +96,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
         const page = await client.request<{ unreadCount?: number }>("/notifications/summary");
         if (alive.current && current === revision.current) setUnreadCount(page.unreadCount ?? null);
       } else {
-        await read(current, pageCursor, onlyUnread);
+        await read(current, pageCursor, onlyUnread, kind);
       }
     } catch (error) {
       if (!collapsed && alive.current && current === revision.current) {
@@ -264,8 +270,18 @@ export default function ReleaseAlerts({ client, library, onError }: {
             onChange={event => void refresh("", event.target.checked)} />
           Show unread alerts only
         </label>
+        <label className="mt-2 block text-sm">Notification type
+          <select value={noticeKind} disabled={busy}
+            onChange={event => void refresh("", unreadFilter.current, false, event.target.value as NoticeKind)}
+            className="ml-2 rounded-lg border border-white/10 bg-slate-950 p-2">
+            <option value="">All notifications</option>
+            <option value="release">Confirmed releases</option>
+            <option value="announcement">Linked season announcements</option>
+            <option value="schedule">Schedule notices</option>
+          </select>
+        </label>
         {!busy && notices.length === 0 && (
-          <p className="mt-2 text-sm text-slate-400">{unreadOnly ? "No unread release alerts." : "No release notifications yet."}</p>
+          <p className="mt-2 text-sm text-slate-400">{noticeKind ? "No matching release notifications." : unreadOnly ? "No unread release alerts." : "No release notifications yet."}</p>
         )}
         <ul className="mt-3 space-y-3" aria-label="Release notifications">
           {notices.map(notice => <li key={notice.id} className="rounded-xl bg-white/5 p-3">

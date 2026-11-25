@@ -167,7 +167,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Explicitly reviewed corrections of published in-app title cancellations
 - [x] Explicit reviewed episode-delay notices backed by an approved source and exact schedule revision
 - [x] Personal Match dashboard result-limit control using the existing API
-- [ ] Recommendation and alert dashboards for finer controls where the API already supports them
+- [x] Dashboard notification filtering by event type, combined with unread and history controls
 - [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline
 - [ ] Feedback learning and representative evaluation datasets
 

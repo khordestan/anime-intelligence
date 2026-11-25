@@ -111,3 +111,9 @@ catalog-delay -provider=reviewed-source -external-id=example-title \
 The default preview checks the exact source, mapping, track and unreleased revision. Add `-apply` after reviewing the statement and the source's permission for notice publication. The operation records the public reference with the event and deduplicates retries for that episode and reference. It preserves the schedule revision and any predicted date.
 
 Verified followers receive the in-app notice when their track and schedule-notice consent match and the observation falls within their follow window. A later predicted date alone cannot publish an explicit delay.
+
+## Filter notifications by type
+
+Choose **Notification type** to view confirmed releases, linked-season announcements or schedule notices. The schedule group includes moved dates, explicit delays, title cancellations and their reviewed corrections. The dashboard applies the filter with unread selection and starts at the latest page when it changes.
+
+With the API, use `kind=release`, `kind=announcement` or `kind=schedule`. Keep the selection when using the next cursor. The unread count and mark-all action still apply across the account.

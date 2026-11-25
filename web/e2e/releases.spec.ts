@@ -1,14 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const anime = "10000000-0000-4000-8000-000000000001";
-async function mockReleases(page: Page, holdFirst = false, history = false, backlog = false, pagedFollows = false) {
+async function mockReleases(page: Page, holdFirst = false, history = false, backlog = false, pagedFollows = false, typedNotices = false) {
   let issued = 0;
   let release = () => {};
   let blocked = false;
   let historyFailed = false;
   let latestChecks = 0;
   let followPageFailed = false;
-  const calls: { path: string; method: string; token: string; body: unknown }[] = [];
+  const calls: { path: string; query: string; method: string; token: string; body: unknown }[] = [];
   const follows = new Map<string, { animeId: string; title: string; track: string; scope?: string; scheduleNotices?: boolean }[]>();
   const emailConsent = new Map<string, string | null>();
   const notices = new Map<string, { id: string; title: string; body: string; createdAt: string; readAt?: string }[]>();
@@ -24,7 +24,7 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
     };
     const respond = (body: unknown, status = 200) => route.fulfill({ status, headers, contentType: "application/json", body: JSON.stringify(body) });
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
-    calls.push({ path, method: request.method(), token, body: request.postData() ? request.postDataJSON() : undefined });
+    calls.push({ path, query: url.search, method: request.method(), token, body: request.postData() ? request.postDataJSON() : undefined });
     if (path === "") return respond({ authenticationRequired: true, identityDeliveryAvailable: false });
     if (path === "/anime") return respond({ items: [{ id: anime, title: "Synthetic Release Sky", mediaType: "TV" }] });
     if (path === "/auth/login") {
@@ -32,6 +32,9 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
       const token = id.padStart(43, "a");
       follows.set(token, pagedFollows && issued === 1 ? [{ animeId: anime, title: "Synthetic Release Sky", track: "DUB", scope: "FRANCHISE" }] : []);
       notices.set(token, issued === 1 ? [{ id: "notice-one", title: "New episode released", body: "Private synthetic release for account one", createdAt: new Date().toISOString() }] : []);
+      if (typedNotices && issued === 1) notices.get(token)?.push({
+        id: "notice-schedule", title: "Release delayed", body: "Synthetic reviewed delay", createdAt: new Date().toISOString(),
+      });
       return respond({ token, user: { id, email: request.postDataJSON().email, displayName: "", emailVerified: true }, expiresAt: new Date(Date.now() + 86_400_000).toISOString() });
     }
     if (!follows.has(token)) return respond({ error: "unauthorized" }, 401);
@@ -76,7 +79,10 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
         if (!historyFailed) { historyFailed = true; return respond({ error: "synthetic_retry" }, 500); }
         return respond({ items: [{ id: "notice-old", title: "New episode released", body: "Older synthetic release", createdAt: "2026-01-01T00:00:00Z" }], nextCursor: "" });
       }
-      const items = notices.get(token)?.filter(notice => url.searchParams.get("unreadOnly") !== "true" || !notice.readAt);
+      const kind = url.searchParams.get("kind");
+      const items = notices.get(token)?.filter(notice =>
+        (url.searchParams.get("unreadOnly") !== "true" || !notice.readAt) &&
+        (!kind || kind === (notice.id === "notice-schedule" ? "schedule" : "release")));
       if (holdFirst && token.endsWith("1")) {
         blocked = true;
         await new Promise<void>(resolve => { release = resolve; });
@@ -269,4 +275,26 @@ test("release email consent can be enabled and withdrawn", async ({ page }) => {
   await expect(panel.getByText("Release email preference is on.")).toBeVisible();
   await panel.getByRole("button", { name: "Turn off release email", exact: true }).click();
   await expect(panel.getByText("Release email preference is off.")).toBeVisible();
+});
+
+test("notification kind combines with unread filtering and keeps the account-wide count", async ({ page }) => {
+  const api = await mockReleases(page, false, false, false, false, true);
+  await page.goto("/");
+  await login(page, "release-notice-kind@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  const kind = panel.getByLabel("Notification type");
+  await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
+  await expect(panel.getByText("Synthetic reviewed delay")).toBeVisible();
+  await kind.selectOption("schedule");
+  await expect(panel.getByText("Private synthetic release for account one")).toHaveCount(0);
+  await expect(panel.getByText("Unread alerts: 2", { exact: true })).toBeVisible();
+  await panel.getByRole("checkbox", { name: "Show unread alerts only" }).check();
+  await expect(panel.getByText("Synthetic reviewed delay")).toBeVisible();
+  const request = api.calls.filter(call => call.path === "/notifications").at(-1);
+  expect(new URLSearchParams(request?.query).get("kind")).toBe("schedule");
+  expect(new URLSearchParams(request?.query).get("unreadOnly")).toBe("true");
+  await kind.selectOption("release");
+  await expect(panel.getByText("Synthetic reviewed delay")).toHaveCount(0);
+  await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
 });
