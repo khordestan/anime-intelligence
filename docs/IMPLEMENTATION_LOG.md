@@ -1145,3 +1145,10 @@ Release diagnostics PR #63 merged as `60c6745` after [CI](https://github.com/kho
 
 - Added an atomic one-episode advance for selected count-mode tracker entries. Viewing passes and expected counts fence retries, while exact progress and known totals are protected.
 - Local make check, focused PostgreSQL race tests, frontend unit tests, build, typecheck and the focused bulk-edit browser test passed. Hosted checks pending.
+
+Bulk progress PR #64 merged after [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45617074058) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45617074127) passed.
+
+## 2026-11-25 — Reviewed title cancellations
+
+- Added explicit offline publication for authoritative primary title cancellations and scoped in-app notices for opted-in followers.
+- Local Go checks, three focused PostgreSQL race tests, typecheck and all nine release browser tests passed. Hosted checks pending.

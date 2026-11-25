@@ -112,7 +112,7 @@ test("release subscriptions, tracks, read state and account reset", async ({ pag
   await expect(panel.getByText("Private synthetic release for account one")).toBeVisible();
   await panel.getByLabel("Release track Synthetic Release Sky", { exact: true }).selectOption("DUB");
   await panel.getByLabel("Release scope Synthetic Release Sky", { exact: true }).selectOption("FRANCHISE");
-  await panel.getByRole("checkbox", { name: "Schedule changes Synthetic Release Sky", exact: true }).check();
+  await panel.getByRole("checkbox", { name: "Schedule changes and cancellations Synthetic Release Sky", exact: true }).check();
   await panel.getByRole("button", { name: "Follow releases Synthetic Release Sky", exact: true }).click();
   await expect(panel.getByRole("button", { name: "Stop alerts Synthetic Release Sky", exact: true })).toBeVisible();
   expect(api.calls.some(call => call.path === "/follows/" + anime && call.method === "PUT" && (call.body as { track: string; scope: string }).track === "DUB" && (call.body as { scope: string }).scope === "FRANCHISE")).toBe(true);

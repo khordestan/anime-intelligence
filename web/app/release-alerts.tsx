@@ -231,10 +231,10 @@ export default function ReleaseAlerts({ client, library, onError }: {
                 {tracks.map(track => <option key={track} value={track}>{track === "ALL" ? "All tracks" : track}</option>)}
               </select>
               <label className="flex items-center gap-1 text-xs">
-                <input type="checkbox" aria-label={"Schedule changes " + title} disabled={busy}
+                <input type="checkbox" aria-label={"Schedule changes and cancellations " + title} disabled={busy}
                   checked={schedulePreferences[id] ?? follow?.scheduleNotices ?? false}
                   onChange={event => setSchedulePreferences(current => ({ ...current, [id]: event.target.checked }))} />
-                Schedule changes
+                Schedule changes and cancellations
               </label>
               <button disabled={busy} aria-label={(follow ? "Save release settings " : "Follow releases ") + title}
                 onClick={() => void mutate("/follows/" + id, "PUT", { track: preferences[id] ?? follow?.track ?? "SUB", scope: scopes[id] ?? follow?.scope ?? "ANIME", scheduleNotices: schedulePreferences[id] ?? follow?.scheduleNotices ?? false }, id)}

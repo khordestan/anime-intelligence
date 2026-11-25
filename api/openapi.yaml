@@ -411,7 +411,7 @@ paths:
               properties:
                 track: { type: string, enum: [RAW, SUB, DUB, UNKNOWN, ALL], default: SUB }
                 scope: { type: string, enum: [ANIME, FRANCHISE], default: ANIME }
-                scheduleNotices: { type: boolean, description: Opt into unconfirmed schedule changes. Defaults off for new follows. Omit to preserve existing consent. }
+                scheduleNotices: { type: boolean, description: Opt into unconfirmed schedule changes and reviewed title cancellations. Defaults off for new follows. Omit to preserve existing consent. }
       responses:
         "204": { description: Owned subscription saved }
         "409": { description: Account already follows 1000 titles; existing preferences can still change }
@@ -479,7 +479,7 @@ paths:
         "403": { description: Verified email required }
   /api/v1/notifications:
     get:
-      description: Includes confirmed episode and movie releases for eligible follows, announcements for eligible linked-season follows, and approved unconfirmed schedule changes for opted-in follows. Scheduled times alone never confirm a release.
+      description: Includes confirmed episode and movie releases for eligible follows, announcements for eligible linked-season follows, and approved unconfirmed schedule changes and title cancellations for opted-in follows. Scheduled times alone never confirm a release.
       summary: Poll owned in-app release notifications
       description: Without a cursor, materializes at most 100 eligible unique notices and returns the newest 100 owned in-app notices. A cursor reads the next already-materialized history page without generating notices. Every page rechecks the verified owner; time/UUID cursor boundaries never select an account. No background delivery or email/push is enabled.
       security: [{ bearerAuth: [] }]

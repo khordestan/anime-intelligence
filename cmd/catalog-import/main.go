@@ -19,8 +19,9 @@ func run() error {
 	archive:=flag.Bool("archive",false,"Retain reviewed structured observations only when historical storage is permitted")
  schedules:=flag.Bool("schedules-only",false,"Import only schedules for pre-mapped canonical titles; preserve all metadata")
  scheduleEvents:=flag.Bool("schedule-change-events",false,"Record schedule-move events from an approved snapshot")
+ cancellationEvents:=flag.Bool("cancellation-events",false,"Record explicit primary title cancellations from an approved snapshot")
  flag.Parse()
- if flag.NArg()!=0||(*schedules&&*archive){return feed.ErrInvalid}
+ if flag.NArg()!=0||(*schedules&&(*archive||*cancellationEvents)){return feed.ErrInvalid}
 	file,err:=os.Open(*input)
 	if err!=nil {return feed.ErrInvalid}
 	defer file.Close()
@@ -37,7 +38,7 @@ func run() error {
 	conn,err:=pgx.ConnectConfig(ctx,config)
 	if err!=nil {return catalogsync.ErrImport}
 	defer func(){cleanup,stop:=context.WithTimeout(context.Background(),5*time.Second);defer stop();_=conn.Close(cleanup)}()
-	result,err:=catalogsync.ImportWithOptions(ctx,conn,snapshot,now,catalogsync.ImportOptions{Preview:*preview,Archive:*archive,SchedulesOnly:*schedules,ScheduleChangeEvents:*scheduleEvents})
+	result,err:=catalogsync.ImportWithOptions(ctx,conn,snapshot,now,catalogsync.ImportOptions{Preview:*preview,Archive:*archive,SchedulesOnly:*schedules,ScheduleChangeEvents:*scheduleEvents,CancellationEvents:*cancellationEvents})
 	if err!=nil {return err}
 	return json.NewEncoder(os.Stdout).Encode(result)
 }
