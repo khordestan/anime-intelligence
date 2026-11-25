@@ -184,6 +184,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Loopback-tested ingress source limits for credential and model endpoints
 - [ ] Production ingress configuration, independent security review and broader observability
 - [x] Synthetic PostgreSQL logical restore/key recovery and offline credential-fencing CI drill
+- [x] Isolated PostgreSQL physical base backup and archived WAL restore to a named recovery point
 - [ ] Real backup/key storage, post-snapshot deletion/security reconciliation, PITR and recovery objectives
 - [x] Synthetic PostgreSQL release backlog bursts, isolation and overlapping franchise-path performance test
 - [x] Concurrent synthetic HTTP catalog and private library workload with atomic progress retry checks
