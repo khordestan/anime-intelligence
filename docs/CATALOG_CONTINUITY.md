@@ -21,3 +21,14 @@ Open catalog details, then Browse linked titles. Loading/errors/retry/close are 
 The view may omit franchise titles and is not a recommended watch order. Distance is relative to the selected title, not a season number. This endpoint does not change follow expansion, tracker progress, confirmation rules or notification materialization. The existing FRANCHISE follow still expands its complete explicit continuity component independently of this display cap. See [release alerts](RELEASE_ALERTS.md).
 
 Reviewed franchise membership, graph corrections/retractions, finer season conventions and complete licensed catalog coverage remain separate work. No live source or deployment is activated.
+
+## Withdraw a reviewed continuity link
+
+Apply migration 000028, refresh the catalog writer grants, and provision the dedicated role in `deployments/catalog-continuity-curator-role.sql`. Supply its protected connection through `CATALOG_CONTINUITY_DATABASE_URL`. Use only public review references.
+
+1. Run `catalog-continuity-retract -prequel=<canonical-id> -sequel=<canonical-id> -reference=<public-review>` to preview exact relation IDs for the directed pair.
+2. Review the result against the correction. Repeat the command with `-apply` and one `-expected-id=<relation-id>` per reviewed ID.
+
+The transaction removes the direct SEQUEL claim and any reciprocal PREQUEL claim for that pair. It records the reviewed IDs, reference and time. If the set has changed since preview, the apply fails without changing the graph. Replaying the same decision is safe. Refreshed imports skip retired links, and a database guard rejects direct restoration of either orientation. Side stories and other edges are preserved. Historical notices remain in the inbox. New franchise traversal uses the corrected graph.
+
+The writer requires only retraction key access. The continuity curator can read review references and apply the bounded operation. It has no direct relation-delete privilege or private account access. Downgrade refuses to discard existing audits.

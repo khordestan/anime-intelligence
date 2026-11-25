@@ -72,9 +72,9 @@ func TestBackupRestoreRecovery(t *testing.T) {
 		}
 	}
 	for _, query := range []string{
-        `INSERT INTO watch_cycles(user_id,anime_id,cycle_number,episodes_watched,total_episodes)
+		`INSERT INTO watch_cycles(user_id,anime_id,cycle_number,episodes_watched,total_episodes)
           SELECT a.uid,'10000000-0000-4000-8000-000000000001',1,12,12 FROM (VALUES($1::uuid),($2::uuid)) a(uid)`,
-        `UPDATE user_anime SET watch_cycle=2 WHERE user_id=$1 OR user_id=$2`,
+		`UPDATE user_anime SET watch_cycle=2 WHERE user_id=$1 OR user_id=$2`,
 		`INSERT INTO user_preferences(user_id,feature_id,preference_weight,origin)
           SELECT a.uid,f.id,0.5,'DECLARED' FROM (VALUES($1::uuid),($2::uuid)) a(uid)
           CROSS JOIN (SELECT id FROM anime_features ORDER BY feature_key LIMIT 1) f`,
@@ -135,6 +135,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	sourceLedger := readRecoveryLedger(t, ctx, owner)
 	archive := filepath.Join(t.TempDir(), "synthetic.dump")
 	file, err := os.OpenFile(archive, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
@@ -157,7 +158,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 	}
 
 	t.Run("compatible-key-resume", func(t *testing.T) {
-		restored, restoredOwner, restoredRuntime := restoreSyntheticArchive(t, ctx, archive, ownerDSN, runtimeDSN)
+		restored, restoredOwner, restoredRuntime := restoreSyntheticArchive(t, ctx, archive, ownerDSN, runtimeDSN, sourceLedger)
 		for _, token := range []string{one.Token, two.Token} {
 			if _, err := restored.Authenticate(ctx, token); err != nil {
 				t.Fatal("snapshot session missing", err)
@@ -229,7 +230,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 	})
 
 	t.Run("offline-fenced", func(t *testing.T) {
-		restored, restoredOwner, _ := restoreSyntheticArchive(t, ctx, archive, ownerDSN, runtimeDSN)
+		restored, restoredOwner, _ := restoreSyntheticArchive(t, ctx, archive, ownerDSN, runtimeDSN, sourceLedger)
 		script, err := os.ReadFile("../../../deployments/recovery-fence.sql")
 		if err != nil {
 			t.Fatal(err)
@@ -369,7 +370,16 @@ func recoveryRuntimeDSN(t *testing.T, dsn, database string) string {
 	return u.String()
 }
 
-func restoreSyntheticArchive(t *testing.T, ctx context.Context, archive, ownerDSN, runtimeDSN string) (*postgres.DB, *pgx.Conn, string) {
+func readRecoveryLedger(t *testing.T, ctx context.Context, conn *pgx.Conn) []string {
+	t.Helper()
+	var entries []string
+	if err := conn.QueryRow(ctx, `SELECT array_agg(name||':'||sha256 ORDER BY name) FROM schema_migrations`).Scan(&entries); err != nil || len(entries) == 0 {
+		t.Fatal("read recovery migration ledger", err)
+	}
+	return entries
+}
+
+func restoreSyntheticArchive(t *testing.T, ctx context.Context, archive, ownerDSN, runtimeDSN string, sourceLedger []string) (*postgres.DB, *pgx.Conn, string) {
 	t.Helper()
 	admin, err := pgx.Connect(ctx, os.Getenv("TEST_DATABASE_URL"))
 	if err != nil {
@@ -398,9 +408,8 @@ func restoreSyntheticArchive(t *testing.T, ctx context.Context, archive, ownerDS
 		t.Fatal("connect restored owner")
 	}
 	t.Cleanup(func() { _ = owner.Close(context.Background()) })
-	var count int
-	if err = owner.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&count); err != nil || count != 27 {
-		t.Fatal("migration ledger not restored", err)
+	if restoredLedger := readRecoveryLedger(t, ctx, owner); !reflect.DeepEqual(restoredLedger, sourceLedger) {
+		t.Fatal("migration ledger differs from the source snapshot")
 	}
 	if err = migrations.Apply(ctx, owner); err != nil {
 		t.Fatal("restored migration checksum validation failed", err)

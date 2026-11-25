@@ -243,10 +243,27 @@ func syncRelations(ctx context.Context,tx pgx.Tx,source,provider string) (int,er
 	for _,record:=range records {
 		for _,relation:=range record.title.Relations {
 			var target string
-			err=tx.QueryRow(ctx,`SELECT anime_id::text FROM anime_external_ids WHERE provider=$1 AND external_id=$2`,provider,relation.ExternalID).Scan(&target)
-			if errors.Is(err,pgx.ErrNoRows) {unresolved++;continue}
-			if err!=nil {return 0,err}
-			if target==record.id {return 0,ErrConflict}
+			var retired bool
+			err = tx.QueryRow(ctx, `SELECT a.anime_id::text, EXISTS (
+				SELECT 1 FROM catalog_continuity_retractions r
+				WHERE $4::text IN ('PREQUEL','SEQUEL')
+				  AND r.prequel_id=CASE $4 WHEN 'PREQUEL' THEN a.anime_id ELSE $3::uuid END
+				  AND r.sequel_id=CASE $4 WHEN 'PREQUEL' THEN $3::uuid ELSE a.anime_id END
+			) FROM anime_external_ids a WHERE a.provider=$1 AND a.external_id=$2`,
+				provider, relation.ExternalID, record.id, relation.Type).Scan(&target, &retired)
+			if errors.Is(err, pgx.ErrNoRows) {
+				unresolved++
+				continue
+			}
+			if err != nil {
+				return 0, err
+			}
+			if target == record.id {
+				return 0, ErrConflict
+			}
+			if retired {
+				continue
+			}
 			tag,err:=tx.Exec(ctx,`INSERT INTO anime_relations(source_anime_id,target_anime_id,relation_type,source_id)
 VALUES($1,$2,$3,$4) ON CONFLICT(source_anime_id,target_anime_id,relation_type)
 DO UPDATE SET confidence=1 WHERE anime_relations.source_id=excluded.source_id`,record.id,target,relation.Type,source)

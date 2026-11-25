@@ -35,3 +35,6 @@ GRANT SELECT ON catalog_field_choices TO anime_catalog_writer;
 
 -- Migration 000022: invoker-rights identity retirement fence.
 GRANT SELECT ON catalog_identity_retractions TO anime_catalog_writer;
+
+-- Migration 000028: exclude reviewed retired continuity links during import.
+GRANT SELECT(prequel_id, sequel_id) ON catalog_continuity_retractions TO anime_catalog_writer;
