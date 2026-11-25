@@ -483,9 +483,12 @@ paths:
         "403": { description: Verified email required }
   /api/v1/notifications:
     get:
-      description: Includes confirmed episode and movie releases for eligible follows, announcements for eligible linked-season follows, and approved unconfirmed schedule changes, title cancellations and cancellation corrections for opted-in follows. Scheduled times alone never confirm a release.
       summary: Poll owned in-app release notifications
-      description: Without a cursor, materializes at most 100 eligible unique notices and returns the newest 100 owned in-app notices. A cursor reads the next already-materialized history page without generating notices. Every page rechecks the verified owner; time/UUID cursor boundaries never select an account. No background delivery or email/push is enabled.
+      description: >-
+        Returns confirmed episode and movie releases, eligible linked-season announcements, and approved
+        schedule moves, delay reports, cancellations and cancellation corrections for followers who opted into schedule notices.
+        Without a cursor, materializes up to 100 eligible notices and returns the latest owner page.
+        A cursor reads already-materialized history. Every page rechecks the verified owner.
       security: [{ bearerAuth: [] }]
       parameters:
         - in: query

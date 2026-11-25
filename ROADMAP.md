@@ -164,7 +164,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Opt-in in-app notices for reviewed earlier and later schedule moves
 - [x] In-app title cancellations backed by explicit reviewed primary evidence
 - [x] Explicitly reviewed corrections of published in-app title cancellations
-- [ ] Explicit authoritative delay notices
+- [x] Explicit reviewed episode-delay notices backed by an approved source and exact schedule revision
 - [ ] Recommendation and alert dashboards for finer controls where the API already supports them
 - [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline
 - [ ] Feedback learning and representative evaluation datasets

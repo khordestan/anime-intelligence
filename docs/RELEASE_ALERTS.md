@@ -96,3 +96,18 @@ For a node_exporter textfile collector, use `-format=prometheus -output-file=/ab
 Use `catalog-import -cancellation-correction-events` for a primary-source observation explicitly reviewed as a correction. The prior primary status must be cancelled, and the new primary status must be announced, releasing or finished. The earlier cancellation must have been published by the same source. Apply records one correction for that cancellation. Preview rolls back the change and includes the proposed correction count. The regular import and scheduled provider workers leave correction publication off.
 
 The correction reaches opted-in in-app followers within the existing follow and consent window. It includes the source and revised status, and the earlier notice stays visible in history. Corrections are in-app only.
+
+## Publish an explicit episode delay
+
+Use `catalog-delay` for a public delay statement from the source responsible for an episode and track. Provide the approved provider key, exact provider title ID, expected canonical title UUID, episode, track, current schedule revision, source observation time and public HTTPS reference.
+
+```sh
+catalog-delay -provider=reviewed-source -external-id=example-title \
+  -anime-id=10000000-0000-4000-8000-000000000001 -episode=1 -track=SUB \
+  -revision=2 -observed-at=2026-11-25T09:00:00Z \
+  -reference=https://example.test/reviewed-delay
+```
+
+The default preview checks the exact source, mapping, track and unreleased revision. Add `-apply` after reviewing the statement and the source's permission for notice publication. The operation records the public reference with the event and deduplicates retries for that episode and reference. It preserves the schedule revision and any predicted date.
+
+Verified followers receive the in-app notice when their track and schedule-notice consent match and the observation falls within their follow window. A later predicted date alone cannot publish an explicit delay.
