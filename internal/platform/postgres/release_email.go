@@ -41,5 +41,13 @@ func (r *Repository) SetReleaseEmailConsent(ctx context.Context, enabled bool) (
 	if err != nil {
 		return ReleaseEmailConsent{}, err
 	}
+	if enabled {
+		_, err = tx.Exec(ctx, `INSERT INTO release_email_jobs(user_id) VALUES($1) ON CONFLICT DO NOTHING`, owner.ID)
+	} else {
+		_, err = tx.Exec(ctx, `DELETE FROM release_email_jobs WHERE user_id=$1`, owner.ID)
+	}
+	if err != nil {
+		return ReleaseEmailConsent{}, err
+	}
 	return consent, tx.Commit(ctx)
 }

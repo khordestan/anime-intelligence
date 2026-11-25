@@ -1124,3 +1124,10 @@ Validation for PR #59 passed in [CI](https://github.com/khordestan/anime-intelli
 
 - Added a verified-owner opt-in API, account export and restored-consent cleanup. Migration 000026 defaults everyone to opted out.
 - Local make check and the focused PostgreSQL API race test passed. Hosted checks pending.
+
+Consent PR #61 merged as `0aadc07` after [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45615029251) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45615029322) passed. The full local PostgreSQL runtime suite passed under the race detector.
+
+## 2026-11-25 — Background release email
+
+- Added the default-off SMTP worker, owner-scoped durable leases, bounded retries, deduplication, dashboard consent controls and recovery cleanup. Test mail stayed in a synthetic loopback mailbox.
+- Local Go checks, PostgreSQL lease and release tests, frontend tests, build, typecheck and nine focused browser tests passed. Hosted checks pending.

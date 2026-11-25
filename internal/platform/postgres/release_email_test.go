@@ -70,3 +70,89 @@ func TestReleaseEmailConsentIsExplicitAndOwnerScoped(t *testing.T) {
 		t.Fatal("disable must clear consent")
 	}
 }
+
+func TestReleaseEmailLeaseRetryAndOptOut(t *testing.T) {
+	db, admin, _, _ := testDB(t)
+	ctx := context.Background()
+	account, err := db.Register(ctx, "release-worker@example.test", "synthetic-release-worker-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyAccount(t, db, account.Token)
+	r := db.Repository(account.Token)
+	const anime = "10000000-0000-4000-8000-000000000001"
+	if ok, err := r.Follow(ctx, anime, "SUB"); err != nil || !ok {
+		t.Fatalf("seed follow: %t %v", ok, err)
+	}
+	addEvent := func(key, track string) {
+		t.Helper()
+		if _, err := admin.Exec(ctx, `INSERT INTO domain_events(event_key,event_type,aggregate_type,aggregate_id,payload)
+			VALUES($1,'EPISODE_RELEASED','ANIME',$2,jsonb_build_object('track',$3::text,'number',1))`, key, anime, track); err != nil {
+			t.Fatal(err)
+		}
+	}
+	addEvent("before-consent", "SUB")
+	if _, err := r.SetReleaseEmailConsent(ctx, true); err != nil {
+		t.Fatal(err)
+	}
+	addEvent("wrong-track", "DUB")
+	addEvent("after-consent", "SUB")
+	due := func() {
+		t.Helper()
+		if _, err := admin.Exec(ctx, `UPDATE release_email_jobs SET available_at=now() WHERE user_id=$1`, account.User.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	claim, err := db.ClaimReleaseEmail(ctx)
+	if err != nil || claim == nil || claim.Recipient != account.User.Email {
+		t.Fatalf("initial claim failed: %v", err)
+	}
+	if duplicate, err := db.ClaimReleaseEmail(ctx); err != nil || duplicate != nil {
+		t.Fatalf("lease allowed another claim: %v", err)
+	}
+	if err := db.FinishReleaseEmail(ctx, claim, false); err != nil {
+		t.Fatal(err)
+	}
+	due()
+	retry, err := db.ClaimReleaseEmail(ctx)
+	if err != nil || retry == nil {
+		t.Fatalf("retry missing: %v", err)
+	}
+	if err := db.FinishReleaseEmail(ctx, claim, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.FinishReleaseEmail(ctx, retry, true); err != nil {
+		t.Fatal(err)
+	}
+	var key string
+	if err := admin.QueryRow(ctx, `SELECT e.event_key FROM notifications n JOIN domain_events e ON e.id=n.event_id
+		WHERE n.user_id=$1 AND n.channel='EMAIL'`, account.User.ID).Scan(&key); err != nil || key != "after-consent" {
+		t.Fatalf("wrong event recorded: %q %v", key, err)
+	}
+	due()
+	if claim, err := db.ClaimReleaseEmail(ctx); err != nil || claim != nil {
+		t.Fatalf("old event was replayed: %v", err)
+	}
+	addEvent("new-event", "SUB")
+	due()
+	claim, err = db.ClaimReleaseEmail(ctx)
+	if err != nil || claim == nil {
+		t.Fatalf("new event missing: %v", err)
+	}
+	if _, err := r.SetReleaseEmailConsent(ctx, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.FinishReleaseEmail(ctx, claim, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.SetReleaseEmailConsent(ctx, true); err != nil {
+		t.Fatal(err)
+	}
+	if claim, err := db.ClaimReleaseEmail(ctx); err != nil || claim != nil {
+		t.Fatalf("re-opt-in replayed history: %v", err)
+	}
+	var completed int
+	if err := admin.QueryRow(ctx, `SELECT count(*) FROM notifications WHERE user_id=$1 AND channel='EMAIL'`, account.User.ID).Scan(&completed); err != nil || completed != 1 {
+		t.Fatalf("unexpected delivery history: %d %v", completed, err)
+	}
+}

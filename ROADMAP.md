@@ -132,7 +132,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Keyset pagination for the verified follows API and dashboard, with per-title subscription lookup
 - [x] Followed schedule calendar with latest revisions, track/scope filters and explicit unconfirmed labels
 - [x] Verified-owner release email consent API
-- [ ] Background delivery channels
+- [x] Opt-in background release email with a leased queue and bounded retries
+- [ ] Production release email activation and other delivery channels
 - [x] Durable canonical release-event and owned notification duplicate suppression
 
 ## Milestone 5 — Taste intelligence

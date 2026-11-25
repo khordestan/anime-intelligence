@@ -24,6 +24,11 @@ func main() {
 		logger.Error("identity mail requires PostgreSQL and complete valid delivery configuration")
 		os.Exit(1)
 	}
+	releaseSender, configErr := releaseEmailSenderFromEnv(os.Getenv, dsn != "")
+	if configErr != nil {
+		logger.Error("release email requires PostgreSQL and complete valid delivery configuration")
+		os.Exit(1)
+	}
 	var selector catalog.CatalogFieldSelector
 	if key, model := os.Getenv("ANALYST_OPENAI_API_KEY"), os.Getenv("ANALYST_OPENAI_MODEL"); key != "" || model != "" {
 		provider, err := analystopenai.New(key, model)
@@ -68,6 +73,18 @@ func main() {
 			defer delivery.Close()
 		}
 		handler = httpapi.NewPostgresRouterWithAnalyst(logger, db, delivery, essentials, selector)
+		if releaseSender != nil {
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				runReleaseEmail(ctx, db, releaseSender, logger)
+			}()
+			defer func() {
+				cancel()
+				<-done
+			}()
+		}
 		storage = "postgresql"
 	} else {
 		if essentialsPath != "" {
