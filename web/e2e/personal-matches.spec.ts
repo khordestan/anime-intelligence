@@ -176,3 +176,29 @@ test("planning a discovery title uses add-only import", async ({ page }) => {
   });
   await expect(panel.getByText("No eligible discovery titles yet.")).toBeVisible();
 });
+
+test("Discovery saves and clears explicit feature feedback for Personal Match", async ({ page }) => {
+  const api = await mockMatches(page);
+  await page.goto("/");
+  await login(page, "discovery-preference@example.test");
+  const panel = page.getByRole("region", { name: "Personal Match", exact: true });
+  await panel.getByRole("button", { name: "Personal Match settings" }).click();
+  await panel.getByRole("button", { name: "Explore titles" }).click();
+  const discovery = panel.getByRole("region", { name: "Discovery titles" });
+  await discovery.getByRole("button", { name: "Explore Synthetic mystery" }).click();
+  const feedback = discovery.getByRole("group", { name: "Synthetic mystery preference for Personal Match" });
+  const prefer = feedback.getByRole("button", { name: "Prefer Synthetic mystery" });
+  await prefer.click();
+  await expect(prefer).toHaveAttribute("aria-pressed", "true");
+  await expect(panel.getByLabel("Preference Synthetic mystery", { exact: true })).toHaveValue("1");
+  const avoid = feedback.getByRole("button", { name: "Avoid Synthetic mystery" });
+  await avoid.click();
+  await expect(avoid).toHaveAttribute("aria-pressed", "true");
+  await expect(panel.getByLabel("Preference Synthetic mystery", { exact: true })).toHaveValue("-1");
+  await feedback.getByRole("button", { name: "Clear Synthetic mystery preference" }).click();
+  await expect(avoid).toHaveAttribute("aria-pressed", "false");
+  await expect(panel.getByLabel("Preference Synthetic mystery", { exact: true })).toHaveValue("");
+  await expect(discovery.getByLabel("Filter by feature")).toHaveValue("synthetic.mystery");
+  expect(api.calls.filter(call => call.path === "/preferences/synthetic.mystery").map(call => call.body))
+    .toEqual([{ weight: 1 }, { weight: -1 }, undefined]);
+});

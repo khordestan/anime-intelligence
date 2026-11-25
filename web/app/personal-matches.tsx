@@ -45,8 +45,10 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
     catch (error) { if (alive.current && current === revision.current) { setMessage("Could not load Personal Match. Try again."); onError(error); } }
     finally { if (alive.current && current === revision.current) setBusy(false); }
   }
-  async function save(preference: Preference, reset = false) {
-    const value = drafts[preference.key] ?? (preference.weight === null ? "" : String(preference.weight));
+  async function save(preference: Preference, reset = false, discoveryWeight?: number) {
+    const value = discoveryWeight === undefined
+      ? drafts[preference.key] ?? (preference.weight === null ? "" : String(preference.weight))
+      : String(discoveryWeight);
     const weight = Number(value);
     if (!reset && (!value.trim() || !Number.isFinite(weight) || weight < -1 || weight > 1)) { setMessage("Use a preference weight between -1 and 1."); return; }
     const current = ++revision.current;
@@ -192,6 +194,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
     }
   }
   const names = new Map(preferences.map(p => [p.key, p.name]));
+  const selectedFeature = preferences.find(preference => preference.key === discoveryFeature);
   const inferred = new Map(profile.filter(p => p.inferred).map(p => [p.key, p.inferred!]));
   return <section aria-label="Personal Match" className="mt-8 rounded-2xl border border-white/10 bg-white/[.03] p-5">
     <button disabled={busy} aria-expanded={open} onClick={() => { if (open) setOpen(false); else void load(); }} className="text-sm text-violet-200 underline disabled:opacity-50">
@@ -271,6 +274,18 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
                 {preferences.map(feature => <option key={feature.key} value={feature.key}>{feature.name}</option>)}
               </select>
             </label>
+            {selectedFeature && (
+              <div className="mt-2 flex flex-wrap items-center gap-3" role="group" aria-label={selectedFeature.name + " preference for Personal Match"}>
+                <button type="button" disabled={busy} aria-pressed={selectedFeature.weight === 1}
+                  onClick={() => void save(selectedFeature, false, 1)} className="text-xs underline disabled:opacity-50">Prefer {selectedFeature.name}</button>
+                <button type="button" disabled={busy} aria-pressed={selectedFeature.weight === -1}
+                  onClick={() => void save(selectedFeature, false, -1)} className="text-xs underline disabled:opacity-50">Avoid {selectedFeature.name}</button>
+                {selectedFeature.weight !== null && (
+                  <button type="button" disabled={busy} onClick={() => void save(selectedFeature, true)}
+                    className="text-xs underline disabled:opacity-50">Clear {selectedFeature.name} preference</button>
+                )}
+              </div>
+            )}
             {discovery.items.length === 0 && <p className="mt-2 text-sm text-slate-400">No eligible discovery titles yet.</p>}
             <ul className="mt-3 space-y-2">
               {discovery.items.map(title => <li key={title.animeId} className="rounded-xl bg-white/5 p-3">
