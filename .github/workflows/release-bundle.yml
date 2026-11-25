@@ -1,0 +1,51 @@
+name: Release bundle
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'web/Dockerfile'
+      - '**/.dockerignore'
+      - 'scripts/check-containers.sh'
+      - 'scripts/check-bundle-ingress.sh'
+      - 'deployments/ingress/bundle-loopback.conf'
+      - 'scripts/package-release-images.sh'
+      - '.github/workflows/release-bundle.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build application image bundle
+        run: scripts/package-release-images.sh "$RUNNER_TEMP/anime-release"
+      - name: Verify archive integrity, image identities and startup
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/anime-release"
+          sha256sum --check SHA256SUMS
+          commit=$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
+          api="anime-intelligence/api:$commit"
+          web="anime-intelligence/web:$commit"
+          docker image rm "$api" "$web"
+          docker image load --input images.tar.gz
+          for image in "$api" "$web"; do
+            id=$(docker image inspect --format '{{.Id}}' "$image")
+            key=${image##*/}
+            grep -Fqx "${key%%:*}_image_id=$id" manifest.txt
+            test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$commit"
+          done
+          "$GITHUB_WORKSPACE/scripts/check-containers.sh" "$api" "$web"
+          "$GITHUB_WORKSPACE/scripts/check-bundle-ingress.sh" "$api" "$web"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: anime-intelligence-${{ github.sha }}
+          path: ${{ runner.temp }}/anime-release/
+          if-no-files-found: error
+          retention-days: 7

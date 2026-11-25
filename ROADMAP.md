@@ -197,4 +197,5 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Browser auth/account-switch/local-mode tests and transport race tests
 - [x] Full-stack browser tests against the real PostgreSQL API (dedicated disposable CI database and restricted runtime role)
 - [x] Non-root application container builds and isolated startup smoke checks
+- [x] Commit-tagged application image bundle with checksums and isolated archive reload verification
 - [ ] Production deployment automation and operational runbooks
