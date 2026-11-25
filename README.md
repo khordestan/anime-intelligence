@@ -57,7 +57,7 @@ npm run dev
 
 Open [the dashboard](http://localhost:3000). The API defaults to `127.0.0.1:8080`, writes to `./data/local.json`, and exposes `/healthz` and `/readyz`. Set `DATA_FILE` or `HTTP_ADDR` in the API environment to override local defaults. The browser defaults to `http://localhost:8080/api/v1`. Set `NEXT_PUBLIC_API_BASE_URL` before starting or building the dashboard to change it. The development CORS configuration allows browser origins `http://localhost:3000` and `http://127.0.0.1:3000`.
 
-The [local Compose file](deployments/docker-compose.yml) is an alternative for JSON mode. Run `docker compose -f deployments/docker-compose.yml up --build`. The host ports bind to loopback.
+The [local Compose file](deployments/docker-compose.yml) is an alternative for JSON mode. Run `docker compose -f deployments/docker-compose.yml up --build`. The host ports bind to loopback. Compose waits for the API readiness probe before starting the dashboard. The dashboard API URL is set at image build time with `NEXT_PUBLIC_API_BASE_URL`. Both application images run as non-root. Run `scripts/check-containers.sh` for isolated image startup and health checks.
 
 ### PostgreSQL development
 
