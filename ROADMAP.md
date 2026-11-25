@@ -135,6 +135,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Followed schedule calendar with latest revisions, track/scope filters and explicit unconfirmed labels
 - [x] Verified-owner release email consent API
 - [x] Opt-in background release email with a leased queue and bounded retries
+- [x] Atomic release email metrics textfile and disabled collector service examples
 - [x] Aggregate release email queue diagnostics in JSON and Prometheus text
 - [x] Disabled release email scheduler freshness, overdue-scan and exhaustion alert rules with Prometheus tests
 - [ ] Production release email activation and other delivery channels
