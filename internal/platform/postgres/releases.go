@@ -254,12 +254,15 @@ SELECT DISTINCT e.id AS event_id,
 CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN 'New season announced'
      WHEN e.event_type='TITLE_CANCELLED' THEN 'Title cancelled'
      WHEN e.event_type='TITLE_CANCELLATION_CORRECTED' THEN 'Cancellation corrected'
+     WHEN e.event_type='EPISODE_DELAY_REPORTED' THEN 'Release delayed'
      WHEN kind.movie_release THEN 'Movie released'
      WHEN e.event_type='SCHEDULE_CHANGED' AND e.payload->>'direction'='LATER' THEN 'Schedule moved later'
      WHEN e.event_type='SCHEDULE_CHANGED' THEN 'Schedule moved earlier' ELSE 'New episode released' END AS notice_title,
 CASE WHEN e.event_type='SEASON_ANNOUNCED' THEN a.canonical_title || ' · A new linked season has been announced.'
      WHEN e.event_type='TITLE_CANCELLED' THEN a.canonical_title || ' · The catalog source reported a cancellation.'
      WHEN e.event_type='TITLE_CANCELLATION_CORRECTED' THEN a.canonical_title || ' · The catalog source updated the title status to ' || LOWER(e.payload->>'status') || '.'
+     WHEN e.event_type='EPISODE_DELAY_REPORTED' THEN a.canonical_title || ' · The source reported a delay for episode ' ||
+       (e.payload->>'number') || ' (' || (e.payload->>'track') || ').'
      WHEN kind.movie_release THEN a.canonical_title || ' · Release confirmed (' || COALESCE(e.payload->>'track','UNKNOWN') || ')'
 WHEN e.event_type='SCHEDULE_CHANGED' THEN a.canonical_title || ' · Episode ' || (e.payload->>'number') || ' (' ||
   (e.payload->>'track') || ') · Unconfirmed schedule: ' || (e.payload->>'previousSchedule') || ' → ' || (e.payload->>'currentSchedule')
@@ -272,7 +275,7 @@ WHERE e.aggregate_type='ANIME' AND e.occurred_at>=f.created_at
 AND ((e.event_type='EPISODE_RELEASED' AND (f.release_track='ALL' OR f.release_track=e.payload->>'track'))
 OR (e.event_type='SEASON_ANNOUNCED' AND f.scope='FRANCHISE')
 OR (e.event_type IN ('TITLE_CANCELLED','TITLE_CANCELLATION_CORRECTED') AND e.occurred_at>=f.schedule_notices_since)
-OR (e.event_type='SCHEDULE_CHANGED' AND e.occurred_at>=f.schedule_notices_since
+OR (e.event_type IN ('SCHEDULE_CHANGED','EPISODE_DELAY_REPORTED') AND e.occurred_at>=f.schedule_notices_since
   AND (f.release_track='ALL' OR f.release_track=e.payload->>'track')))
 AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.user_id=$1 AND n.event_id=e.id AND n.channel='IN_APP')
 ORDER BY e.occurred_at,e.id LIMIT 101
@@ -296,7 +299,7 @@ LEFT JOIN LATERAL (SELECT created_at FROM eligible ORDER BY created_at,event_id 
 	) total
 	LEFT JOIN LATERAL (
 		SELECT n.id,n.title,n.body,n.read_at,n.created_at,
-			COALESCE(CASE WHEN e.event_type IN ('SCHEDULE_CHANGED','TITLE_CANCELLED','TITLE_CANCELLATION_CORRECTED') THEN e.payload->>'provider' END, '') AS provider
+			COALESCE(CASE WHEN e.event_type IN ('SCHEDULE_CHANGED','TITLE_CANCELLED','TITLE_CANCELLATION_CORRECTED','EPISODE_DELAY_REPORTED') THEN e.payload->>'provider' END, '') AS provider
 		FROM notifications n LEFT JOIN domain_events e ON e.id=n.event_id
 		WHERE n.user_id=$1 AND n.channel='IN_APP' AND (NOT $4::boolean OR n.read_at IS NULL)
 		  AND ($2::timestamptz IS NULL OR (n.created_at,n.id)<($2::timestamptz,$3::uuid))
