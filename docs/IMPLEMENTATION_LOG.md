@@ -1119,3 +1119,8 @@ Validation for PR #59 passed in [CI](https://github.com/khordestan/anime-intelli
 
 - Extracted the authenticated, certificate-verified SMTP transport for reuse by future release delivery. Identity message rendering and proof handling stay in the identity mail package.
 - Local `make check` passed. Hosted checks pending.
+
+## 2026-11-25 — Release email consent
+
+- Added a verified-owner opt-in API, account export and restored-consent cleanup. Migration 000026 defaults everyone to opted out.
+- Local make check and the focused PostgreSQL API race test passed. Hosted checks pending.

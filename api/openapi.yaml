@@ -332,6 +332,33 @@ paths:
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
         "404": { description: Missing or foreign tracker entry }
+  /api/v1/releases/email-consent:
+    get:
+      summary: Read the verified account's release email consent
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: enabledSince timestamp or null }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+    put:
+      summary: Set the verified account's release email consent
+      description: Repeated opt-in preserves the original timestamp. Opting out clears it. This endpoint records consent only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        "200": { description: Updated enabledSince timestamp or null }
+        "400": { description: Invalid consent body }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/follows:
     get:
       summary: List owned anime release subscriptions

@@ -128,6 +128,7 @@ func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery
 	}
 	registerIdentityRoutes(mux, db, delivery, gate, protect)
 	registerReleaseRoutes(mux,db,protect)
+	registerReleaseEmailRoutes(mux, db, protect)
 	registerEpisodeRoutes(mux,db,protect)
 	registerRewatchRoutes(mux,db,protect)
 	registerNotesRoutes(mux,db,protect)
