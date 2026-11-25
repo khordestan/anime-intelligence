@@ -1,6 +1,6 @@
 # Anime Intelligence implementation status
 
-Audited 2026-11-24 against [main at c788693](https://github.com/khordestan/anime-intelligence/commit/c788693a0edc2243785acd2a1fed4fd19d4d2fc8), the feature code, migrations through `000023`, role scripts, API contract, dashboard and tests. Use [ROADMAP.md](ROADMAP.md) for requirements and the complete milestone checklist.
+Updated 2026-11-25 through [main at 69adf26](https://github.com/khordestan/anime-intelligence/commit/69adf26). Use [ROADMAP.md](ROADMAP.md) for the full milestone checklist.
 
 ## What works
 
@@ -8,11 +8,11 @@ Audited 2026-11-24 against [main at c788693](https://github.com/khordestan/anime
 | --- | --- |
 | Runtime | Go REST API, Next.js dashboard, loopback JSON dev mode and PostgreSQL multi-user runtime. Explicit migration runner and restricted runtime grants. |
 | Identity | Registration, login, session refresh/revocation, password changes, export/deletion, verified-email product gates and persisted per-account failure budgets. Optional TLS SMTP verification/recovery through encrypted leased PostgreSQL queues. Forced transaction-local RLS and explicit owner predicates. |
-| Catalog | Sourced details, category facets and keyset browsing, exact provider lookup, linked continuity and per-track schedules. Reviewed offline ingestion, Jikan conversion, optional observation archive, field arbitration, unused-ID retraction and provenance. Wikidata and TVmaze jobs are opt-in and idle without explicit IDs and approval. |
-| Library | Status, ratings, count/exact progress, notes, viewing passes and rewatches, atomic bulk status/rating actions and add-only watch-list import with preview and export. PostgreSQL library features require a verified owner. |
-| Releases | Confirmed episode/movie, eligible linked-season and opted-in reviewed schedule-change notices, verified-owner calendar of unconfirmed schedules, track and scope settings, notification history, unread filter and bulk read. Latest-page polling creates bounded batches and reports the oldest event left pending. The dashboard uses the paged follows API and offers opt-in background email when operators configure release SMTP. |
+| Catalog | Sourced details, category facets, confirmed-release filtering and keyset browsing, exact provider lookup, linked continuity and per-track schedules. Reviewed offline ingestion, Jikan conversion, optional observation archive, field arbitration, unused-ID retraction and provenance. Wikidata and TVmaze jobs are opt-in and idle without explicit IDs and approval. |
+| Library | Status, ratings, count/exact progress, notes, viewing passes and rewatches, atomic bulk status, rating and count-mode progress actions and add-only watch-list import with preview and export. PostgreSQL library features require a verified owner. |
+| Releases | Confirmed episode/movie, eligible linked-season and opted-in reviewed schedule-change and explicit primary-source cancellation notices, verified-owner calendar of unconfirmed schedules, track and scope settings, notification history, unread filter and bulk read. Latest-page polling creates bounded batches and reports the oldest event left pending. The dashboard uses the paged follows API and offers opt-in background email when operators configure release SMTP. |
 | Intelligence | Deterministic Personal Match with explicit and rating-derived signals, grounded evidence, owner dismissals and offline evaluation. Discovery lists untracked and unhidden evidence-backed titles, with keyset paging, feature labels/filtering and an add-to-Planning action. |
-| Operations | Liveness and readiness probes, redacted request logging, queue/catalog diagnostics, monitoring examples and synthetic database restore and credential-fencing tests. |
+| Operations | Liveness and readiness probes, redacted request logging, queue and catalog diagnostics, opt-in scheduler alert rules and collector examples, non-root image smoke checks, a concurrent HTTP workload and synthetic database restore and credential-fencing tests. |
 
 ## Known issues and technical debt
 
@@ -32,6 +32,11 @@ Audited 2026-11-24 against [main at c788693](https://github.com/khordestan/anime
 
 ## Verification checkpoint
 
+- Reviewed title cancellation publication passed [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45617693989) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45617694054).
+- The committed container build passed [Container smoke](https://github.com/khordestan/anime-intelligence/actions/runs/45618401345), [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45618401237) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45618401232). The local dependency build used the Cloud certificate through temporary BuildKit secrets.
+- The confirmed-release filter passed focused local PostgreSQL and browser checks, plus [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45619023571) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45619023618).
+- Three local runs of the mixed HTTP workload passed with the race detector. The same PostgreSQL test passed in [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45619025346), and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45619025331) passed.
+- Release-email alert rules and atomic collector output passed local Prometheus verification. Hosted checks verify the [alert rules](https://github.com/khordestan/anime-intelligence/actions/runs/45618970795) and [collector unit syntax](https://github.com/khordestan/anime-intelligence/actions/runs/45619529062).
 - Discovery feature filtering [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45384609599) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45384609592) passed on the PR #38 head.
 - Release backlog timestamp [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45385322503) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45385322497) passed on the PR #39 head.
 - Follow pagination [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45385684810) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45385684474) passed on the PR #40 head `da89cbf`. Those links verify the PR workflow, while the implementation snapshot above names its squash merge.
