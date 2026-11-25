@@ -60,12 +60,18 @@ GET /api/v1/notifications/summary performs the same bounded latest-page material
 
 ## Opt into schedule changes
 
-Schedule notices are off for new follows. Select **Schedule changes** and save the release settings to enable them for an existing or new follow. The follow API exposes `scheduleNotices` and preserves existing consent when an update omits it. Changing track or scope starts a new schedule notice window. Clearing consent stops new notices and preserves previously materialized history. Verified email and owner scope apply.
+Schedule notices are off for new follows. Select **Schedule changes and cancellations** and save the release settings to enable them for an existing or new follow. The follow API exposes `scheduleNotices` and preserves existing consent when an update omits it. Changing track or scope starts a new schedule notice window. Clearing consent stops new notices and preserves previously materialized history. Verified email and owner scope apply.
 
 Migration 000024 adds the consent timestamp. The upgrade keeps existing follows opted out. Rollback refuses to discard retained consent. Schedule notices still use the per-poll batch cap and the existing notification ledger. They state whether a published schedule moved earlier or later and include the before and after times and source. A change is an unconfirmed schedule revision.
 
 Enable source publication only for a reviewed offline snapshot with permission for this notice use. Pass `-schedule-change-events` to `catalog-import`, with `-preview` for an atomic rehearsal. Two known observed schedules on the same title, episode and track must differ, and the release must still be unconfirmed. A baseline, newly known time, removed time, unchanged time or confirmed release creates no schedule notice event. Events use the snapshot observation time and canonical revision key. Runtime polling checks the later of follow start and schedule notice consent, so a new consent does not replay earlier moves. Queued providers do not enable this option.
 
+
+## Publish explicit title cancellations
+
+For a reviewed offline primary-source snapshot that supports cancellation notices, `catalog-import -cancellation-events` records at most one cancellation per canonical title. The previous primary observation must be announced, releasing or on hiatus, and the incoming primary status must explicitly be cancelled. Initial historical cancellations, missing episodes, schedule moves and metadata overrides do not establish cancellation. Preview rolls back the event. Schedule-only imports cannot publish title cancellations.
+
+Verified followers who opted into schedule updates receive an in-app notice with the source. Cancellation applies to the title across release tracks and can reach linked-season follows. Follow and consent timestamps still apply. Email delivery remains limited to confirmed releases and linked-season announcements.
 
 ## Release email consent
 

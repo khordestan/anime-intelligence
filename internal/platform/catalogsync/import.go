@@ -23,6 +23,7 @@ var (
 type ImportOptions struct {
  SchedulesOnly bool // Requires existing reviewed identities; never writes metadata.
  ScheduleChangeEvents bool // Explicitly approved offline schedule event publication.
+ CancellationEvents bool // Explicitly approved primary title cancellation notices.
 	Preview bool
 	Archive bool // Operator must separately approve historical retention rights.
 }
@@ -32,6 +33,7 @@ type Result struct {
 	ArchivedRecords int `json:"archivedRecords,omitempty"`
 	Titles int `json:"titles"`
 	SeasonAnnouncements int `json:"seasonAnnouncements"`
+	CancellationEvents int `json:"cancellationEvents,omitempty"`
 	ScheduleRevisions int `json:"scheduleRevisions"`
 	ScheduleChangeEvents int `json:"scheduleChangeEvents,omitempty"`
 	ReleaseEvents int `json:"releaseEvents"`
@@ -45,7 +47,7 @@ func Import(ctx context.Context, conn *pgx.Conn, s feed.Snapshot, now time.Time)
  return ImportWithOptions(ctx,conn,s,now,ImportOptions{})
 }
 func ImportWithOptions(ctx context.Context,conn *pgx.Conn,s feed.Snapshot,now time.Time,options ImportOptions)(Result,error){
-	if (options.SchedulesOnly&&options.Archive)||s.Validate(now) != nil { return Result{},feed.ErrInvalid }
+	if (options.SchedulesOnly&&(options.Archive||options.CancellationEvents))||s.Validate(now) != nil { return Result{},feed.ErrInvalid }
 	s.ObservedAt = s.ObservedAt.UTC().Truncate(time.Microsecond)
 	result,err := apply(ctx,conn,s,options)
 	if err != nil {
@@ -120,6 +122,14 @@ ON CONFLICT(anime_id) DO UPDATE SET observed_at=excluded.observed_at,payload=exc
 VALUES($1,'SEASON_ANNOUNCED','ANIME',$2,'{}'::jsonb,$3) ON CONFLICT(event_key) DO NOTHING`,"season-announced:"+id,id,s.ObservedAt)
 			if err!=nil {return out,err}
 			out.SeasonAnnouncements+=int(tag.RowsAffected())
+		}
+		if options.CancellationEvents && known && title.Status == "CANCELLED" &&
+			(priorStatus == "ANNOUNCED" || priorStatus == "RELEASING" || priorStatus == "HIATUS") {
+			inserted, err := recordCancellation(ctx, tx, id, s.Provider, s.ObservedAt)
+			if err != nil {
+				return out, err
+			}
+			out.CancellationEvents += inserted
 		}
 		comparison:=titleObserved
 		if !known {comparison=previous}
