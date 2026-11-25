@@ -13,3 +13,5 @@ These controls are in-memory presentation state, reset on account changes and re
 Validation: Playwright covers combined filters, rating/tie ordering, unrated behavior, reset/default-order preservation and no writes. The existing account-switch regression also checks that all three new controls reset. Hosted CI is required; no local executor is available.
 
 **Library progress mode** filters the current pass to exact episode selections or episode count, combined with all other filters. Missing `exactProgress` in count-mode/local entries is treated as count mode. The filter does not infer gaps, completion, or availability, and refresh preserves it. Clear, account changes, and reload reset it.
+
+Open **Library summary** to see status totals, rating coverage, the average of rated titles and the counts for each rating. The dashboard calculates these values from the current library, including entries hidden by active library filters. Archived viewing passes are outside this calculation.
