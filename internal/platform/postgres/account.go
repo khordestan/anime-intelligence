@@ -14,10 +14,11 @@ import (
 // AccountExport contains personal product data only. Credential hashes,
 // session digests, lockout metadata, and other accounts are never included.
 type AccountExport struct {
-	SchemaVersion int                        `json:"schemaVersion"`
-	ExportedAt    time.Time                  `json:"exportedAt"`
-	User          User                       `json:"user"`
-	Data          map[string]json.RawMessage `json:"data"`
+	SchemaVersion     int                        `json:"schemaVersion"`
+	ExportedAt        time.Time                  `json:"exportedAt"`
+	User              User                       `json:"user"`
+	ReleaseEmailSince *time.Time                 `json:"releaseEmailSince,omitempty"`
+	Data              map[string]json.RawMessage `json:"data"`
 }
 
 func (d *DB) ExportAccount(ctx context.Context, token string) (AccountExport, error) {
@@ -41,7 +42,7 @@ func (d *DB) exportAccountSnapshot(ctx context.Context, token string) (AccountEx
 	}
 	defer rollback(tx)
 	out := AccountExport{SchemaVersion: 1, User: u, Data: map[string]json.RawMessage{}}
-	if err = tx.QueryRow(ctx, `SELECT transaction_timestamp()`).Scan(&out.ExportedAt); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT transaction_timestamp(), release_email_since FROM users WHERE id=$1`, u.ID).Scan(&out.ExportedAt, &out.ReleaseEmailSince); err != nil {
 		return AccountExport{}, err
 	}
 	for _, table := range []struct{ key, name string }{

@@ -20,8 +20,9 @@ LOCK TABLE public.users, public.auth_sessions, public.auth_challenges,
   public.identity_requests, public.identity_outbox IN ACCESS EXCLUSIVE MODE;
 
 -- Password reset clears locked_until; disabled accounts remain disabled.
-UPDATE public.users SET locked_until = 'infinity', updated_at = now()
- WHERE disabled_at IS NULL;
+UPDATE public.users SET locked_until = CASE WHEN disabled_at IS NULL THEN 'infinity' ELSE locked_until END,
+     updated_at = CASE WHEN disabled_at IS NULL THEN now() ELSE updated_at END,
+     release_email_since = NULL;
 UPDATE public.auth_sessions SET revoked_at = now() WHERE revoked_at IS NULL;
 UPDATE public.auth_challenges SET revoked_at = now()
  WHERE consumed_at IS NULL AND revoked_at IS NULL;

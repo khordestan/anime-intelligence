@@ -65,3 +65,10 @@ Schedule notices are off for new follows. Select **Schedule changes** and save t
 Migration 000024 adds the consent timestamp. The upgrade keeps existing follows opted out. Rollback refuses to discard retained consent. Schedule notices still use the per-poll batch cap and the existing notification ledger. They state whether a published schedule moved earlier or later and include the before and after times and source. A change is an unconfirmed schedule revision.
 
 Enable source publication only for a reviewed offline snapshot with permission for this notice use. Pass `-schedule-change-events` to `catalog-import`, with `-preview` for an atomic rehearsal. Two known observed schedules on the same title, episode and track must differ, and the release must still be unconfirmed. A baseline, newly known time, removed time, unchanged time or confirmed release creates no schedule notice event. Events use the snapshot observation time and canonical revision key. Runtime polling checks the later of follow start and schedule notice consent, so a new consent does not replay earlier moves. Queued providers do not enable this option.
+
+
+## Release email consent
+
+Verified accounts can read and set their preference through `GET` and `PUT /api/v1/releases/email-consent`. Send `{"enabled":true}` to record consent and `{"enabled":false}` to withdraw it. The response gives the opt-in timestamp or null. Repeated opt-in preserves the timestamp. Account export includes active consent and the offline recovery fence clears restored consent. Migration 000026 defaults existing accounts to opted out and guards rollback while consent remains.
+
+The preference API records consent. Background materialization and delivery are separate roadmap work.
