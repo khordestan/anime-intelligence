@@ -109,3 +109,25 @@ func TestAnalysisComparisonsRequireKnownValues(t *testing.T) {
 		t.Fatalf("comparisons: %+v", got)
 	}
 }
+
+func TestAnalysisSharedLabelsRequireEvidenceForBothTitles(t *testing.T) {
+	items := []catalogAnalysisTitle{
+		{Evidence: []catalogAnalysisFact{
+			{Field: "genres", Values: []string{"Adventure", "Adventure", "Drama"}, Truncated: true},
+			{Field: "studios", Values: []string{"Synthetic studio"}},
+			{Field: "status", Values: []string{"FINISHED"}},
+		}},
+		{Evidence: []catalogAnalysisFact{
+			{Field: "genres", Values: []string{"adventure", "Comedy"}},
+			{Field: "studios", Values: []string{}},
+			{Field: "status", Values: []string{"FINISHED"}},
+		}},
+	}
+	got := sharedAnalysisEvidence(items)
+	if len(got) != 1 || got[0].Field != "genres" || len(got[0].Values) != 1 || got[0].Values[0] != "Adventure" {
+		t.Fatalf("shared labels: %+v", got)
+	}
+	if got := sharedAnalysisEvidence(items[:1]); len(got) != 0 {
+		t.Fatalf("a single title cannot share labels: %+v", got)
+	}
+}

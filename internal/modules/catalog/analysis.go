@@ -35,6 +35,11 @@ type catalogComparison struct {
 	AnimeIDs   []string `json:"animeIds"`
 }
 
+type catalogSharedEvidence struct {
+	Field  string   `json:"field"`
+	Values []string `json:"values"`
+}
+
 var analysisFields = []struct {
 	key   string
 	words []string
@@ -129,12 +134,13 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 	}
 
 	writeJSON(w, http.StatusOK, struct {
-		Engine       string                 `json:"engine"`
-		Model        string                 `json:"model,omitempty"`
-		TopicMatched bool                   `json:"topicMatched"`
-		Items        []catalogAnalysisTitle `json:"items"`
-		Comparisons  []catalogComparison    `json:"comparisons,omitempty"`
-	}{Engine: engine, Model: model, TopicMatched: matched, Items: items, Comparisons: compareAnalysisFacts(items)})
+		Engine         string                  `json:"engine"`
+		Model          string                  `json:"model,omitempty"`
+		TopicMatched   bool                    `json:"topicMatched"`
+		Items          []catalogAnalysisTitle  `json:"items"`
+		Comparisons    []catalogComparison     `json:"comparisons,omitempty"`
+		SharedEvidence []catalogSharedEvidence `json:"sharedEvidence,omitempty"`
+	}{Engine: engine, Model: model, TopicMatched: matched, Items: items, Comparisons: compareAnalysisFacts(items), SharedEvidence: sharedAnalysisEvidence(items)})
 }
 
 // compareAnalysisFacts reports the first title's value minus the second's.
@@ -165,6 +171,37 @@ func compareAnalysisFacts(items []catalogAnalysisTitle) []catalogComparison {
 		}
 	}
 	return comparisons
+}
+
+// Compare only the bounded evidence returned for both titles. With incomplete
+// lists, a shared value is still grounded in both sources.
+func sharedAnalysisEvidence(items []catalogAnalysisTitle) []catalogSharedEvidence {
+	if len(items) != 2 {
+		return nil
+	}
+	var shared []catalogSharedEvidence
+	for _, first := range items[0].Evidence {
+		if first.Field != "genres" && first.Field != "studios" {
+			continue
+		}
+		index := slices.IndexFunc(items[1].Evidence, func(fact catalogAnalysisFact) bool {
+			return fact.Field == first.Field
+		})
+		if index < 0 {
+			continue
+		}
+		var values []string
+		for _, value := range first.Values {
+			sameLabel := func(candidate string) bool { return strings.EqualFold(value, candidate) }
+			if slices.ContainsFunc(items[1].Evidence[index].Values, sameLabel) && !slices.ContainsFunc(values, sameLabel) {
+				values = append(values, value)
+			}
+		}
+		if len(values) > 0 {
+			shared = append(shared, catalogSharedEvidence{Field: first.Field, Values: values})
+		}
+	}
+	return shared
 }
 
 func selectAnalysisFields(question string) ([]string, bool) {

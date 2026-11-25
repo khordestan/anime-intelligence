@@ -37,10 +37,10 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
       if (assisted) expect(request.headers().authorization).toBe("Bearer " + "a".repeat(43));
       const payload = request.postDataJSON();
       if (!assisted && payload.animeIds.length === 2) {
-        expect(payload).toEqual({ question: "How many episodes?", animeIds: [id, secondID] });
-        return reply({ engine: "catalog-facts-v1", topicMatched: true, comparisons: [{field: "episodeCount", difference: -12, animeIds: [id, secondID]}], items: [
-          { animeId: id, title, evidence: [{ field: "episodeCount", values: ["0"] }] },
-          { animeId: secondID, title: secondTitle, evidence: [{ field: "episodeCount", values: ["12"] }] },
+        expect(payload).toEqual({ question: "How many episodes and which genres?", animeIds: [id, secondID] });
+        return reply({ engine: "catalog-facts-v1", topicMatched: true, comparisons: [{field: "episodeCount", difference: -12, animeIds: [id, secondID]}], sharedEvidence: [{ field: "genres", values: ["Adventure"] }], items: [
+          { animeId: id, title, evidence: [{ field: "episodeCount", values: ["0"] }, { field: "genres", values: ["Adventure", "Drama"] }] },
+          { animeId: secondID, title: secondTitle, evidence: [{ field: "episodeCount", values: ["12"] }, { field: "genres", values: ["Adventure"] }] },
         ] });
       }
       expect(payload).toEqual({ question: "How many episodes?", animeIds: [id] });
@@ -80,11 +80,13 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
     await page.getByLabel("Find a comparison title").fill("Synthetic");
     await page.getByRole("button", { name: "Search titles", exact: true }).click();
     await page.getByRole("button", { name: secondTitle, exact: true }).click();
+    await page.getByLabel("Question about these titles").fill("How many episodes and which genres?");
     await page.getByRole("button", { name: "Show evidence" }).click();
     await expect(evidence.getByRole("heading", { name: title, exact: true })).toBeVisible();
     await expect(evidence.getByRole("heading", { name: secondTitle, exact: true })).toBeVisible();
     await expect(evidence.getByText("12", { exact: true })).toBeVisible();
     await expect(evidence.getByText(title + " has 12 fewer episodes than " + secondTitle + ".")).toBeVisible();
+    await expect(evidence.getByText("Shared genres", { exact: true }).locator("..")).toContainText("Adventure");
     await page.getByRole("button", { name: "Remove comparison" }).click();
     await expect(evidence).toHaveCount(0);
   }
