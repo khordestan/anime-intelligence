@@ -6,7 +6,7 @@ import { ApiClient } from "../lib/api";
 type ComparisonTitle = { id: string; title: string; releaseYear?: number };
 type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean };
 type Comparison = { field: "episodeCount" | "releaseYear"; difference: number; animeIds: [string, string] };
-type Analysis = { model?: string; comparisons?: Comparison[]; topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
+type Analysis = { model?: string; comparisons?: Comparison[]; sharedEvidence?: { field: "genres" | "studios"; values: string[] }[]; topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
 
 const labels: Record<string, string> = {
   mediaType: "Format",
@@ -144,6 +144,14 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
           {!!result.comparisons?.length && <ul className="mb-3 space-y-1">
             {result.comparisons.map(comparison => <li key={comparison.field}>{explainComparison(comparison, result.items)}</li>)}
           </ul>}
+          {!!result.sharedEvidence?.length && <dl className="mb-3 space-y-1">
+            {result.sharedEvidence.map(({ field, values }) => (
+              <div key={field}>
+                <dt className="font-medium">{field === "genres" ? "Shared genres" : "Shared studios"}</dt>
+                <dd>{values.join(", ")}</dd>
+              </div>
+            ))}
+          </dl>}
           <div className={result.items.length > 1 ? "grid gap-3 sm:grid-cols-2" : undefined}>
             {result.items.map(item => (
               <div key={item.animeId}>
