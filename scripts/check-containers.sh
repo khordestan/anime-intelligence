@@ -3,23 +3,35 @@
 set -euo pipefail
 
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-scratch=$(mktemp -d)
-suffix=${scratch##*/}
-suffix=${suffix,,}
-api_image="anime-api-smoke:$suffix"
-web_image="anime-web-smoke:$suffix"
+if [[ $# != 0 && $# != 2 ]]; then
+  echo 'usage: check-containers.sh [api-image web-image]' >&2
+  exit 1
+fi
+scratch=
 api=
 web=
 cleanup() {
   if [[ -n "$api" ]]; then docker stop "$api" >/dev/null 2>&1 || true; fi
   if [[ -n "$web" ]]; then docker stop "$web" >/dev/null 2>&1 || true; fi
-  docker image rm "$api_image" "$web_image" >/dev/null 2>&1 || true
-  rmdir "$scratch"
+  if [[ -n "$scratch" ]]; then
+    docker image rm "$api_image" "$web_image" >/dev/null 2>&1 || true
+    rmdir "$scratch"
+  fi
 }
 trap cleanup EXIT
 
-docker build -t "$api_image" "$repo"
-docker build -t "$web_image" "$repo/web"
+if [[ $# == 2 ]]; then
+  api_image=$1
+  web_image=$2
+else
+  scratch=$(mktemp -d)
+  suffix=${scratch##*/}
+  suffix=${suffix,,}
+  api_image="anime-api-smoke:$suffix"
+  web_image="anime-web-smoke:$suffix"
+  docker build -t "$api_image" "$repo"
+  docker build -t "$web_image" "$repo/web"
+fi
 api=$(docker run --rm --network none -d "$api_image")
 web=$(docker run --rm --network none -d "$web_image")
 
