@@ -107,13 +107,25 @@ func TestReleaseEmailLeaseRetryAndOptOut(t *testing.T) {
 	if err != nil || claim == nil || claim.Recipient != account.User.Email {
 		t.Fatalf("initial claim failed: %v", err)
 	}
+	state, err := db.ReleaseEmailDiagnostics(ctx)
+	if err != nil || state.Subscribers != 1 || state.Leased != 1 || state.Due != 0 || state.Attempted != 1 {
+		t.Fatalf("leased diagnostics: %+v %v", state, err)
+	}
 	if duplicate, err := db.ClaimReleaseEmail(ctx); err != nil || duplicate != nil {
 		t.Fatalf("lease allowed another claim: %v", err)
 	}
 	if err := db.FinishReleaseEmail(ctx, claim, false); err != nil {
 		t.Fatal(err)
 	}
+	state, err = db.ReleaseEmailDiagnostics(ctx)
+	if err != nil || state.Delayed != 1 || state.Attempted != 1 || state.Leased != 0 {
+		t.Fatalf("retry diagnostics: %+v %v", state, err)
+	}
 	due()
+	state, err = db.ReleaseEmailDiagnostics(ctx)
+	if err != nil || state.Due != 1 || state.OldestDueAt == nil {
+		t.Fatalf("due diagnostics: %+v %v", state, err)
+	}
 	retry, err := db.ClaimReleaseEmail(ctx)
 	if err != nil || retry == nil {
 		t.Fatalf("retry missing: %v", err)

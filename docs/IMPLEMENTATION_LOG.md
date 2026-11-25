@@ -1131,3 +1131,10 @@ Consent PR #61 merged as `0aadc07` after [CI](https://github.com/khordestan/anim
 
 - Added the default-off SMTP worker, owner-scoped durable leases, bounded retries, deduplication, dashboard consent controls and recovery cleanup. Test mail stayed in a synthetic loopback mailbox.
 - Local Go checks, PostgreSQL lease and release tests, frontend tests, build, typecheck and nine focused browser tests passed. Hosted checks pending.
+
+Background delivery PR #62 merged as `bf99c3b` after [CI](https://github.com/khordestan/anime-intelligence/actions/runs/45615977242) and [Security](https://github.com/khordestan/anime-intelligence/actions/runs/45615977406) passed. An additional local smoke drove the running API through consent, automatic delivery into the loopback TLS mailbox, durable acknowledgement and opt-out.
+
+## 2026-11-25 — Release email scheduler diagnostics
+
+- Added read-only JSON and Prometheus exposition for aggregate scheduler state.
+- Local make check, focused PostgreSQL race tests and CLI output smoke passed. Hosted checks pending.
