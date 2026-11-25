@@ -78,3 +78,7 @@ The dashboard exposes the same consent under Release alerts. The SMTP worker is 
 The worker sends a generic notice to the verified account address without including title names or provider data. It considers confirmed episode and movie releases and eligible linked-season announcements from the last 24 hours, after both the follow and consent boundaries. It respects release tracks and scopes. A five-minute gap after completion limits each account's delivery rate.
 
 Jobs store canonical event IDs and lease metadata. A replica claims one account at a time, rechecks current consent and eligibility, and then sends using verified implicit TLS. An expired lease can be retried and completion checks the lease token. There are at most five attempts per event, with a terminal record for successful or exhausted delivery. An ambiguous SMTP acceptance or process crash between delivery and acknowledgement can produce a duplicate. Opt-out cancels pending jobs. A message already in flight may still arrive. Account deletion cascades jobs and the offline recovery fence drops restored jobs and consent.
+
+### Inspect the release email scheduler
+
+Run `go run ./cmd/release-email-status` with the restricted runtime database connection. It prints a read-only JSON snapshot of enrolled accounts, due scans, active leases, delayed scans, persisted attempts and the oldest due time. Use `-format=prometheus` for fixed-label gauges. An account can be due for a scan without having eligible mail. Output contains aggregate counts and timestamps. The command makes no SMTP connections.
