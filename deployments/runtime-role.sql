@@ -56,3 +56,6 @@ GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO anime_runtime;
 GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO anime_runtime;
 
 GRANT SELECT,INSERT,UPDATE,DELETE ON release_email_jobs TO anime_runtime;
+
+-- Reapply after logical restores that omitted function ACLs.
+REVOKE ALL ON FUNCTION review_continuity_retraction(uuid, uuid, uuid[], text, boolean) FROM PUBLIC;
