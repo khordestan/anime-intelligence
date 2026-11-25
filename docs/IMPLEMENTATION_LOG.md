@@ -1162,3 +1162,8 @@ Bulk progress PR #64 merged after [CI](https://github.com/khordestan/anime-intel
 
 - Added a hosted smoke check for both application images, non-root startup and loopback readiness. Compose gates web startup on API readiness and binds published ports to loopback.
 - Compose validation and local image startup passed. The local dependency build used the Cloud proxy certificate through temporary BuildKit secrets. Hosted verification uses the committed Dockerfiles directly.
+
+## 2026-11-25 — Concurrent dashboard workload
+
+- Added a restricted PostgreSQL integration workload with eight synthetic owners, 1,000 catalog titles and 128 loopback HTTP requests across public searches, private library reads and competing progress updates. Each paired update commits once and conflicts once, and every library response contains only its owner's entry.
+- Three local race-detector runs passed. Individual request workloads finished in 0.44–0.56 seconds in the disposable environment. The test uses a bounded context to detect hangs.
