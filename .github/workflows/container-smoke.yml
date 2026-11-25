@@ -1,0 +1,21 @@
+name: Container smoke
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '**/Dockerfile'
+      - '**/.dockerignore'
+      - 'deployments/docker-compose.yml'
+      - 'scripts/check-containers.sh'
+      - '.github/workflows/container-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f deployments/docker-compose.yml config -q
+      - run: scripts/check-containers.sh

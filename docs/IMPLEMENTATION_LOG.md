@@ -1152,3 +1152,8 @@ Bulk progress PR #64 merged after [CI](https://github.com/khordestan/anime-intel
 
 - Added explicit offline publication for authoritative primary title cancellations and scoped in-app notices for opted-in followers.
 - Local Go checks, three focused PostgreSQL race tests, typecheck and all nine release browser tests passed. Hosted checks pending.
+
+## 2026-11-25 — Application container smoke checks
+
+- Added a hosted smoke check for both application images, non-root startup and loopback readiness. Compose gates web startup on API readiness and binds published ports to loopback.
+- Compose validation and local image startup passed. The local dependency build used the Cloud proxy certificate through temporary BuildKit secrets. Hosted verification uses the committed Dockerfiles directly.
