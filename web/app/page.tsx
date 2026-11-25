@@ -43,7 +43,7 @@ type Entry = {
   totalEpisodes?: number;
   rating?: number;
 };
-type BulkStatusTarget = { id: string; expectedCycle: number };
+type BulkStatusTarget = { id: string; expectedCycle: number; expectedEpisodesWatched: number; canAdvance: boolean };
 const maxBulkStatusEntries = 25;
 
 const statuses = [
@@ -431,10 +431,13 @@ export default function Home() {
       if (account === accountRevision.current) setBusy(false);
     }
   }
-  async function applyBulkEdit(action: "status" | "rating") {
-    const value = action === "status" ? bulkStatus : bulkRating;
+  async function applyBulkEdit(action: "status" | "rating" | "progress") {
+    const value = action === "status" ? bulkStatus : action === "rating" ? bulkRating : "advance";
     if (busy || !bulkEntries?.length || !value) return;
-    const change = action === "status" ? { watchStatus: value } : { score: Number(value) };
+    if (action === "progress" && !bulkEntries.every(target => target.canAdvance)) return;
+    const change = action === "status" ? { watchStatus: value } : action === "rating" ? { score: Number(value) } : {};
+    const targets = bulkEntries.map(({ id, expectedCycle, expectedEpisodesWatched }) =>
+      action === "progress" ? { id, expectedCycle, expectedEpisodesWatched } : { id, expectedCycle });
     const account = accountRevision.current;
     setBusy(true);
     setError("");
@@ -442,7 +445,7 @@ export default function Home() {
       await client.request("/tracker/bulk-" + action, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...change, entries: bulkEntries }),
+        body: JSON.stringify({ ...change, entries: targets }),
       });
       if (account !== accountRevision.current) return;
       setBulkEntries(null);
@@ -455,7 +458,9 @@ export default function Home() {
         setBulkEntries([]);
         await refresh();
         if (account === accountRevision.current) {
-          setError("The selected entries changed. Select them again and retry.");
+          setError(action === "progress"
+            ? "Progress changed or cannot advance for an entry. Review your selection and retry."
+            : "The selected entries changed. Select them again and retry.");
         }
       } else {
         handleError(error);
@@ -824,6 +829,13 @@ export default function Home() {
                   onClick={() => void applyBulkEdit("rating")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
                   Apply rating to selected
                 </button>
+                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkEntries.every(target => target.canAdvance)}
+                  onClick={() => void applyBulkEdit("progress")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+                  Add one watched episode to selected
+                </button>
+                {bulkEntries.some(target => !target.canAdvance) && <span className="text-xs text-slate-300">
+                  Bulk progress requires count-mode entries with episodes remaining.
+                </span>}
               </>
             )}
           </div>
@@ -866,7 +878,12 @@ export default function Home() {
                               if (!current) return current;
                               if (!checked) return current.filter(target => target.id !== e.id);
                               if (current.length >= maxBulkStatusEntries || current.some(target => target.id === e.id)) return current;
-                              return [...current, { id: e.id, expectedCycle: e.watchCycle ?? 1 }];
+                              return [...current, {
+                                id: e.id,
+                                expectedCycle: e.watchCycle ?? 1,
+                                expectedEpisodesWatched: e.episodesWatched,
+                                canAdvance: !e.exactProgress && e.episodesWatched < (e.totalEpisodes || 100000),
+                              }];
                             });
                           }} />
                         Select for bulk edit
