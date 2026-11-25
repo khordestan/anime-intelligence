@@ -90,3 +90,9 @@ Jobs store canonical event IDs and lease metadata. A replica claims one account 
 Run `go run ./cmd/release-email-status` with the restricted runtime database connection. It prints a read-only JSON snapshot of enrolled accounts, due scans, active leases, delayed scans, persisted attempts and the oldest due time. Use `-format=prometheus` for fixed-label gauges. An account can be due for a scan without having eligible mail. Output contains aggregate counts and timestamps. The command makes no SMTP connections.
 
 For a node_exporter textfile collector, use `-format=prometheus -output-file=/absolute/path.prom`. The command stages the complete snapshot in the destination directory, sets mode `0640` and atomically replaces the previous file. Use one collector per shared release database and a trusted directory that the collector can write and node_exporter can read. The example `anime-release-email-metrics` systemd units run once a minute when enabled by an operator. They need a protected database environment file. SMTP credentials are unnecessary.
+
+## Correct a published title cancellation
+
+Use `catalog-import -cancellation-correction-events` for a primary-source observation explicitly reviewed as a correction. The prior primary status must be cancelled, and the new primary status must be announced, releasing or finished. The earlier cancellation must have been published by the same source. Apply records one correction for that cancellation. Preview rolls back the change and includes the proposed correction count. The regular import and scheduled provider workers leave correction publication off.
+
+The correction reaches opted-in in-app followers within the existing follow and consent window. It includes the source and revised status, and the earlier notice stays visible in history. Corrections are in-app only.

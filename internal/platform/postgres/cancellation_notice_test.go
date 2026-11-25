@@ -83,4 +83,32 @@ func TestCancellationNoticesRequireReviewedPrimaryTransition(t *testing.T) {
 	if notices, err := b.Notifications(ctx); err != nil || len(notices) != 0 {
 		t.Fatalf("default follow received cancellation: %+v %v", notices, err)
 	}
+	correction := catalogsync.ImportOptions{CancellationCorrectionEvents: true, Preview: true}
+	snapshot.ObservedAt = now.Add(-20 * time.Minute)
+	for i := range snapshot.Titles {
+		snapshot.Titles[i].Status = "ANNOUNCED"
+	}
+	checkCorrection := func(want int) {
+		t.Helper()
+		result, err := catalogsync.ImportWithOptions(ctx, admin, snapshot, now, correction)
+		if err != nil || result.CancellationCorrectionEvents != want || result.CancellationEvents != 0 {
+			t.Fatalf("correction result: %+v %v", result, err)
+		}
+	}
+	checkCorrection(1)
+	if notices, err := a.Notifications(ctx); err != nil || len(notices) != 1 {
+		t.Fatalf("preview created a correction: %+v %v", notices, err)
+	}
+	correction.Preview = false
+	checkCorrection(1)
+	snapshot.ObservedAt = now.Add(-10 * time.Minute)
+	checkCorrection(0)
+	notices, err = a.Notifications(ctx)
+	if err != nil || len(notices) != 2 || notices[0].Title != "Cancellation corrected" || notices[0].Provider != provider || notices[1].Title != "Title cancelled" {
+		t.Fatalf("history did not retain both notices: %+v %v", notices, err)
+	}
+	if notices, err := b.Notifications(ctx); err != nil || len(notices) != 0 {
+		t.Fatalf("default follow received a cancellation correction: %+v %v", notices, err)
+	}
+
 }
