@@ -52,3 +52,5 @@ Start with GET /api/v1/anime?cursor=start&limit=24 and any supported filters or 
 Each page starts after the previous page's year/title/ID or title/ID key. Insertions and removals before the key do not shift later pages. Changes to titles, years or filter membership can still affect traversal because the catalog is live across requests.
 
 Use `confirmedRelease=true` to find titles with a confirmed release on any track. The filter reads the latest fact for each episode and track and requires a recorded release time at or before the current database time. Omit the parameter or use `false` to include titles regardless of release evidence.
+
+Use `metadataProvider=<provider-key>` to require the exact primary source of a title's retained metadata. This combines with the other filters and is bound to the catalog cursor. The dashboard can suggest provider keys from `GET /api/v1/anime/facets?field=providers`. Suggestions use retained catalog attribution, including older metadata from providers whose network access is disabled.

@@ -10,10 +10,10 @@ import (
 )
 func catalogFilter(r *http.Request)(store.CatalogFilter,error){
  query,err:=url.ParseQuery(r.URL.RawQuery);if err!=nil{return store.CatalogFilter{},store.ErrCatalogFilter}
- for _,key:=range []string{"q","mediaType","status","releaseYear","season","genre","theme","demographic","studio","minEpisodes","maxEpisodes","sort","minYear","maxYear","confirmedRelease"}{
+ for _,key:=range []string{"q","mediaType","status","releaseYear","season","genre","theme","demographic","studio","minEpisodes","maxEpisodes","sort","minYear","maxYear","confirmedRelease","metadataProvider"}{
   if values,ok:=query[key];ok&&(len(values)!=1||(key!="q"&&strings.TrimSpace(values[0])=="")){return store.CatalogFilter{},store.ErrCatalogFilter}
  }
- f:=store.CatalogFilter{Sort:query.Get("sort"),Query:query.Get("q"),MediaType:query.Get("mediaType"),Status:query.Get("status"),Season:query.Get("season"),Genre:query.Get("genre"),Theme:query.Get("theme"),Demographic:query.Get("demographic"),Studio:query.Get("studio")}
+ f:=store.CatalogFilter{MetadataProvider:query.Get("metadataProvider"),Sort:query.Get("sort"),Query:query.Get("q"),MediaType:query.Get("mediaType"),Status:query.Get("status"),Season:query.Get("season"),Genre:query.Get("genre"),Theme:query.Get("theme"),Demographic:query.Get("demographic"),Studio:query.Get("studio")}
  if values,ok:=query["confirmedRelease"];ok{
   if values[0]!="true"&&values[0]!="false"{return f,store.ErrCatalogFilter}
   f.ConfirmedRelease=values[0]=="true"

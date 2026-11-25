@@ -61,8 +61,12 @@ func (r *Repository) filterCatalog(ctx context.Context, f store.CatalogFilter, l
        AND newer.revision>confirmed.revision
      )
  ))
+ AND ($21='' OR EXISTS (
+   SELECT 1 FROM catalog_metadata m JOIN data_sources d ON d.id=m.source_id
+   WHERE m.anime_id=anime.id AND d.provider_key=$21
+ ))
  AND ($17::bigint IS NULL OR ((`+sortYear+`),canonical_title,id) > ($17,$18,NULLIF($19,'')::uuid))
- ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`,f.Query,limit,offset,f.MediaType,f.Status,f.ReleaseYear,f.Season,f.Genre,f.Theme,f.Demographic,f.Studio,f.MinEpisodes,f.MaxEpisodes,f.Sort,f.MinYear,f.MaxYear,yearKey,title,id,f.ConfirmedRelease)
+ ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`,f.Query,limit,offset,f.MediaType,f.Status,f.ReleaseYear,f.Season,f.Genre,f.Theme,f.Demographic,f.Studio,f.MinEpisodes,f.MaxEpisodes,f.Sort,f.MinYear,f.MaxYear,yearKey,title,id,f.ConfirmedRelease,f.MetadataProvider)
  if err!=nil{return nil,err}
  out:=[]store.Anime{}
  for rows.Next(){var a store.Anime;if err=rows.Scan(&a.ID,&a.Title,&a.NativeTitle,&a.MediaType,&a.ReleaseYear,&a.Status,&a.EpisodeCount,&a.Synopsis,&a.Season,&a.CoverImageURL,&a.EpisodeCountKnown);err!=nil{rows.Close();return nil,err};out=append(out,a)}
