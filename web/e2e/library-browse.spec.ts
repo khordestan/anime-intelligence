@@ -41,6 +41,12 @@ test("private library browsing combines status, title and rating without changin
   await page.getByLabel("Search your library",{exact:true}).fill("  zETA  ");
   await expect(titles).toHaveText(["Zeta Synthetic"]);
   await expect(library.getByRole("status")).toHaveText("Showing 1 of 4 library titles.");
+  await library.getByText("Library summary", { exact: true }).click();
+  const summary = library.getByRole("region", { name: "Library summary" });
+  await expect(summary.getByText("3 of 4 titles rated")).toBeVisible();
+  await expect(summary.getByText("Average 4.0 out of 5")).toBeVisible();
+  await expect(summary.getByRole("list", { name: "Rating distribution" }).getByRole("listitem").last()).toHaveText(/5 \/ 5.*2 titles/);
+
   await page.getByLabel("Library rating filter",{exact:true}).selectOption("UNRATED");
   await expect(titles).toHaveCount(0);
   await expect(library.getByText("No library titles match these filters.",{exact:true})).toBeVisible();

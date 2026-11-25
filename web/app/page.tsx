@@ -727,6 +727,9 @@ export default function Home() {
             Refresh
           </button>
         </div>
+        {canEdit && !loading && library.length > 0 && (
+          <LibrarySummary key={session?.user.id ?? "local"} entries={library} />
+        )}
         {mode === "postgres" && canEdit && showWatchListImport && (
           <form onSubmit={event => { event.preventDefault(); void uploadWatchList(false); }} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
             <label>
@@ -995,5 +998,61 @@ function Stat({ label, value }: { label: string; value: number }) {
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-2 text-3xl font-semibold tabular-nums">{value}</p>
     </div>
+  );
+}
+
+
+function LibrarySummary({ entries }: { entries: Entry[] }) {
+  const summary = useMemo(() => {
+    const byStatus = new Map<string, number>();
+    const byRating = [0, 0, 0, 0, 0];
+    let rated = 0;
+    let ratingTotal = 0;
+    for (const entry of entries) {
+      byStatus.set(entry.watchStatus, (byStatus.get(entry.watchStatus) ?? 0) + 1);
+      if (entry.rating != null && Number.isInteger(entry.rating) && entry.rating >= 1 && entry.rating <= byRating.length) {
+        byRating[entry.rating - 1]++;
+        rated++;
+        ratingTotal += entry.rating;
+      }
+    }
+    return { byStatus, byRating, rated, ratingTotal };
+  }, [entries]);
+
+  return (
+    <details className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-4">
+      <summary className="cursor-pointer text-sm font-medium">Library summary</summary>
+      <section aria-label="Library summary" className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+        <div>
+          <h3 className="font-medium">Watch statuses</h3>
+          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-slate-300">
+            {statuses.slice(1).map(status => (
+              <div key={status} className="contents">
+                <dt>{labels[status]}</dt>
+                <dd className="text-right tabular-nums">{summary.byStatus.get(status) ?? 0}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <div>
+          <h3 className="font-medium">Ratings</h3>
+          <p className="mt-2 text-slate-300">{summary.rated} of {entries.length} titles rated</p>
+          {summary.rated > 0 && (
+            <>
+              <p className="text-slate-300">Average {(summary.ratingTotal / summary.rated).toFixed(1)} out of 5</p>
+              <ul aria-label="Rating distribution" className="mt-2 space-y-1">
+                {summary.byRating.map((count, index) => (
+                  <li key={index} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 text-slate-300">
+                    <span>{index + 1} / 5</span>
+                    <meter className="w-full" aria-hidden="true" min={0} max={summary.rated} value={count} />
+                    <span className="tabular-nums">{count} {count === 1 ? "title" : "titles"}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      </section>
+    </details>
   );
 }
