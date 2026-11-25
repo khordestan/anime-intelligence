@@ -50,3 +50,5 @@ The dashboard provides Earliest/Latest release year, Minimum/Maximum episodes an
 Start with GET /api/v1/anime?cursor=start&limit=24 and any supported filters or sort. When nextCursor is present, pass it as cursor with the same query, filters and sort. The page size can change. An absent nextCursor means the current page has no successor. Cursor requests reject offset, malformed or repeated cursors, and cursors issued for different filters. Existing offset requests keep their existing response fields.
 
 Each page starts after the previous page's year/title/ID or title/ID key. Insertions and removals before the key do not shift later pages. Changes to titles, years or filter membership can still affect traversal because the catalog is live across requests.
+
+Use `confirmedRelease=true` to find titles with a confirmed release on any track. The filter reads the latest fact for each episode and track and requires a recorded release time at or before the current database time. Omit the parameter or use `false` to include titles regardless of release evidence.

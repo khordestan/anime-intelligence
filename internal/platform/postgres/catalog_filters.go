@@ -52,8 +52,17 @@ func (r *Repository) filterCatalog(ctx context.Context, f store.CatalogFilter, l
  ))
  AND ($12::int IS NULL OR episode_count >= $12) AND ($13::int IS NULL OR episode_count <= $13)
  AND ($15::int IS NULL OR release_year >= $15) AND ($16::int IS NULL OR release_year <= $16)
+ AND (NOT $20::boolean OR EXISTS (
+   SELECT 1 FROM airing_schedule confirmed
+   WHERE confirmed.anime_id=anime.id AND confirmed.actual_released_at<=statement_timestamp()
+     AND NOT EXISTS (
+       SELECT 1 FROM airing_schedule newer WHERE newer.anime_id=confirmed.anime_id
+       AND newer.episode_number=confirmed.episode_number AND newer.release_track=confirmed.release_track
+       AND newer.revision>confirmed.revision
+     )
+ ))
  AND ($17::bigint IS NULL OR ((`+sortYear+`),canonical_title,id) > ($17,$18,NULLIF($19,'')::uuid))
- ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`,f.Query,limit,offset,f.MediaType,f.Status,f.ReleaseYear,f.Season,f.Genre,f.Theme,f.Demographic,f.Studio,f.MinEpisodes,f.MaxEpisodes,f.Sort,f.MinYear,f.MaxYear,yearKey,title,id)
+ ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`,f.Query,limit,offset,f.MediaType,f.Status,f.ReleaseYear,f.Season,f.Genre,f.Theme,f.Demographic,f.Studio,f.MinEpisodes,f.MaxEpisodes,f.Sort,f.MinYear,f.MaxYear,yearKey,title,id,f.ConfirmedRelease)
  if err!=nil{return nil,err}
  out:=[]store.Anime{}
  for rows.Next(){var a store.Anime;if err=rows.Scan(&a.ID,&a.Title,&a.NativeTitle,&a.MediaType,&a.ReleaseYear,&a.Status,&a.EpisodeCount,&a.Synopsis,&a.Season,&a.CoverImageURL,&a.EpisodeCountKnown);err!=nil{rows.Close();return nil,err};out=append(out,a)}
