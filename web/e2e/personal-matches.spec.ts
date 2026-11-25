@@ -5,9 +5,10 @@ async function mockMatches(page: Page, hold = false) {
   const planned = new Set<string>();
   const dismissed = new Set<string>();
   const preferences = new Map<string, number | null>();
-  const calls: { path: string; token: string; body: unknown }[] = [];
+  const calls: { path: string; query: string; token: string; body: unknown }[] = [];
   let release = () => {};
   let blocked = false;
+  let failLimit = false;
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -16,7 +17,7 @@ async function mockMatches(page: Page, hold = false) {
     const headers = { "Access-Control-Allow-Origin": "http://127.0.0.1:3000", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS" };
     const respond = (body: unknown, status = 200) => route.fulfill({ status, headers, contentType: "application/json", body: JSON.stringify(body) });
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
-    calls.push({ path, token, body: request.postData() ? request.postDataJSON() : undefined });
+    calls.push({ path, query: url.search, token, body: request.postData() ? request.postDataJSON() : undefined });
     if (path === "") return respond({ authenticationRequired: true });
     if (path === "/anime" || path === "/tracker") return respond({ items: [] });
     if (path === "/auth/login") {
@@ -70,13 +71,17 @@ async function mockMatches(page: Page, hold = false) {
       });
     }
     if (path === "/recommendations") {
+      if (failLimit && url.searchParams.has("limit")) {
+        failLimit = false;
+        return respond({ error: "synthetic_failed_request" }, 500);
+      }
       const items = preferences.get(token) === null || dismissed.has(token) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
       if (hold && token.endsWith("1")) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
       try { return await respond({ items, profile: items.length ? [{ key: "synthetic.mystery", declared: { weight: preferences.get(token), confidence: 1 }, inferred: { weight: 0.5, confidence: 0.25 } }] : [] }); } catch { return; }
     }
     return respond({}, 404);
   });
-  return { calls, blocked: () => blocked, release: () => release() };
+  return { calls, failNextLimit: () => { failLimit = true; }, blocked: () => blocked, release: () => release() };
 }
 async function login(page: Page, email: string) {
   await page.getByLabel("Email", { exact: true }).fill(email);
@@ -201,4 +206,28 @@ test("Discovery saves and clears explicit feature feedback for Personal Match", 
   await expect(discovery.getByLabel("Filter by feature")).toHaveValue("synthetic.mystery");
   expect(api.calls.filter(call => call.path === "/preferences/synthetic.mystery").map(call => call.body))
     .toEqual([{ weight: 1 }, { weight: -1 }, undefined]);
+});
+
+test("Personal Match result limits preserve the current result on failure and persist through refresh", async ({ page }) => {
+  const api = await mockMatches(page);
+  await page.goto("/");
+  await login(page, "match-limit@example.test");
+  const panel = page.getByRole("region", { name: "Personal Match", exact: true });
+  await panel.getByRole("button", { name: "Personal Match settings" }).click();
+  const limit = panel.getByLabel("Personal Match results limit");
+  await expect(limit).toBeEnabled();
+  await panel.getByLabel("Preference Synthetic mystery", { exact: true }).fill("1");
+  await panel.getByRole("button", { name: "Save preference Synthetic mystery", exact: true }).click();
+  const shown = panel.getByRole("list", { name: "Personal match results" }).getByText("Synthetic account match");
+  await expect(shown).toBeVisible();
+  api.failNextLimit();
+  await limit.selectOption("50");
+  await expect(panel.getByText("Could not change the results limit. Try again.")).toBeVisible();
+  await expect(limit).toHaveValue("20");
+  await expect(shown).toBeVisible();
+  await limit.selectOption("50");
+  await expect(limit).toHaveValue("50");
+  await panel.getByRole("button", { name: "Refresh Personal Match" }).click();
+  await expect(limit).toBeEnabled();
+  expect(api.calls.filter(call => call.path === "/recommendations" && call.query === "?limit=50")).toHaveLength(3);
 });
