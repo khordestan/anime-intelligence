@@ -121,6 +121,10 @@ paths:
         - in: query
           name: sort
           schema: { type: string, enum: [TITLE, NEWEST, OLDEST], default: TITLE }
+        - in: query
+          name: confirmedRelease
+          description: Require a latest episode/track observation with a confirmed release timestamp at or before now. Local starter mode has no release observations.
+          schema: { type: boolean, default: false }
       responses:
         "200":
           description: Catalog page

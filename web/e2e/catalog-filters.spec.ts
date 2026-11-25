@@ -25,6 +25,7 @@ test("combined catalog filters apply explicitly without a text query and clear",
   await page.goto("/");
   await page.getByRole("button", { name: "Catalog filters", exact: true }).click();
   const form = page.getByRole("form", { name: "Catalog metadata filters", exact: true });
+  await form.getByRole("checkbox", { name: "Has a confirmed release" }).check();
   await form.getByLabel("Catalog format", { exact: true }).selectOption("TV");
   await form.getByLabel("Catalog sort order", { exact: true }).selectOption("NEWEST");
   await form.getByLabel("Minimum episodes", { exact: true }).fill("12");
@@ -43,17 +44,18 @@ test("combined catalog filters apply explicitly without a text query and clear",
   await expect(page.getByText(result.title, { exact: true })).toBeVisible();
   expect(filtered).toHaveLength(1);
   expect(Object.fromEntries(filtered[0].searchParams)).toMatchObject({
-    q: "", genre: "Action & Power", theme: "Strategy", demographic: "Seinen", studio: "Synthetic Works",
+    q: "", confirmedRelease: "true", genre: "Action & Power", theme: "Strategy", demographic: "Seinen", studio: "Synthetic Works",
     mediaType: "TV", status: "RELEASING", releaseYear: "2026", season: "FALL", limit: "100", sort: "NEWEST", minEpisodes: "12", maxEpisodes: "24", minYear: "2020", maxYear: "2030",
   });
   await expect(page.getByText("Unfiltered Starter", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Additional Filter Match 9", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Show more catalog matches", exact: true }).click();
   await expect(page.getByText("Additional Filter Match 9", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Hide catalog filters (13 applied)", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hide catalog filters (14 applied)", exact: true })).toBeVisible();
   await form.getByRole("button", { name: "Clear catalog filters", exact: true }).click();
   await expect(page.getByText(result.title, { exact: true })).toHaveCount(0);
   await expect(form.getByLabel("Source genre", { exact: true })).toHaveValue("");
+  await expect(form.getByRole("checkbox", { name: "Has a confirmed release" })).not.toBeChecked();
 });
 
 test("catalog filter replacement fences late results and failed searches retry", async ({ page }) => {

@@ -96,6 +96,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Offset navigation hints and dashboard filtered paging with retry
 - [x] Stable cursor pagination for the public catalog API
 - [x] Dashboard cursor navigation with destination retry
+- [x] Confirmed-release catalog filter based on latest observed episode and track facts
 - [ ] Broader catalog browsing
 - [ ] Reviewed franchise curation/retractions and finer season conventions
 

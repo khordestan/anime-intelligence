@@ -1,5 +1,10 @@
 # Implementation Log
 
+
+## 2026-11-25 — Confirmed-release catalog filter
+
+- Added an optional confirmed-release filter to catalog browsing. It uses the latest episode and track facts and preserves existing cursors when the filter is off.
+- Focused PostgreSQL race and Playwright catalog filter tests passed.
 ## 2026-11-24 — Discovery evidence labels
 
 Added bounded curated feature names to each Discovery title and documented the existing cursor fields in OpenAPI. Extended the PostgreSQL regression. Hosted CI is pending.

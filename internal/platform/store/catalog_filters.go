@@ -12,6 +12,7 @@ import (
 var ErrCatalogFilter = errors.New("invalid catalog filter")
 
 type CatalogFilter struct {
+ ConfirmedRelease bool `json:",omitempty"`
  MinEpisodes *int
  MaxEpisodes *int
  MinYear *int
@@ -82,7 +83,7 @@ func(f CatalogFilter)Normalize()(CatalogFilter,error){
  return f,nil
 }
 func(f CatalogFilter)HasMetadataFilters()bool{
- return f.MinYear!=nil||f.MaxYear!=nil||f.Sort!=""||f.MinEpisodes!=nil||f.MaxEpisodes!=nil||f.MediaType!=""||f.Status!=""||f.ReleaseYear!=0||f.Season!=""||f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""
+ return f.ConfirmedRelease||f.MinYear!=nil||f.MaxYear!=nil||f.Sort!=""||f.MinEpisodes!=nil||f.MaxEpisodes!=nil||f.MediaType!=""||f.Status!=""||f.ReleaseYear!=0||f.Season!=""||f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""
 }
 // Local has no imported taxonomy. An active source-label filter has no matches.
 func(s Local)FilterCatalog(ctx context.Context,f CatalogFilter,limit,offset int)([]Anime,error){
@@ -106,7 +107,7 @@ func (s Local) filterCatalog(ctx context.Context, f CatalogFilter, limit, offset
  }
  if err:=ctx.Err();err!=nil{return nil,err}
  out:=[]Anime{}
- if f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""{return out,nil}
+ if f.ConfirmedRelease||f.Genre!=""||f.Theme!=""||f.Demographic!=""||f.Studio!=""{return out,nil}
  for _,a:=range s.Store.Catalog(f.Query,100000,0){
   if (f.MediaType!=""&&f.MediaType!=a.MediaType)||(f.Status!=""&&f.Status!=a.Status)||(f.ReleaseYear!=0&&f.ReleaseYear!=a.ReleaseYear)||(f.Season!=""&&f.Season!=a.Season){continue}
   if (f.MinEpisodes!=nil||f.MaxEpisodes!=nil)&&!a.EpisodeCountKnown{continue}
