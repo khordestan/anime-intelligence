@@ -23,6 +23,7 @@ func read(path string, now time.Time) (feed.Snapshot, error) {
 func run() error {
 	input := flag.String("input", "", "Snapshot JSON file (required)")
 	baseline := flag.String("previous", "", "Optional previous snapshot JSON file")
+	referencePath := flag.String("reference", "", "independent reviewed snapshot for field accuracy scoring")
 	coverage := flag.Bool("coverage", false, "report aggregate field and schedule presence for the snapshot")
 	changes := flag.Bool("schedule-changes", false, "preview schedule moves between the supplied snapshots")
 	flag.Parse()
@@ -48,6 +49,18 @@ func run() error {
 		counts := next.Coverage()
 		report = &counts
 	}
+	var accuracy *feed.FieldAccuracy
+	if *referencePath != "" {
+		reference, err := read(*referencePath, now)
+		if err != nil {
+			return err
+		}
+		scored, err := feed.CompareReviewedFields(next, reference, now)
+		if err != nil {
+			return err
+		}
+		accuracy = &scored
+	}
 	var scheduleChanges *[]feed.ScheduleChange
 	if *changes {
 		moves, err := feed.ScheduleChanges(previous, next, now)
@@ -61,7 +74,8 @@ func run() error {
 		Events          []feed.Event           `json:"events"`
 		Coverage        *feed.SnapshotCoverage `json:"coverage,omitempty"`
 		ScheduleChanges *[]feed.ScheduleChange `json:"scheduleChanges,omitempty"`
-	}{len(next.Titles), events, report, scheduleChanges})
+		Accuracy        *feed.FieldAccuracy    `json:"accuracy,omitempty"`
+	}{len(next.Titles), events, report, scheduleChanges, accuracy})
 }
 func main() {
 	if run() != nil {

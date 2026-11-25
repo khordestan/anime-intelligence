@@ -89,6 +89,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Real evidence corpus and broader reviewed scope coverage
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics
 - [x] Aggregate catalog freshness/metadata-presence Prometheus diagnostics with parser CI
+- [x] Offline catalog field accuracy scoring against independent reviewed snapshots
 - [ ] Catalog SLOs/alert activation, field accuracy and completeness evaluation
 - [x] Validated canonical prequel/sequel graph and named bidirectional direct continuity navigation
 - [x] Bounded public transitive prequel/sequel API and dashboard browsing with source labels and cap warnings
