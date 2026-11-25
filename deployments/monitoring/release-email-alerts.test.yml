@@ -1,0 +1,139 @@
+rule_files:
+- release-email-alerts.yml
+evaluation_interval: 30s
+tests:
+- name: overdue-due-work-persists-and-clears
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 1+0x25
+  - series: 'anime_release_email_snapshot_timestamp_seconds{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 0+60x25
+  - series: 'anime_release_email_oldest_due_timestamp_seconds{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 0+0x25
+  - series: 'anime_release_email_due{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 1+0x17 0+0x7
+  alert_rule_test:
+  - eval_time: 14m
+    alertname: AnimeReleaseEmailScansOverdue
+    exp_alerts: []
+  - eval_time: 16m
+    alertname: AnimeReleaseEmailScansOverdue
+    exp_alerts:
+    - exp_labels:
+        job: anime-release-email
+        instance: fixture:9100
+        anime_release_email_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Release email scheduler scans are overdue
+  - eval_time: 19m
+    alertname: AnimeReleaseEmailScansOverdue
+    exp_alerts: []
+- name: stale-snapshot-suppresses-exhaustion
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 1+0x10
+  - series: 'anime_release_email_snapshot_timestamp_seconds{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 0+0x10
+  - series: 'anime_release_email_exhausted_due{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 1+0x10
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: AnimeReleaseEmailAttemptsExhausted
+    exp_alerts:
+    - exp_labels:
+        job: anime-release-email
+        instance: fixture:9100
+        anime_release_email_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Release email scheduler has due work at its attempt limit
+  - eval_time: 6m
+    alertname: AnimeReleaseEmailAttemptsExhausted
+    exp_alerts: []
+  - eval_time: 6m
+    alertname: AnimeReleaseEmailSnapshotStale
+    exp_alerts:
+    - exp_labels:
+        job: anime-release-email
+        instance: fixture:9100
+        anime_release_email_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Release email snapshot is no longer refreshing
+- name: missing-one-target-despite-another-healthy
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 1+0x20
+  - series: 'up{job="anime-release-email",instance="other:9100",anime_release_email_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_release_email_snapshot_timestamp_seconds{job="anime-release-email",instance="other:9100",anime_release_email_monitor="true"}'
+    values: 0+60x20
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: AnimeReleaseEmailSnapshotMissing
+    exp_alerts:
+    - exp_labels:
+        job: anime-release-email
+        instance: fixture:9100
+        anime_release_email_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Release email snapshot is missing on a reachable target
+- name: down-is-not-missing
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 0+0x20
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: AnimeReleaseEmailMonitorTargetDown
+    exp_alerts:
+    - exp_labels:
+        job: anime-release-email
+        instance: fixture:9100
+        anime_release_email_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Release email monitoring target is unreachable
+  - eval_time: 3m
+    alertname: AnimeReleaseEmailSnapshotMissing
+    exp_alerts: []
+- name: snapshot-clock-ahead
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_release_email_snapshot_timestamp_seconds{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="true"}'
+    values: 1000+60x20
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: AnimeReleaseEmailSnapshotClockAhead
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: AnimeReleaseEmailSnapshotClockAhead
+    exp_alerts:
+    - exp_labels:
+        job: anime-release-email
+        instance: fixture:9100
+        anime_release_email_monitor: 'true'
+        severity: warning
+      exp_annotations:
+        summary: Release email snapshot database clock is ahead of monitoring time
+- name: unmarked-target-outside-scope
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="false"}'
+    values: 0+0x20
+  - series: 'anime_release_email_exhausted_due{job="anime-release-email",instance="fixture:9100",anime_release_email_monitor="false"}'
+    values: 10+0x20
+  alert_rule_test:
+  - eval_time: 8m
+    alertname: AnimeReleaseEmailMonitorTargetDown
+    exp_alerts: []
+  - eval_time: 8m
+    alertname: AnimeReleaseEmailAttemptsExhausted
+    exp_alerts: []

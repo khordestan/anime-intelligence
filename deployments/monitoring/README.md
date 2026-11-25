@@ -45,3 +45,11 @@ scripts/check-monitoring-units.sh
 CI also renders actual metric output using the synthetic Go fixture and validates it with `promtool check metrics`. Alert tests cover healthy/empty queues, missing/disappearing per-target snapshots, down targets, stale/future-clock suppression, multi-target capacity matching, persistence thresholds, recovery and unmarked targets. Systemd verification substitutes `/usr/bin/true` for the example deployment binary while checking unit syntax; it does not test host-specific credentials, users or activation. Full-stack browser CI additionally runs the real CLI against its restricted disposable PostgreSQL role and checks the atomic file and permissions.
 
 Upstream references: [rule testing](https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/), [node_exporter textfile collector](https://github.com/prometheus/node_exporter#textfile-collector), [Prometheus downloads](https://prometheus.io/download/). See [queue operations](../../docs/IDENTITY_QUEUE_OPERATIONS.md) for metric definitions and retained-outcome limitations.
+
+## Release email scheduler rules
+
+`release-email-alerts.yml` is an optional rule file for an authorized collector using `release-email-status -format=prometheus`. Add the rule file and mark the scrape target with `anime_release_email_monitor="true"` after configuring regular atomic publication of the snapshot. Collect once per shared scheduler database.
+
+The rules distinguish unreachable targets, missing snapshots, snapshots over three minutes old and database clocks more than one minute ahead. A fresh snapshot triggers a warning when the oldest due scan stays more than ten minutes overdue for five minutes, or when due work stays at the attempt limit for two minutes. A due scan can belong to an account with no deliverable message. These initial thresholds describe scheduler state and require host-specific review before use.
+
+Run `promtool test rules deployments/monitoring/release-email-alerts.test.yml` to exercise persistence, recovery, stale and future snapshots, and target scoping.

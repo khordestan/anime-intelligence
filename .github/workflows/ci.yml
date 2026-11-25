@@ -355,8 +355,10 @@ jobs:
           "$RUNNER_TEMP/anime-promtool/promtool" check config deployments/monitoring/prometheus.example.yml
           "$RUNNER_TEMP/anime-promtool/promtool" check rules deployments/monitoring/identity-alerts.yml
           "$RUNNER_TEMP/anime-promtool/promtool" check rules deployments/monitoring/catalog-alerts.yml
+          "$RUNNER_TEMP/anime-promtool/promtool" check rules deployments/monitoring/release-email-alerts.yml
           "$RUNNER_TEMP/anime-promtool/promtool" test rules deployments/monitoring/identity-alerts.test.yml
           "$RUNNER_TEMP/anime-promtool/promtool" test rules deployments/monitoring/catalog-alerts.test.yml
+          "$RUNNER_TEMP/anime-promtool/promtool" test rules deployments/monitoring/release-email-alerts.test.yml
       - name: Validate inactive systemd example syntax
         run: scripts/check-monitoring-units.sh
       - name: Validate actual exporter output with Prometheus parser

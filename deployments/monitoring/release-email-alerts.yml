@@ -1,0 +1,50 @@
+groups:
+  - name: anime-release-email
+    interval: 30s
+    rules:
+      - record: anime_release_email:snapshot_fresh_timestamp_seconds
+        expr: >-
+          (anime_release_email_snapshot_timestamp_seconds{anime_release_email_monitor="true"} >= time() - 180)
+          and (anime_release_email_snapshot_timestamp_seconds{anime_release_email_monitor="true"} <= time() + 60)
+          and on(job, instance) (up{anime_release_email_monitor="true"} == 1)
+      - alert: AnimeReleaseEmailMonitorTargetDown
+        expr: up{anime_release_email_monitor="true"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Release email monitoring target is unreachable'}
+      - alert: AnimeReleaseEmailSnapshotMissing
+        expr: >-
+          (up{anime_release_email_monitor="true"} == 1)
+          unless on(job, instance) anime_release_email_snapshot_timestamp_seconds{anime_release_email_monitor="true"}
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Release email snapshot is missing on a reachable target'}
+      - alert: AnimeReleaseEmailSnapshotStale
+        expr: >-
+          (time() - anime_release_email_snapshot_timestamp_seconds{anime_release_email_monitor="true"} > 180)
+          and on(job, instance) (up{anime_release_email_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Release email snapshot is no longer refreshing'}
+      - alert: AnimeReleaseEmailSnapshotClockAhead
+        expr: >-
+          (anime_release_email_snapshot_timestamp_seconds{anime_release_email_monitor="true"} - time() > 60)
+          and on(job, instance) (up{anime_release_email_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Release email snapshot database clock is ahead of monitoring time'}
+      - alert: AnimeReleaseEmailScansOverdue
+        expr: >-
+          (time() - anime_release_email_oldest_due_timestamp_seconds{anime_release_email_monitor="true"} > 600)
+          and on(job, instance) (anime_release_email_due{anime_release_email_monitor="true"} > 0)
+          and on(job, instance) anime_release_email:snapshot_fresh_timestamp_seconds
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Release email scheduler scans are overdue'}
+      - alert: AnimeReleaseEmailAttemptsExhausted
+        expr: >-
+          (anime_release_email_exhausted_due{anime_release_email_monitor="true"} > 0)
+          and on(job, instance) anime_release_email:snapshot_fresh_timestamp_seconds
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Release email scheduler has due work at its attempt limit'}
