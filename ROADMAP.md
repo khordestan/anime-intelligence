@@ -176,6 +176,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 ## Milestone 6 — AI and discovery
 - [x] Read-only catalog evidence tool with bounded topic selection and source attribution
 - [x] Opt-in model-assisted catalog topic selection
+- [x] Deterministic and model-selected catalog topics for native title, release quarter and demographics with source attribution
 - [ ] Tool-constrained analyst for broader queries
 - [x] Two-title catalog comparison with sourced numeric explanations
 - [ ] Evidence-grounded explanations across broader analyst tools

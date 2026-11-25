@@ -17,9 +17,10 @@ type analysisCatalog struct {
 
 func (analysisCatalog) CatalogDetails(_ context.Context, id string) (store.CatalogDetails, bool, error) {
 	return store.CatalogDetails{
-		Anime:        store.Anime{ID: id, Title: "Synthetic title", EpisodeCountKnown: true, Synopsis: "Hidden story"},
+		Anime:        store.Anime{ID: id, Title: "Synthetic title", NativeTitle: "Synthetic native", Season: "SPRING", EpisodeCountKnown: true, Synopsis: "Hidden story"},
 		Provider:     "base",
-		FieldSources: []store.CatalogFieldSource{{Field: "episodeCount", Mode: "SELECT", Provider: "reviewed"}},
+		FieldSources: []store.CatalogFieldSource{{Field: "episodeCount", Mode: "SELECT", Provider: "reviewed"}, {Field: "season", Mode: "SELECT", Provider: "reviewed-season"}},
+		Demographics: []string{"Synthetic demographic"},
 		Themes:       []string{"Hidden theme"},
 	}, true, nil
 }
@@ -74,6 +75,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		status int
 	}{
 		{[]string{"episodeCount"}, 200},
+		{[]string{"nativeTitle", "season", "demographics"}, 200},
 		{[]string{"episodeCount", "episodeCount"}, 502},
 		{[]string{"synopsis"}, 502},
 	} {
@@ -81,7 +83,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog/assisted",
 			strings.NewReader(`{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
 		handler.AnalyzeWithSelector(response, request, func(_ context.Context, question string, allowed []string) ([]string, string, error) {
-			if question != "How long?" || len(allowed) != 6 {
+			if question != "How long?" || len(allowed) != 9 {
 				t.Fatalf("unexpected provider input: %q %v", question, allowed)
 			}
 			return tc.fields, "synthetic-1", nil
@@ -129,5 +131,36 @@ func TestAnalysisSharedLabelsRequireEvidenceForBothTitles(t *testing.T) {
 	}
 	if got := sharedAnalysisEvidence(items[:1]); len(got) != 0 {
 		t.Fatalf("a single title cannot share labels: %+v", got)
+	}
+}
+
+func TestAnalyzeAdditionalTopicsPreserveFieldProvenance(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog",
+		strings.NewReader(`{"question":"What native title, release quarter and demographic are recorded?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
+	response := httptest.NewRecorder()
+	NewHandler(analysisCatalog{}).Analyze(response, request)
+	var payload struct {
+		TopicMatched bool
+		Items        []catalogAnalysisTitle
+	}
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &payload) != nil || !payload.TopicMatched || len(payload.Items) != 1 {
+		t.Fatalf("response: %d %s", response.Code, response.Body)
+	}
+	facts := map[string]catalogAnalysisFact{}
+	for _, fact := range payload.Items[0].Evidence {
+		facts[fact.Field] = fact
+	}
+	for key, expected := range map[string][2]string{
+		"nativeTitle":  {"Synthetic native", "base"},
+		"season":       {"SPRING", "reviewed-season"},
+		"demographics": {"Synthetic demographic", "base"},
+	} {
+		got := facts[key]
+		if len(got.Values) != 1 || got.Values[0] != expected[0] || got.Provider != expected[1] {
+			t.Errorf("%s: unexpected evidence %+v", key, got)
+		}
+	}
+	if strings.Contains(response.Body.String(), "Hidden") {
+		t.Fatal("additional topics exposed hidden evidence")
 	}
 }

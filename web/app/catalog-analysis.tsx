@@ -15,6 +15,9 @@ const labels: Record<string, string> = {
   status: "Status",
   genres: "Genres",
   studios: "Studios",
+  nativeTitle: "Native title",
+  season: "Release quarter",
+  demographics: "Demographics",
 };
 
 function explainComparison({ field, difference, animeIds }: Comparison, items: Analysis["items"]) {

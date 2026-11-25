@@ -51,7 +51,7 @@ paths:
   /api/v1/analysis/catalog:
     post:
       summary: Select sourced catalog facts for one or two canonical titles
-      description: Uses a deterministic topic selector. No question is sent to an external service. Only format, release year, episode count, status, genres and studios are eligible. An unrecognized topic returns the eligible fact list with topicMatched false.
+      description: Uses a deterministic topic selector. No question is sent to an external service. Eligible fields are format, release year and quarter, episode count, status, native title, genres, studios and demographics. An unrecognized topic returns the eligible fact list with topicMatched false.
       requestBody:
         required: true
         content:
