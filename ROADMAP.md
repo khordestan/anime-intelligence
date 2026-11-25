@@ -170,6 +170,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Evidence-grounded explanations across broader analyst tools
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
 - [x] Discovery hide/restore and add-to-Planning feedback
+- [x] Explicit feature feedback from Discovery through the private Personal Match preference controls
 - [ ] Discovery feedback beyond hide/restore and library actions
 - [x] LLM provider abstraction, OpenAI adapter and process-local usage controls
 - [x] Shared PostgreSQL model budgets across API replicas
