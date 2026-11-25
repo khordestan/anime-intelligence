@@ -44,3 +44,11 @@ The common catalog/curator/mapper role guard now fails closed for privileges on 
 Reviewed identities may now be used for explicit [schedules-only imports](CATALOG_SCHEDULE_AUTHORITY.md). That separate operation preserves metadata authority and rejects conflicts with existing episode/track ownership. Identity mapping itself still changes no facts or authority.
 
 Incorrect unused links now have a separate [reviewed retraction workflow](CATALOG_RETRACTIONS.md) with exact-row preconditions and a permanent database retirement fence. Mapping itself still cannot remap or restore an existing/retired source identity. Apply migration 000022 and refresh mapper/writer read grants before upgrading. Dependent-data corrections and canonical merges remain unsupported.
+
+## Preview canonical merge impact
+
+Run `catalog-merge-impact -source=<canonical-id> -target=<canonical-id>` against an isolated review database with `CATALOG_MERGE_REVIEW_DATABASE_URL`. Use an authorized operator connection capable of reading a complete snapshot across forced row policies. The command rejects partial visibility and uses a bounded, read-only transaction.
+
+The JSON report counts direct foreign-key references for both titles. It includes known indirect references through release events, notifications, pending email jobs, provider archive records and catalog fetch jobs. It also reports aggregate conflicts for overlapping provider mappings, episodes and tracks, tracker ownership, follow scopes and edges that would become self-references. It contains no owner IDs, account content or raw source records.
+
+Counts describe the inspected snapshot. Before applying any canonical merge, separately review field authority, differing watch histories and ratings, release event handling and audit retention. The command has no apply option.
