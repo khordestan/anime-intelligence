@@ -54,3 +54,5 @@ Select **Explore features missing from my library** or pass `unfamiliar=true` to
 A cursor in this mode carries `unfamiliar: true` and its `evidenceCount` refers to the unfamiliar ranking count. Send that count as `afterCount` and send `afterUnfamiliar=true` together with `unfamiliar=true`. Switching modes starts from the first page. With an empty or unevidenced library, every eligible positive feature is unfamiliar.
 
 Choose a feature in Discovery to prefer, avoid or clear it for Personal Match. Prefer and Avoid set the declared weight to +1 or −1. Clear removes the declared weight. The preference editor still accepts intermediate weights. The same verified-owner preference record drives Personal Match and appears in account exports.
+
+The **Personal Match results limit** selector requests up to 10, 20, 50 or 100 matches. The current result stays visible after a failed change. The selection is retained while the account dashboard is mounted.

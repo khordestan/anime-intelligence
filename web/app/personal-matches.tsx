@@ -11,6 +11,14 @@ type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount"> & { fea
 type DiscoveryPage = { items: DiscoveryTitle[]; nextCursor?: DiscoveryCursor };
 type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
+type MatchResults = { items: Match[]; profile?: Signal[] };
+const defaultMatchLimit = 20;
+const matchLimits = [10, defaultMatchLimit, 50, 100];
+
+function matchResultsPath(limit: number) {
+  return limit === defaultMatchLimit ? "/recommendations" : "/recommendations?limit=" + limit;
+}
+
 export default function PersonalMatches({ client, onError, onLibraryChange }: { client: ApiClient; onError: (error: unknown) => void; onLibraryChange: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [preferences, setPreferences] = useState<Preference[]>([]);
@@ -20,6 +28,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
   const [discoveryFeature, setDiscoveryFeature] = useState("");
   const [discoveryUnfamiliar, setDiscoveryUnfamiliar] = useState(false);
   const [hidden, setHidden] = useState<HiddenMatches | null>(null);
+  const [matchLimit, setMatchLimit] = useState(defaultMatchLimit);
   const [matches, setMatches] = useState<Match[]>([]);
   const [profile, setProfile] = useState<Signal[]>([]);
   const [busy, setBusy] = useState(false);
@@ -29,7 +38,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
   async function read(current: number, includeHidden = hidden !== null, includeDiscovery = discovery !== null) {
     const [p, m, h, d] = await Promise.all([
       client.request<{ items: Preference[] }>("/preferences"),
-      client.request<{ items: Match[]; profile?: Signal[] }>("/recommendations"),
+      client.request<MatchResults>(matchResultsPath(matchLimit)),
       includeHidden ? client.request<HiddenMatches>("/recommendations/dismissals") : Promise.resolve(null),
       includeDiscovery ? client.request<DiscoveryPage>(discoveryPath(discoveryFeature)) : Promise.resolve(null),
     ]);
@@ -44,6 +53,25 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
     try { await read(current, includeHidden, includeDiscovery); }
     catch (error) { if (alive.current && current === revision.current) { setMessage("Could not load Personal Match. Try again."); onError(error); } }
     finally { if (alive.current && current === revision.current) setBusy(false); }
+  }
+  async function changeMatchLimit(limit: number) {
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await client.request<MatchResults>(matchResultsPath(limit));
+      if (!alive.current || current !== revision.current) return;
+      setMatchLimit(limit);
+      setMatches(result.items);
+      setProfile(result.profile ?? []);
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not change the results limit. Try again.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
   }
   async function save(preference: Preference, reset = false, discoveryWeight?: number) {
     const value = discoveryWeight === undefined
@@ -222,6 +250,12 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
         </li>)}
       </ul>
       <h3 className="mt-5 font-semibold">Personal matches</h3>
+      <label className="mt-2 block text-sm">Personal Match results limit
+        <select value={matchLimit} disabled={busy} onChange={event => void changeMatchLimit(Number(event.target.value))}
+          className="ml-2 rounded-lg border border-white/10 bg-slate-950 p-2">
+          {matchLimits.map(limit => <option key={limit} value={limit}>{limit}</option>)}
+        </select>
+      </label>
       <button type="button" disabled={busy} aria-expanded={hidden !== null}
         onClick={() => { if (hidden) setHidden(null); else void load(true); }}
         className="mt-2 mr-4 text-xs underline disabled:opacity-50">{hidden ? "Close hidden matches" : "Manage hidden matches"}</button>
