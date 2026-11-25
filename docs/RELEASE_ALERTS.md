@@ -88,3 +88,5 @@ Jobs store canonical event IDs and lease metadata. A replica claims one account 
 ### Inspect the release email scheduler
 
 Run `go run ./cmd/release-email-status` with the restricted runtime database connection. It prints a read-only JSON snapshot of enrolled accounts, due scans, active leases, delayed scans, persisted attempts and the oldest due time. Use `-format=prometheus` for fixed-label gauges. An account can be due for a scan without having eligible mail. Output contains aggregate counts and timestamps. The command makes no SMTP connections.
+
+For a node_exporter textfile collector, use `-format=prometheus -output-file=/absolute/path.prom`. The command stages the complete snapshot in the destination directory, sets mode `0640` and atomically replaces the previous file. Use one collector per shared release database and a trusted directory that the collector can write and node_exporter can read. The example `anime-release-email-metrics` systemd units run once a minute when enabled by an operator. They need a protected database environment file. SMTP credentials are unnecessary.

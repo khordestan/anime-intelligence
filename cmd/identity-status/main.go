@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/khordestan/anime-intelligence/internal/platform/metrics"
@@ -38,7 +36,7 @@ func run(args []string, dsn string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, usage)
 		return 1
 	}
-	if flags.NArg() != 0 || (*format != "json" && *format != "prometheus") || (*outputFile != "" && (*format != "prometheus" || !filepath.IsAbs(*outputFile) || !strings.HasSuffix(*outputFile, ".prom"))) {
+	if flags.NArg() != 0 || (*format != "json" && *format != "prometheus") || (*outputFile != "" && (*format != "prometheus" || !metrics.ValidTextfilePath(*outputFile))) {
 		fmt.Fprintln(stderr, usage)
 		return 1
 	}
