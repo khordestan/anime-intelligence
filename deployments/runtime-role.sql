@@ -54,3 +54,5 @@ GRANT SELECT,INSERT,DELETE ON personal_match_dismissals TO anime_runtime;
 -- Shared analyst limits store only bounded counters and a time window.
 GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO anime_runtime;
 GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO anime_runtime;
+
+GRANT SELECT,INSERT,UPDATE,DELETE ON release_email_jobs TO anime_runtime;

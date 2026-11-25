@@ -78,7 +78,7 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT USAGE ON SCHEMA public TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON anime,catalog_metadata,anime_relations,airing_schedule TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON users,auth_sessions,auth_challenges,identity_outbox,identity_requests,user_anime,watch_progress,user_ratings TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON release_email_jobs TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT ON user_preferences,recommendations,recommendation_feedback,user_follows,notifications TO `+pgx.Identifier{role}.Sanitize()); err != nil {

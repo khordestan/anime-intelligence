@@ -17,7 +17,7 @@ BEGIN
 END $guard$;
 
 LOCK TABLE public.users, public.auth_sessions, public.auth_challenges,
-  public.identity_requests, public.identity_outbox IN ACCESS EXCLUSIVE MODE;
+  public.identity_requests, public.identity_outbox, public.release_email_jobs IN ACCESS EXCLUSIVE MODE;
 
 -- Password reset clears locked_until; disabled accounts remain disabled.
 UPDATE public.users SET locked_until = CASE WHEN disabled_at IS NULL THEN 'infinity' ELSE locked_until END,
@@ -28,4 +28,5 @@ UPDATE public.auth_challenges SET revoked_at = now()
  WHERE consumed_at IS NULL AND revoked_at IS NULL;
 DELETE FROM public.identity_requests;
 DELETE FROM public.identity_outbox;
+DELETE FROM public.release_email_jobs;
 COMMIT;

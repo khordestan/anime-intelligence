@@ -10,6 +10,7 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
   let followPageFailed = false;
   const calls: { path: string; method: string; token: string; body: unknown }[] = [];
   const follows = new Map<string, { animeId: string; title: string; track: string; scope?: string; scheduleNotices?: boolean }[]>();
+  const emailConsent = new Map<string, string | null>();
   const notices = new Map<string, { id: string; title: string; body: string; createdAt: string; readAt?: string }[]>();
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
@@ -36,6 +37,12 @@ async function mockReleases(page: Page, holdFirst = false, history = false, back
     if (!follows.has(token)) return respond({ error: "unauthorized" }, 401);
     if (path === "/auth/logout") return route.fulfill({ status: 204, headers });
     if (path === "/tracker") return respond({ items: [{ id: "entry", animeId: anime, title: "Synthetic Release Sky", watchStatus: "WATCHING", episodesWatched: 1 }] });
+    if (path === "/releases/email-consent") {
+      if (request.method() === "PUT") {
+        emailConsent.set(token, request.postDataJSON().enabled ? new Date().toISOString() : null);
+      }
+      return respond({ enabledSince: emailConsent.get(token) ?? null });
+    }
     if (path === "/follows") {
       if (pagedFollows && token.endsWith("1")) {
         expect(url.searchParams.get("limit")).toBe("50");
@@ -248,4 +255,18 @@ test("paged follows retain the current page on error and resolve off-page librar
   await expect(panel.getByLabel("Release track Synthetic Release Sky", { exact: true })).toHaveValue("DUB");
   await expect(panel.getByLabel("Release scope Synthetic Release Sky", { exact: true })).toHaveValue("FRANCHISE");
   expect(api.calls.filter(call => call.path === "/notifications")).toHaveLength(1);
+});
+
+test("release email consent can be enabled and withdrawn", async ({ page }) => {
+  await mockReleases(page);
+  await page.goto("/");
+  await login(page, "release-email@example.test");
+  const panel = page.getByRole("region", { name: "Release alerts", exact: true });
+  await panel.getByRole("button", { name: "Manage release alerts", exact: true }).click();
+  await panel.getByRole("button", { name: "Release email settings", exact: true }).click();
+  await expect(panel.getByText("Release email preference is off.")).toBeVisible();
+  await panel.getByRole("button", { name: "Turn on release email", exact: true }).click();
+  await expect(panel.getByText("Release email preference is on.")).toBeVisible();
+  await panel.getByRole("button", { name: "Turn off release email", exact: true }).click();
+  await expect(panel.getByText("Release email preference is off.")).toBeVisible();
 });

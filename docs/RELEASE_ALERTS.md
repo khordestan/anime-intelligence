@@ -71,4 +71,10 @@ Enable source publication only for a reviewed offline snapshot with permission f
 
 Verified accounts can read and set their preference through `GET` and `PUT /api/v1/releases/email-consent`. Send `{"enabled":true}` to record consent and `{"enabled":false}` to withdraw it. The response gives the opt-in timestamp or null. Repeated opt-in preserves the timestamp. Account export includes active consent and the offline recovery fence clears restored consent. Migration 000026 defaults existing accounts to opted out and guards rollback while consent remains.
 
-The preference API records consent. Background materialization and delivery are separate roadmap work.
+## Background email delivery
+
+The dashboard exposes the same consent under Release alerts. The SMTP worker is off by default. An authorized operator can enable it in a PostgreSQL API instance with `RELEASE_EMAIL_ENABLED=1` and a complete separate SMTP configuration using `RELEASE_EMAIL_SMTP_ADDR`, `RELEASE_EMAIL_SMTP_USERNAME`, `RELEASE_EMAIL_SMTP_PASSWORD` and `RELEASE_EMAIL_SMTP_FROM`. For a private test CA, set `RELEASE_EMAIL_SMTP_CA_FILE`. Apply migration 000027 and refresh runtime grants before startup. It backfills jobs for prior opt-ins. Stop email workers before rolling back.
+
+The worker sends a generic notice to the verified account address without including title names or provider data. It considers confirmed episode and movie releases and eligible linked-season announcements from the last 24 hours, after both the follow and consent boundaries. It respects release tracks and scopes. A five-minute gap after completion limits each account's delivery rate.
+
+Jobs store canonical event IDs and lease metadata. A replica claims one account at a time, rechecks current consent and eligibility, and then sends using verified implicit TLS. An expired lease can be retried and completion checks the lease token. There are at most five attempts per event, with a terminal record for successful or exhausted delivery. An ambiguous SMTP acceptance or process crash between delivery and acknowledgement can produce a duplicate. Opt-out cancels pending jobs. A message already in flight may still arrive. Account deletion cascades jobs and the offline recovery fence drops restored jobs and consent.

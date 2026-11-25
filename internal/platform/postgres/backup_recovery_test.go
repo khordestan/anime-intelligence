@@ -96,6 +96,9 @@ func TestBackupRestoreRecovery(t *testing.T) {
 			t.Fatal("seed recovery resources", err)
 		}
 	}
+	if consent, err := db.Repository(one.Token).SetReleaseEmailConsent(ctx, true); err != nil || consent.EnabledSince == nil {
+		t.Fatal("seed release email consent", err)
+	}
 	before, err := db.ExportAccount(ctx, one.Token)
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +167,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 			t.Fatal("pre-backup revoked session revived", err)
 		}
 		after, err := restored.ExportAccount(ctx, one.Token)
-		if err != nil || after.User != before.User || !reflect.DeepEqual(after.Data, before.Data) {
+		if err != nil || after.User != before.User || !reflect.DeepEqual(after.Data, before.Data) || after.ReleaseEmailSince == nil || !after.ReleaseEmailSince.Equal(*before.ReleaseEmailSince) {
 			t.Fatal("restored export differs from backup snapshot", err)
 		}
 		if _, err = restored.Login(ctx, one.User.Email, password); err != nil {
@@ -283,11 +286,15 @@ func TestBackupRestoreRecovery(t *testing.T) {
 		if err = restored.VerifyEmail(ctx, oldMessage.Token); !errors.Is(err, postgres.ErrInvalidChallenge) {
 			t.Fatal("historical proof survived fence", err)
 		}
-		for _, table := range []string{"identity_requests", "identity_outbox"} {
+		for _, table := range []string{"identity_requests", "identity_outbox", "release_email_jobs"} {
 			var n int
 			if err = restoredOwner.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil || n != 0 {
 				t.Fatal("fence retained queued work", err)
 			}
+		}
+		var retainedConsent int
+		if err := restoredOwner.QueryRow(ctx, `SELECT count(*) FROM users WHERE release_email_since IS NOT NULL`).Scan(&retainedConsent); err != nil || retainedConsent != 0 {
+			t.Fatal("fence retained release email consent", err)
 		}
 		// Fencing alone cannot identify an account deleted after the snapshot.
 		// Reconcile that known deletion before opening fresh recovery intake.
@@ -392,7 +399,7 @@ func restoreSyntheticArchive(t *testing.T, ctx context.Context, archive, ownerDS
 	}
 	t.Cleanup(func() { _ = owner.Close(context.Background()) })
 	var count int
-	if err = owner.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&count); err != nil || count != 26 {
+	if err = owner.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&count); err != nil || count != 27 {
 		t.Fatal("migration ledger not restored", err)
 	}
 	if err = migrations.Apply(ctx, owner); err != nil {
@@ -439,7 +446,7 @@ func assertRestoredIsolation(t *testing.T, ctx context.Context, db *postgres.DB,
 		t.Fatal("connect restored unscoped role")
 	}
 	defer raw.Close(ctx)
-	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications", "catalog_analysis_owner_budget"} {
+	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications", "catalog_analysis_owner_budget", "release_email_jobs"} {
 		var n int
 		if err = raw.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("restored unscoped RLS failed for %s", table)

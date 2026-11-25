@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiClient, ApiError } from "../lib/api";
 import ProviderCredit from "./provider-credit";
+import ReleaseEmailSettings from "./release-email-settings";
 
 type Follow = { animeId: string; title: string; track: string; scope?: "ANIME" | "FRANCHISE"; scheduleNotices?: boolean; createdAt: string };
 type FollowPage = { items: Follow[]; nextCursor?: string };
@@ -201,6 +202,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
         <button disabled={busy} onClick={() => void refresh()} className="mt-3 text-sm underline disabled:opacity-50">{cursor ? "Back to latest alerts" : "Refresh alerts"}</button>
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
         {!cursor && catchingUp && <p className="mt-2 text-sm text-amber-200">More release alerts are waiting. {oldestPendingAt && <>The oldest pending release is from {new Date(oldestPendingAt).toLocaleString()}. </>}Refresh alerts to check the next batch.</p>}
+        <ReleaseEmailSettings client={client} />
         <h3 className="mt-5 font-medium">Followed releases</h3>
         {pagedFollows && library.length > 0 && (
           <label className="mt-2 block text-sm">
@@ -278,7 +280,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
           </li>)}
         </ul>
         {nextCursor && <button disabled={busy} onClick={() => void refresh(nextCursor)} className="mt-3 text-sm underline disabled:opacity-50">Older notifications</button>}
-        <p className="mt-4 text-xs text-slate-500">Showing up to 50 follows and 100 notifications per page. Email and push alerts are not enabled.</p>
+        <p className="mt-4 text-xs text-slate-500">Showing up to 50 follows and 100 notifications per page.</p>
       </div>}
     </section>
   );
