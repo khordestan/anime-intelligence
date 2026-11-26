@@ -52,3 +52,11 @@ Run `catalog-merge-impact -source=<canonical-id> -target=<canonical-id>` against
 The JSON report counts direct foreign-key references for both titles. It includes known indirect references through release events, notifications, pending email jobs, provider archive records and catalog fetch jobs. It also reports aggregate conflicts for overlapping provider mappings, episodes and tracks, tracker ownership, follow scopes and edges that would become self-references. It contains no owner IDs, account content or raw source records.
 
 Counts describe the inspected snapshot. Before applying any canonical merge, separately review field authority, differing watch histories and ratings, release event handling and audit retention. The command has no apply option.
+
+## Merge a reviewed canonical placeholder
+
+Apply migration 000031, reapply runtime grants and provision the dedicated `deployments/catalog-merge-reviewer-role.sql` role. With its connection supplied through `CATALOG_PLACEHOLDER_MERGE_DATABASE_URL`, run `catalog-merge-placeholder -retired=<placeholder-id> -survivor=<canonical-id> -reference=<public-review>` to preview. Review the returned mapping IDs and add `-apply` with a repeated `-expected-mapping-id=<uuid>` for each returned ID.
+
+The operation transfers only exact provider identity rows that fit unoccupied provider slots. It refuses retirement when the placeholder has tracker, rating, continuity, review, release, source archive or other dependent records. It checks references and the expected mapping IDs again during apply. It reserves the retired UUID and keeps a public redirect to the survivor. Public title, details, continuity and schedule-history reads through that UUID use the survivor. For new writes, use the canonical ID returned by those reads. An exact review replay is idempotent.
+
+Use a maintenance window for apply because the operation briefly takes an exclusive catalog-title lock to fence new dependencies. Run the impact inventory separately for a placeholder that fails these checks. The merge reviewer only receives mapping IDs on success and a generic dependency refusal on failure.

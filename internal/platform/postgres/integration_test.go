@@ -93,6 +93,9 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT ON watch_cycles TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _,err=owner.Exec(ctx,`GRANT SELECT(anime_id,provider,external_id) ON anime_external_ids TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
  if _,err=owner.Exec(ctx,`GRANT SELECT(anime_id,field,revision,mode,source_id,observed_at) ON catalog_field_choices TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
+	if _, err = owner.Exec(ctx, `GRANT SELECT(retired_id,anime_id) ON anime_redirects TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	ownerDSN := u.String()
 	u.User = url.UserPassword(role, credential)
 	db, err := postgres.Open(ctx, u.String())

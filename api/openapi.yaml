@@ -188,6 +188,7 @@ paths:
         "400": { description: Invalid facet query }
   /api/v1/anime/{id}:
     get:
+      description: A reviewed retired canonical ID resolves to its active survivor in PostgreSQL mode.
       summary: Get anime by ID
       parameters:
         - in: path

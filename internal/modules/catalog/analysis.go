@@ -116,6 +116,10 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 			writeError(w, http.StatusNotFound, "anime_not_found", "Anime was not found")
 			return
 		}
+		if len(detailsList) > 0 && detailsList[0].Anime.ID == details.Anime.ID {
+			writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Choose different canonical titles for comparison")
+			return
+		}
 		detailsList = append(detailsList, details)
 	}
 	cancel()

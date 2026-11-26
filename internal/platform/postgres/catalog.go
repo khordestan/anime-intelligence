@@ -15,9 +15,10 @@ func (r *Repository) CatalogDetails(ctx context.Context,id string) (store.Catalo
 	if err!=nil {return out,false,err}
 	defer rollback(tx)
 	a:=&out.Anime
-	err=tx.QueryRow(ctx,`SELECT `+animeColumns+` FROM anime WHERE id=$1`,id).Scan(&a.ID,&a.Title,&a.NativeTitle,&a.MediaType,&a.ReleaseYear,&a.Status,&a.EpisodeCount,&a.Synopsis,&a.Season,&a.CoverImageURL,&a.EpisodeCountKnown)
+	err=tx.QueryRow(ctx,`SELECT `+animeColumns+` FROM anime WHERE id=`+canonicalAnimeID,id).Scan(&a.ID,&a.Title,&a.NativeTitle,&a.MediaType,&a.ReleaseYear,&a.Status,&a.EpisodeCount,&a.Synopsis,&a.Season,&a.CoverImageURL,&a.EpisodeCountKnown)
 	if errors.Is(err,pgx.ErrNoRows) {return out,false,nil}
 	if err!=nil {return out,false,err}
+	id = a.ID
 	var payload []byte
 	err=tx.QueryRow(ctx,`SELECT s.provider_key,m.observed_at,m.payload FROM catalog_metadata m JOIN data_sources s ON s.id=m.source_id WHERE m.anime_id=$1`,id).Scan(&out.Provider,&out.ObservedAt,&payload)
 	if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,false,err}

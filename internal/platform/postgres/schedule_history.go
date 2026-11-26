@@ -15,7 +15,7 @@ func (r *Repository) CatalogScheduleHistory(ctx context.Context, id string, numb
 	rows, err := r.db.pool.Query(ctx, `SELECT a.episode_number,a.release_track,a.scheduled_at,a.actual_released_at,
 		a.last_verified_at,a.revision,COALESCE(s.provider_key,'')
 		FROM airing_schedule a LEFT JOIN data_sources s ON s.id=a.source_id
-		WHERE a.anime_id=$1 AND a.episode_number=$2 AND a.release_track=$3
+		WHERE a.anime_id=`+canonicalAnimeID+` AND a.episode_number=$2 AND a.release_track=$3
 		  AND ($4::integer=0 OR a.revision<$4)
 		ORDER BY a.revision DESC LIMIT $5`, id, number, track, before, store.ScheduleHistoryPageSize+1)
 	if err != nil {
