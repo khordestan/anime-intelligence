@@ -69,7 +69,7 @@ paths:
                   uniqueItems: true
                   items: { type: string, format: uuid }
       responses:
-        "200": { description: Engine version and topicMatched flag plus title evidence with field, values and available provider and observation time. Episode evidence uses episodeFacts with number, track, time and optional provider. A fact without values or episodeFacts is unknown. Long value lists are capped at 20 and marked truncated. Two titles may include comparisons for known numeric fields, with difference equal to the first value minus the second. Optional sharedEvidence lists genre or studio values supported by both returned evidence lists. }
+        "200": { description: Engine version and topicMatched flag plus title evidence with field, values and available provider and observation time. Episode evidence uses episodeFacts with number, track, time and optional provider. Direct prequel and sequel evidence uses continuityFacts with animeId, title, relation and recorded providers. A fact with no evidence entries is unknown. Long value lists are capped at 20 and marked truncated. Two titles may include comparisons for known numeric fields, with difference equal to the first value minus the second. Optional sharedEvidence lists genre or studio values supported by both returned evidence lists. }
         "400": { description: Invalid question or selection }
         "404": { description: One or more selected anime are missing }
   /api/v1/analysis/catalog/assisted:

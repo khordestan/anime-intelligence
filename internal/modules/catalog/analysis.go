@@ -17,12 +17,13 @@ import (
 )
 
 type catalogAnalysisFact struct {
-	Field        string                `json:"field"`
-	Values       []string              `json:"values"`
-	Provider     string                `json:"provider,omitempty"`
-	ObservedAt   *time.Time            `json:"observedAt,omitempty"`
-	Truncated    bool                  `json:"truncated,omitempty"`
-	EpisodeFacts []analysisEpisodeFact `json:"episodeFacts,omitempty"`
+	Field           string                   `json:"field"`
+	Values          []string                 `json:"values"`
+	Provider        string                   `json:"provider,omitempty"`
+	ObservedAt      *time.Time               `json:"observedAt,omitempty"`
+	Truncated       bool                     `json:"truncated,omitempty"`
+	EpisodeFacts    []analysisEpisodeFact    `json:"episodeFacts,omitempty"`
+	ContinuityFacts []analysisContinuityFact `json:"continuityFacts,omitempty"`
 }
 
 type analysisEpisodeFact struct {
@@ -30,6 +31,13 @@ type analysisEpisodeFact struct {
 	Track    string    `json:"track"`
 	Time     time.Time `json:"time"`
 	Provider string    `json:"provider,omitempty"`
+}
+
+type analysisContinuityFact struct {
+	AnimeID   string   `json:"animeId"`
+	Title     string   `json:"title"`
+	Relation  string   `json:"relation"`
+	Providers []string `json:"providers"`
 }
 
 type catalogAnalysisTitle struct {
@@ -64,6 +72,7 @@ var analysisFields = []struct {
 	{"demographics", []string{"demographic", "demographics"}},
 	{"confirmedReleases", []string{"confirmed", "released", "premiered"}},
 	{"upcomingSchedule", []string{"schedule", "scheduled", "airdate", "airdates", "upcoming"}},
+	{"continuity", []string{"continuity", "prequel", "prequels", "sequel", "sequels"}},
 }
 
 type CatalogFieldSelector func(context.Context, string, []string) ([]string, string, error)
@@ -143,11 +152,25 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 		engine, model = "model-selected-catalog-facts-v1", selectedModel
 	}
 	asOf := time.Now().UTC()
+	continuity, hasContinuity := h.data.(store.ContinuityCatalog)
+	continuityCtx, cancelContinuity := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancelContinuity()
 	items := make([]catalogAnalysisTitle, 0, len(detailsList))
 	for _, details := range detailsList {
 		item := catalogAnalysisTitle{AnimeID: details.Anime.ID, Title: details.Anime.Title}
 		for _, field := range fields {
-			item.Evidence = append(item.Evidence, projectAnalysisFact(details, field, asOf))
+			fact := projectAnalysisFact(details, field, asOf)
+			if field == "continuity" && hasContinuity {
+				graph, found, err := continuity.CatalogContinuity(continuityCtx, details.Anime.ID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "catalog_read_failed", "Could not read catalog continuity")
+					return
+				}
+				if found {
+					fact.ContinuityFacts, fact.Truncated = directAnalysisContinuity(graph)
+				}
+			}
+			item.Evidence = append(item.Evidence, fact)
 		}
 		items = append(items, item)
 	}
@@ -362,4 +385,34 @@ func analysisEpisodeFacts(episodes []store.CatalogEpisode, confirmed bool, asOf 
 		return facts[:maxFacts], true
 	}
 	return facts, false
+}
+
+// Only an explicit edge touching the selected title supports a direct relation.
+func directAnalysisContinuity(graph store.Continuity) ([]analysisContinuityFact, bool) {
+	titles := make(map[string]string, len(graph.Nodes))
+	for _, node := range graph.Nodes {
+		titles[node.ID] = node.Title
+	}
+	const maxFacts = 20
+	var facts []analysisContinuityFact
+	for _, edge := range graph.Edges {
+		var id, relation string
+		switch {
+		case edge.ToID == graph.RootID:
+			id, relation = edge.FromID, "PREQUEL"
+		case edge.FromID == graph.RootID:
+			id, relation = edge.ToID, "SEQUEL"
+		default:
+			continue
+		}
+		title, found := titles[id]
+		if !found || id == graph.RootID {
+			continue
+		}
+		if len(facts) == maxFacts {
+			return facts, true
+		}
+		facts = append(facts, analysisContinuityFact{AnimeID: id, Title: title, Relation: relation, Providers: edge.Providers})
+	}
+	return facts, graph.Truncated
 }

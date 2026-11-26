@@ -76,6 +76,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		status int
 	}{
 		{[]string{"episodeCount"}, 200},
+		{[]string{"continuity"}, 200},
 		{[]string{"nativeTitle", "season", "demographics"}, 200},
 		{[]string{"episodeCount", "episodeCount"}, 502},
 		{[]string{"synopsis"}, 502},
@@ -84,7 +85,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog/assisted",
 			strings.NewReader(`{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
 		handler.AnalyzeWithSelector(response, request, func(_ context.Context, question string, allowed []string) ([]string, string, error) {
-			if question != "How long?" || len(allowed) != 11 {
+			if question != "How long?" || len(allowed) != 12 {
 				t.Fatalf("unexpected provider input: %q %v", question, allowed)
 			}
 			return tc.fields, "synthetic-1", nil
@@ -191,5 +192,42 @@ func TestAnalysisSeparatesConfirmedReleasesFromUpcomingSchedules(t *testing.T) {
 	scheduled = projectAnalysisFact(details, "upcomingSchedule", now)
 	if !scheduled.Truncated || len(scheduled.EpisodeFacts) != 20 || scheduled.EpisodeFacts[0].Number != 4 || scheduled.EpisodeFacts[19].Number != 23 {
 		t.Fatalf("schedule evidence was not bounded in timestamp order: %+v", scheduled)
+	}
+}
+
+type continuityAnalysisCatalog struct{ analysisCatalog }
+
+func (continuityAnalysisCatalog) CatalogContinuity(_ context.Context, root string) (store.Continuity, bool, error) {
+	return store.Continuity{RootID: root, Truncated: true,
+		Nodes: []store.ContinuityNode{{ID: "prior", Title: "Earlier title"}, {ID: "later", Title: "Later title"}, {ID: "indirect", Title: "Indirect title"}},
+		Edges: []store.ContinuityEdge{
+			{FromID: "prior", ToID: root, Providers: []string{"synthetic-review"}},
+			{FromID: root, ToID: "later"},
+			{FromID: "later", ToID: "indirect"},
+		},
+	}, true, nil
+}
+
+func TestAnalyzeContinuityReturnsDirectAttributedEdges(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog",
+		strings.NewReader(`{"question":"Which prequels and sequels are recorded?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
+	response := httptest.NewRecorder()
+	NewHandler(continuityAnalysisCatalog{}).Analyze(response, request)
+	var payload struct {
+		TopicMatched bool
+		Items        []catalogAnalysisTitle
+	}
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &payload) != nil || !payload.TopicMatched || len(payload.Items) != 1 {
+		t.Fatalf("response: %d %s", response.Code, response.Body)
+	}
+	facts := payload.Items[0].Evidence
+	if len(facts) != 1 || facts[0].Field != "continuity" || !facts[0].Truncated || len(facts[0].ContinuityFacts) != 2 {
+		t.Fatalf("facts: %+v", facts)
+	}
+	prior, later := facts[0].ContinuityFacts[0], facts[0].ContinuityFacts[1]
+	if prior.AnimeID != "prior" || prior.Title != "Earlier title" || prior.Relation != "PREQUEL" ||
+		len(prior.Providers) != 1 || prior.Providers[0] != "synthetic-review" ||
+		later.AnimeID != "later" || later.Relation != "SEQUEL" || len(later.Providers) != 0 {
+		t.Fatalf("relations: %+v", facts[0].ContinuityFacts)
 	}
 }
