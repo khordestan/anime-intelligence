@@ -286,6 +286,9 @@ func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery
 	mux.HandleFunc("PATCH /api/v1/tracker/bulk-rating", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).BulkRating(w, r)
 	}))
+	mux.HandleFunc("POST /api/v1/tracker/bulk-remove", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		tracker.NewHandler(db.Repository(token)).BulkRemove(w, r)
+	}))
 	mux.HandleFunc("PATCH /api/v1/tracker/bulk-status", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).BulkStatus(w, r)
 	}))

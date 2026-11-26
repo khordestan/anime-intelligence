@@ -29,3 +29,7 @@ For count-mode entries with a known episode total, **Set selected watched counts
 ## Clear current series ratings
 
 Choose **Clear series rating** and **Clear rating for selected**. The dashboard sends `score: null` and the selected entry IDs with their current viewing passes. All selected current series ratings are cleared in one transaction. An already unrated entry can be included. Progress, statuses, season ratings and prior viewing-pass archives are preserved.
+
+## Remove reviewed library entries
+
+Choose **Review selected entries for removal** to see every selected title, including titles hidden by a library filter. Confirm to submit up to 25 entry IDs with their exact modification timestamps and current viewing passes. The server removes the entries, notes, progress, ratings and archived passes in a single transaction. If any entry has since changed or disappeared, the whole operation rolls back and the library reloads for a new selection.
