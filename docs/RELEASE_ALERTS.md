@@ -117,3 +117,21 @@ Verified followers receive the in-app notice when their track and schedule-notic
 Choose **Notification type** to view confirmed releases, linked-season announcements or schedule notices. The schedule group includes moved dates, explicit delays, title cancellations and their reviewed corrections. The dashboard applies the filter with unread selection and starts at the latest page when it changes.
 
 With the API, use `kind=release`, `kind=announcement` or `kind=schedule`. Keep the selection when using the next cursor. The unread count and mark-all action still apply across the account.
+
+## Background browser alerts
+
+A verified account can enroll one browser under **Background browser alerts**. Enrollment requires a secure browser context with Service Worker, Notification and Push APIs. The account owner can replace or remove the registration. A dashboard sign-out attempts to unsubscribe the current browser locally. The owner can separately remove the saved account registration, including while delivery is paused.
+
+The worker sends a generic signal for verified episode releases and linked-season announcements after enrollment. It respects title follows and confirmed episode tracks. The browser shows generic text and opens the same-origin dashboard when the user selects the notice. A notice carries no title, account, watch history or source information. A fresh browser may display the newest pending alert in place of a previous one.
+
+The database stores an authenticated encrypted browser subscription and a stable registration ID. The worker leases due work, rechecks the live registration before sending and retries a bounded number of times. The scheduler honors supported provider cooldowns. A provider response indicating that an endpoint is gone removes that registration. After withdrawal or replacement, a send already in flight can finish. The provider can acknowledge an alert before delivery to the device, so accepted jobs do not confirm that a notice was displayed.
+
+### Operator configuration
+
+Apply migration 000032 and reapply the restricted runtime grants. Browser push is disabled by default. An explicitly authorized deployment can set `RELEASE_PUSH_ENABLED=1` with the following values supplied outside source control:
+
+- `RELEASE_PUSH_PUBLIC_KEY` and `RELEASE_PUSH_PRIVATE_KEY` contain matching VAPID P-256 keys encoded as unpadded Base64URL. The server provides the public key to verified clients for browser enrollment.
+- `RELEASE_PUSH_CONTACT` is the deployment's HTTPS contact URL for the VAPID signature.
+- `RELEASE_PUSH_STORAGE_KEY` is a separate 32-byte key encoded as canonical standard Base64. Share it across replicas running the scheduler. A storage-key change requires clearing or re-enrolling existing device subscriptions because earlier encrypted subscriptions depend on the old key.
+
+Outbound requests accept the fixed FCM, Mozilla and Apple service hosts and reject redirects, local/private IP resolutions and explicit ports. Use approved HTTPS egress and an HTTPS dashboard origin. Full account export includes the consent time. Account deletion and offline recovery fencing remove stored device subscriptions. Synthetic tests use a mock transport, disposable PostgreSQL and mocked browser permissions.

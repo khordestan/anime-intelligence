@@ -101,11 +101,15 @@ func TestBackupRestoreRecovery(t *testing.T) {
 	if consent, err := db.Repository(one.Token).SetReleaseEmailConsent(ctx, true); err != nil || consent.EnabledSince == nil {
 		t.Fatal("seed release email consent", err)
 	}
+	if _, err = owner.Exec(ctx, `INSERT INTO release_push_subscriptions(user_id,endpoint_digest,subscription_digest,payload)
+		VALUES($1,decode(repeat('aa',32),'hex'),decode(repeat('bb',32),'hex'),decode(repeat('cc',28),'hex'))`, one.User.ID); err != nil {
+		t.Fatal("seed browser push registration", err)
+	}
 	before, err := db.ExportAccount(ctx, one.Token)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(before.Data) != 12 {
+	if len(before.Data) != 12 || before.ReleasePushSince == nil {
 		t.Fatal("incomplete recovery export fixture")
 	}
 	for _, rows := range before.Data {
@@ -170,7 +174,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 			t.Fatal("pre-backup revoked session revived", err)
 		}
 		after, err := restored.ExportAccount(ctx, one.Token)
-		if err != nil || after.User != before.User || !reflect.DeepEqual(after.Data, before.Data) || after.ReleaseEmailSince == nil || !after.ReleaseEmailSince.Equal(*before.ReleaseEmailSince) {
+		if err != nil || after.User != before.User || !reflect.DeepEqual(after.Data, before.Data) || after.ReleaseEmailSince == nil || !after.ReleaseEmailSince.Equal(*before.ReleaseEmailSince) || after.ReleasePushSince == nil || !after.ReleasePushSince.Equal(*before.ReleasePushSince) {
 			t.Fatal("restored export differs from backup snapshot", err)
 		}
 		if _, err = restored.Login(ctx, one.User.Email, password); err != nil {
@@ -289,7 +293,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 		if err = restored.VerifyEmail(ctx, oldMessage.Token); !errors.Is(err, postgres.ErrInvalidChallenge) {
 			t.Fatal("historical proof survived fence", err)
 		}
-		for _, table := range []string{"identity_requests", "identity_outbox", "release_email_jobs"} {
+		for _, table := range []string{"identity_requests", "identity_outbox", "release_email_jobs", "release_push_subscriptions"} {
 			var n int
 			if err = restoredOwner.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil || n != 0 {
 				t.Fatal("fence retained queued work", err)
@@ -333,7 +337,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 			t.Fatal("fresh credentials rejected after recovery", err)
 		}
 		after, err := restored.ExportAccount(ctx, login.Token)
-		if err != nil || !reflect.DeepEqual(after.Data, before.Data) {
+		if err != nil || !reflect.DeepEqual(after.Data, before.Data) || after.ReleasePushSince != nil {
 			t.Fatal("fencing changed product data", err)
 		}
 		if _, err = restored.Login(ctx, two.User.Email, password); !errors.Is(err, postgres.ErrUnauthorized) {
@@ -457,7 +461,7 @@ func assertRestoredIsolation(t *testing.T, ctx context.Context, db *postgres.DB,
 		t.Fatal("connect restored unscoped role")
 	}
 	defer raw.Close(ctx)
-	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "discovery_title_feedback", "user_follows", "notifications", "catalog_analysis_owner_budget", "release_email_jobs"} {
+	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "discovery_title_feedback", "user_follows", "notifications", "catalog_analysis_owner_budget", "release_email_jobs", "release_push_subscriptions"} {
 		var n int
 		if err = raw.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("restored unscoped RLS failed for %s", table)

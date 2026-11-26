@@ -35,6 +35,10 @@ export class ApiClient {
     this.revision++;
     this.session = session;
   }
+  sessionGuard() {
+    const revision = this.revision;
+    return () => revision === this.revision;
+  }
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const revision = this.revision;
     const headers = new Headers(init.headers);

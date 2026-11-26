@@ -151,7 +151,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Atomic release email metrics textfile and disabled collector service examples
 - [x] Aggregate release email queue diagnostics in JSON and Prometheus text
 - [x] Disabled release email scheduler freshness, overdue-scan and exhaustion alert rules with Prometheus tests
-- [ ] Production release email activation and other delivery channels
+- [x] Opt-in durable background browser release alerts with encrypted device subscriptions
+- [ ] Production release email and browser delivery activation
 - [x] Durable canonical release-event and owned notification duplicate suppression
 
 ## Milestone 5 — Taste intelligence

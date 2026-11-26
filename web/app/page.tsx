@@ -24,6 +24,8 @@ import {
   type User,
 } from "../lib/api";
 
+import { unsubscribeBrowserPush } from "../lib/release-push";
+
 const API =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
 type Anime = {
@@ -297,6 +299,7 @@ export default function Home() {
   }
   async function logout() {
     setAuthBusy(true);
+    void unsubscribeBrowserPush().catch(() => {});
     try {
       await client.request<void>("/auth/logout", { method: "POST" });
       changeSession(null);
