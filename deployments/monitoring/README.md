@@ -53,3 +53,11 @@ Upstream references: [rule testing](https://prometheus.io/docs/prometheus/latest
 The rules distinguish unreachable targets, missing snapshots, snapshots over three minutes old and database clocks more than one minute ahead. A fresh snapshot triggers a warning when the oldest due scan stays more than ten minutes overdue for five minutes, or when due work stays at the attempt limit for two minutes. A due scan can belong to an account with no deliverable message. These initial thresholds describe scheduler state and require host-specific review before use.
 
 Run `promtool test rules deployments/monitoring/release-email-alerts.test.yml` to exercise persistence, recovery, stale and future snapshots, and target scoping.
+
+## API request metrics
+
+Set `HTTP_METRICS_ADDR=127.0.0.1:9091` to start a separate, loopback-only `/metrics` listener on the API process. Leaving it unset disables collection. Scrape it from the API network namespace or through an authorized local collector. The public dashboard and ingress configuration do not route a metrics path.
+
+Counters are per process and reset on restart. Request count uses fixed route groups and response classes. The rate-limit counter counts API-generated 429 responses. The duration histogram measures handler time through response completion. It excludes time spent at the ingress and requests rejected there. Unmatched paths and preflight requests are classified under `other`. Metrics omit path values, query strings, credentials, account identifiers and client addresses.
+
+For cross-replica rates use `sum by (group, status_class) (rate(anime_http_requests_total[5m]))`. To compare p95 handler latency across groups, use `histogram_quantile(0.95, sum by (group, le) (rate(anime_http_request_duration_seconds_bucket[5m])))`. Use representative traffic when choosing alert thresholds.

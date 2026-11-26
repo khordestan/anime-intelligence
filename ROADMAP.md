@@ -203,6 +203,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 ## Milestone 7 — Production readiness
 - [x] Request-log redaction and bounded live dependency/security-schema readiness checks
 - [x] Loopback-tested ingress source limits for credential and model endpoints
+- [x] Loopback API request counts, response classes, rate-limit counts and latency histograms
 - [ ] Production ingress configuration, independent security review and broader observability
 - [x] Synthetic PostgreSQL logical restore/key recovery and offline credential-fencing CI drill
 - [x] Isolated PostgreSQL physical base backup and archived WAL restore to a named recovery point
