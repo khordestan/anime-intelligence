@@ -56,3 +56,30 @@ func TestMailKeyringValidationAndPartialConfiguration(t *testing.T) {
 		t.Fatal("previous keys silently ignored without primary/mail configuration")
 	}
 }
+
+func TestDatabaseURLFromEnv(t *testing.T) {
+	for _, tt := range []struct {
+		name, required, dsn string
+		wantError           bool
+	}{
+		{name: "default local"},
+		{name: "explicit local", required: "false"},
+		{name: "optional PostgreSQL", dsn: "synthetic-dsn"},
+		{name: "required PostgreSQL", required: "true", dsn: "synthetic-dsn"},
+		{name: "required and missing", required: "true", wantError: true},
+		{name: "required and blank", required: "true", dsn: "  ", wantError: true},
+		{name: "invalid requirement", required: "yes", dsn: "synthetic-dsn", wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			values := map[string]string{"REQUIRE_POSTGRES": tt.required, "DATABASE_URL": tt.dsn}
+			got, err := databaseURLFromEnv(func(key string) string { return values[key] })
+			if tt.wantError {
+				if err == nil || got != "" {
+					t.Fatal("expected rejected configuration")
+				}
+			} else if err != nil || got != tt.dsn {
+				t.Fatal("expected original database configuration")
+			}
+		})
+	}
+}

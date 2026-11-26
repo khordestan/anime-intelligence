@@ -1,9 +1,25 @@
 package main
 
 import (
-	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
+	"errors"
 	"strings"
+
+	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 )
+
+func databaseURLFromEnv(getenv func(string) string) (string, error) {
+	dsn := getenv("DATABASE_URL")
+	switch getenv("REQUIRE_POSTGRES") {
+	case "", "false":
+	case "true":
+		if strings.TrimSpace(dsn) == "" {
+			return "", errors.New("REQUIRE_POSTGRES=true requires DATABASE_URL")
+		}
+	default:
+		return "", errors.New("REQUIRE_POSTGRES must be true or false")
+	}
+	return dsn, nil
+}
 
 // Mail configuration must not be ignored by falling back to unauthenticated
 // JSON mode. Constructing the adapter validates config without sending mail.

@@ -19,3 +19,5 @@ docker image load --input images.tar.gz
 Compare each loaded image ID and its `org.opencontainers.image.revision` label with the manifest and the approved commit. The hosted workflow exercises this round trip and checks non-root startup and same-origin ingress routing from the loaded images. The ingress exercise runs in an isolated network namespace. Keep the archive and checksum file from the same trusted workflow run.
 
 The bundle contains application images. A production rehearsal needs separately provisioned PostgreSQL, schema and runtime grants, ingress and secrets. Image readiness and checksum verification are useful inputs to deployment review.
+
+Set `REQUIRE_POSTGRES=true` on the hosted API so missing database configuration stops startup before the service binds a port. Provide the restricted runtime connection through `DATABASE_URL`.

@@ -202,4 +202,5 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Full-stack browser tests against the real PostgreSQL API (dedicated disposable CI database and restricted runtime role)
 - [x] Non-root application container builds and isolated startup smoke checks
 - [x] Commit-tagged application image bundle with checksums and isolated archive reload verification
+- [x] Explicit PostgreSQL requirement for hosted API startup
 - [ ] Production deployment automation and operational runbooks
