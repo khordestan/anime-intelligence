@@ -42,6 +42,7 @@ func TestBrowserPushEnvelopeAndProviderResponse(t *testing.T) {
 		"https://fcm.googleapis.com:443/fcm/send/test",
 		"https://fcm.googleapis.com/fcm/send/test?x=1",
 		"https://fcm.googleapis.com/other/test",
+		"https://fcm.googleapis.com/fcm/send/../internal",
 	} {
 		bad := subscription
 		bad.Endpoint = endpoint

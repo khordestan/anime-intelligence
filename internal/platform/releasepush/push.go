@@ -140,7 +140,8 @@ func (s Subscription) valid() bool {
 		return false
 	}
 	prefix := providerPath(u.Host)
-	if prefix == "" || !strings.HasPrefix(u.Path, prefix) || len(u.Path) <= len(prefix) {
+	token, matched := strings.CutPrefix(u.Path, prefix)
+	if prefix == "" || !matched || token == "" || token == "." || token == ".." || strings.Contains(token, "/") {
 		return false
 	}
 	auth, err := base64.RawURLEncoding.Strict().DecodeString(s.Keys.Auth)
