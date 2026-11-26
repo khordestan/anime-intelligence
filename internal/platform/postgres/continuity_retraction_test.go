@@ -17,7 +17,8 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
 )
 
-func TestReviewedContinuityRetractionRejectsStaleRowsAndSurvivesRefresh(t *testing.T) {
+func reviewedContinuityDB(t *testing.T) (*pgx.Conn, *pgx.Conn, *pgx.Conn, string) {
+	t.Helper()
 	owner, writer, _, runtimeDSN := queuedDB(t)
 	ctx := context.Background()
 	u, err := url.Parse(runtimeDSN)
@@ -42,10 +43,17 @@ func TestReviewedContinuityRetractionRejectsStaleRowsAndSurvivesRefresh(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer curator.Close(ctx)
+	t.Cleanup(func() { _ = curator.Close(ctx) })
 	if err := catalogsync.CheckWriter(ctx, writer); err != nil {
 		t.Fatal("restricted writer rejected:", err)
 	}
+
+	return owner, writer, curator, runtimeDSN
+}
+
+func TestReviewedContinuityRetractionRejectsStaleRowsAndSurvivesRefresh(t *testing.T) {
+	owner, writer, curator, runtimeDSN := reviewedContinuityDB(t)
+	ctx := context.Background()
 
 	queueExec(t, owner, `INSERT INTO data_sources(provider_key,display_name,policy_url,enabled)
 		VALUES('synthetic-continuity','Synthetic continuity','https://example.test/policy',true)`)

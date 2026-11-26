@@ -62,3 +62,5 @@ REVOKE ALL ON FUNCTION review_continuity_retraction(uuid, uuid, uuid[], text, bo
 
 -- Discovery title feedback is private and subject to forced owner RLS.
 GRANT SELECT,INSERT,UPDATE,DELETE ON discovery_title_feedback TO anime_runtime;
+
+REVOKE ALL ON FUNCTION review_continuity_addition(uuid, uuid, text, text, boolean) FROM PUBLIC;

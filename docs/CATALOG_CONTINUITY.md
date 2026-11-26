@@ -32,3 +32,9 @@ Apply migration 000028, refresh the catalog writer grants, and provision the ded
 The transaction removes the direct SEQUEL claim and any reciprocal PREQUEL claim for that pair. It records the reviewed IDs, reference and time. If the set has changed since preview, the apply fails without changing the graph. Replaying the same decision is safe. Refreshed imports skip retired links, and a database guard rejects direct restoration of either orientation. Side stories and other edges are preserved. Historical notices remain in the inbox. New franchise traversal uses the corrected graph.
 
 The writer requires only retraction key access. The continuity curator can read review references and apply the bounded operation. It has no direct relation-delete privilege or private account access. Downgrade refuses to discard existing audits.
+
+## Add a reviewed link
+
+After applying migration 000030, reapply the catalog writer and continuity curator grants. Use the restricted curator connection in `CATALOG_CONTINUITY_DATABASE_URL`. Preview with `catalog-continuity-add -prequel=<canonical-id> -sequel=<canonical-id> -provider=<approved-key> -reference=<public-review-reference>`. Add `-apply` to record the attributed edge and its audit entry together.
+
+The operation rechecks source approval, canonical identities, existing links, retraction history and cycles. An exact replay returns the existing relation ID. A later matching import can refresh the title while preserving the curator's recorded attribution. The existing retraction operation also applies to curated edges.
