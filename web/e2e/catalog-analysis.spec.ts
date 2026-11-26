@@ -56,6 +56,14 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
           { field: "upcomingSchedule", values: [], episodeFacts: [{ number: 2, track: "DUB", time: "2027-01-01T00:00:00Z", provider: "synthetic-scoped" }] },
         ] }] });
       }
+      if (payload.question === "Who directed this?") {
+        expect(payload).toEqual({ question: "Who directed this?", animeIds: [id] });
+        return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
+          { field: "staffCredits", values: [], provider: "synthetic-credits", staffCredits: [
+            { name: "Synthetic Person", role: "Director" },
+          ] },
+        ] }] });
+      }
       if (payload.question === "Which sequel is recorded?") {
         expect(payload.animeIds).toEqual([id]);
         return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
@@ -96,6 +104,11 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
   await expect(evidence.getByText("Source: synthetic-review")).toBeVisible();
   if (assisted) await expect(evidence.getByText("Topics selected by synthetic-model")).toBeVisible();
   await expect(page.getByText("Synthetic spoiler")).toHaveCount(0);
+  await page.getByLabel("Question about this title").fill("Who directed this?");
+  await page.getByRole("button", { name: "Show evidence" }).click();
+  await expect(evidence.getByText("Reviewed staff credits", { exact: true })).toBeVisible();
+  await expect(evidence.getByText("Synthetic Person · Director", { exact: true })).toBeVisible();
+  await expect(evidence.getByText("Source: synthetic-credits")).toBeVisible();
   if (!assisted) {
     await page.getByLabel("Question about this title").fill("What has been confirmed and what is scheduled?");
     await page.getByRole("button", { name: "Show evidence" }).click();
