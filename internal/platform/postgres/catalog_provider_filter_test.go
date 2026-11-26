@@ -25,8 +25,8 @@ func TestCatalogMetadataProviderFacetsAndCursors(t *testing.T) {
 		VALUES('synthetic-primary','Synthetic primary',true,'https://example.test/policy'),
 		      ('synthetic-unused','Synthetic unused',false,'https://example.test/policy')`)
 	snapshot := feed.Snapshot{Version: 1, Provider: "synthetic-primary", ObservedAt: now, Titles: []feed.Title{
-		{ExternalID: "one", Title: "Synthetic A", MediaType: "TV", Status: "FINISHED"},
-		{ExternalID: "two", Title: "Synthetic B", MediaType: "TV", Status: "FINISHED"},
+		{ExternalID: "one", Title: "Synthetic A", MediaType: "TV", Status: "FINISHED", StaffCredits: []feed.Credit{{Name: "Synthetic Director", Role: "Director"}}},
+		{ExternalID: "two", Title: "Synthetic B", MediaType: "TV", Status: "FINISHED", StaffCredits: []feed.Credit{{Name: "Synthetic Director", Role: "Director"}}},
 	}}
 	if _, err := catalogsync.Import(ctx, owner, snapshot, now); err != nil {
 		t.Fatal(err)
@@ -65,4 +65,15 @@ func TestCatalogMetadataProviderFacetsAndCursors(t *testing.T) {
 	search("metadataProvider=synthetic-unused&cursor="+cursor, 400)
 	search("metadataProvider=synthetic-primary&metadataProvider=synthetic-unused", 400)
 	search("metadataProvider=%21", 400)
+	staff := search("staff=Synthetic+Director&cursor=start&limit=1", 200)
+	if len(staff.Items) != 1 || staff.Items[0].Title != "Synthetic A" || staff.NextCursor == "" {
+		t.Fatalf("initial staff page: %+v", staff)
+	}
+	staffCursor := url.QueryEscape(staff.NextCursor)
+	nextStaff := search("staff=Synthetic+Director&cursor="+staffCursor, 200)
+	if len(nextStaff.Items) != 1 || nextStaff.Items[0].Title != "Synthetic B" {
+		t.Fatalf("next staff page: %+v", nextStaff)
+	}
+	search("cursor="+staffCursor, 400)
+	search("staff=Synthetic+Director&staff=Other", 400)
 }

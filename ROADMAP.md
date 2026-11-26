@@ -108,6 +108,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Exact primary metadata provider filter and catalog provider suggestions
 - [x] Track-specific confirmed-release browsing with stable cursor boundaries
 - [x] Exact sourced season and split-part filters for catalog browsing
+- [x] Browse by exact reviewed staff name with source-backed suggestions
 - [ ] Broader catalog browsing
 - [x] Reviewed prequel-to-sequel retraction with reciprocal scope, immutable audit and import replay fence
 - [x] Reviewed continuity additions with transactional cycle checks and source attribution

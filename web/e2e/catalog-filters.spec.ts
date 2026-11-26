@@ -16,6 +16,9 @@ test("combined catalog filters apply explicitly without a text query and clear",
     if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers });
     if (path === "") return respond({ authenticationRequired: false });
     if (path === "/tracker") return respond({ items: [] });
+    if (path === "/anime/facets" && url.searchParams.get("field") === "staff" && url.searchParams.get("prefix") === "Synth") {
+      return respond({ items: ["Synthetic Director"], hasMore: false });
+    }
     if (path === "/anime") {
       if (url.searchParams.has("genre")) { filtered.push(url); return respond({ items: [result, ...Array.from({ length: 9 }, (_, i) => ({ ...result, id: result.id.slice(0, -2) + String(82 + i), title: "Additional Filter Match " + (i + 1) }))] }); }
       return respond({ items: [{ ...result, title: "Unfiltered Starter" }] });
@@ -42,19 +45,23 @@ test("combined catalog filters apply explicitly without a text query and clear",
   await form.getByLabel("Source theme (may contain spoilers)", { exact: true }).fill("Strategy");
   await form.getByLabel("Source demographic", { exact: true }).fill("Seinen");
   await form.getByLabel("Source studio", { exact: true }).fill("Synthetic Works");
+  await form.getByLabel("Source staff name", { exact: true }).fill("Synth");
+  await form.getByRole("button", { name: "Find staff names", exact: true }).click();
+  await form.getByRole("button", { name: "Synthetic Director", exact: true }).click();
+  await expect(form.getByLabel("Source staff name", { exact: true })).toHaveValue("Synthetic Director");
   expect(filtered).toHaveLength(0);
   await form.getByRole("button", { name: "Apply catalog filters", exact: true }).click();
   await expect(page.getByText(result.title, { exact: true })).toBeVisible();
   expect(filtered).toHaveLength(1);
   expect(Object.fromEntries(filtered[0].searchParams)).toMatchObject({
-    q: "", confirmedRelease: "true", confirmedTrack: "SUB", genre: "Action & Power", theme: "Strategy", demographic: "Seinen", studio: "Synthetic Works",
+    q: "", confirmedRelease: "true", confirmedTrack: "SUB", genre: "Action & Power", theme: "Strategy", demographic: "Seinen", studio: "Synthetic Works", staff: "Synthetic Director",
     mediaType: "TV", status: "RELEASING", releaseYear: "2026", season: "FALL", seasonNumber: "2", partNumber: "1", limit: "100", sort: "NEWEST", minEpisodes: "12", maxEpisodes: "24", minYear: "2020", maxYear: "2030",
   });
   await expect(page.getByText("Unfiltered Starter", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Additional Filter Match 9", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Show more catalog matches", exact: true }).click();
   await expect(page.getByText("Additional Filter Match 9", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Hide catalog filters (17 applied)", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hide catalog filters (18 applied)", exact: true })).toBeVisible();
   await form.getByRole("button", { name: "Clear catalog filters", exact: true }).click();
   await expect(page.getByText(result.title, { exact: true })).toHaveCount(0);
   await expect(form.getByLabel("Source genre", { exact: true })).toHaveValue("");

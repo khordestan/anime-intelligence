@@ -150,6 +150,10 @@ paths:
           description: Require a latest confirmed release on this track at or before the query time.
           schema: { type: string, enum: [RAW, SUB, DUB, UNKNOWN] }
         - in: query
+          name: staff
+          description: Exact case-insensitive staff name from the retained primary title metadata.
+          schema: { type: string, minLength: 1, maxLength: 256 }
+        - in: query
           name: seasonNumber
           description: Exact sourced season number from primary title metadata.
           schema: { type: integer, minimum: 1, maximum: 2147483647 }
@@ -208,7 +212,7 @@ paths:
         - in: query
           name: field
           required: true
-          schema: { type: string, enum: [genres, themes, demographics, studios, providers] }
+          schema: { type: string, enum: [genres, themes, demographics, studios, providers, staff] }
         - in: query
           name: prefix
           schema: { type: string, maxLength: 128 }
