@@ -20,7 +20,7 @@ func TestCatalogDetailsPublicAndConsistent(t *testing.T) {
 	if _,err:=owner.Exec(ctx,`INSERT INTO data_sources(provider_key,display_name,enabled,policy_url) VALUES('details-fixture','Synthetic details',true,'https://example.test/policy')`);err!=nil {t.Fatal(err)}
 	now:=time.Now().UTC().Truncate(time.Microsecond)
 	s:=feed.Snapshot{Version:1,Provider:"details-fixture",ObservedAt:now,Titles:[]feed.Title{
-		{ExternalID:"one",Title:"Synthetic Details One",MediaType:"TV",Status:"RELEASING",Synonyms:[]string{"Synthetic Alias"},Genres:[]string{"Adventure"},Tags:[]string{"Space"},Themes:[]string{"Synthetic theme"},Demographics:[]string{"Synthetic demographic"},Studios:[]string{"Synthetic Studio"},Relations:[]feed.Relation{{ExternalID:"two",Type:"SEQUEL"}},Episodes:[]feed.Episode{{Number:1,Track:"SUB",ScheduledAt:&now}}},
+		{ExternalID:"one",Title:"Synthetic Details One",Season:"SPRING",SeasonNumber:2,PartNumber:1,MediaType:"TV",Status:"RELEASING",Synonyms:[]string{"Synthetic Alias"},Genres:[]string{"Adventure"},Tags:[]string{"Space"},Themes:[]string{"Synthetic theme"},Demographics:[]string{"Synthetic demographic"},Studios:[]string{"Synthetic Studio"},Relations:[]feed.Relation{{ExternalID:"two",Type:"SEQUEL"}},Episodes:[]feed.Episode{{Number:1,Track:"SUB",ScheduledAt:&now}}},
 		{ExternalID:"two",Title:"Synthetic Details Two",MediaType:"TV",Status:"ANNOUNCED"},
 	}}
 	if _,err:=catalogsync.Import(ctx,owner,s,now);err!=nil {t.Fatal(err)}
@@ -35,6 +35,9 @@ func TestCatalogDetailsPublicAndConsistent(t *testing.T) {
 	var out store.CatalogDetails
 	if w.Code!=200 || json.Unmarshal(w.Body.Bytes(),&out)!=nil {t.Fatalf("detail response: %d %s",w.Code,w.Body.String())}
 	if len(out.ExternalIDs)!=1 || out.ExternalIDs[0].Provider!="details-fixture" || out.ExternalIDs[0].ExternalID!="one" || out.Anime.ID!=id || out.Provider!="details-fixture" || out.ObservedAt==nil || !out.ObservedAt.Equal(now) || len(out.Genres)!=1 || len(out.Synonyms)!=1 || len(out.Tags)!=1 || len(out.Themes)!=1 || out.Themes[0]!="Synthetic theme" || len(out.Demographics)!=1 || out.Demographics[0]!="Synthetic demographic" || len(out.Studios)!=1 || len(out.Relations)!=1 || out.Relations[0].AnimeID!=target || out.Relations[0].Title!="Synthetic Details Two" || out.Relations[0].Status!="ANNOUNCED" || out.Relations[0].MediaType!="TV" || len(out.Episodes)!=1 || out.Episodes[0].Revision!=1 || out.Episodes[0].ReleasedAt!=nil {t.Fatalf("incomplete details: %+v",out)}
+	if out.SeasonNumber != 2 || out.PartNumber != 1 || out.Anime.Season != "SPRING" {
+		t.Fatalf("missing or conflated installment metadata: %+v", out)
+	}
 	reverse,found,reverseErr:=db.Repository("").CatalogDetails(ctx,target)
 	if reverseErr!=nil||!found||len(reverse.Relations)!=1||reverse.Relations[0].AnimeID!=id||reverse.Relations[0].Type!="PREQUEL"||reverse.Relations[0].Title!="Synthetic Details One"{t.Fatal("one-sided season relation lost reverse navigation",reverse,reverseErr)}
 	lookup:=httptest.NewRecorder()

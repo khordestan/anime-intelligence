@@ -7,6 +7,8 @@ import (
 
 // CatalogDetails contains public catalog facts only, never account progress.
 type CatalogDetails struct {
+	SeasonNumber int32 `json:"seasonNumber,omitempty"`
+	PartNumber int32 `json:"partNumber,omitempty"`
  FieldSources []CatalogFieldSource `json:"fieldSources"`
 	ExternalIDs []CatalogExternalID `json:"externalIds"`
 	Anime Anime `json:"anime"`

@@ -8,6 +8,8 @@ import ProviderCredit from "./provider-credit";
 import ScheduleHistory from "./schedule-history";
 
 type Details = {
+  seasonNumber?: number;
+  partNumber?: number;
   fieldSources?: { field: string; mode: string; revision: number; provider: string; observedAt?: string }[];
   externalIds?: { provider: string; externalId: string }[];
   anime: { id: string; title: string; mediaType?: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
@@ -49,6 +51,11 @@ export default function CatalogDetails({ client, id, title, onError, assistedAna
           <h4 className="font-semibold">{details.anime.title}</h4>
           {details.anime.nativeTitle && <p className="text-slate-400">{details.anime.nativeTitle}</p>}
           <p className="text-xs text-slate-400">{details.anime.mediaType ? details.anime.mediaType + " · " : ""}{details.anime.season} {details.anime.releaseYear} · {details.anime.episodeCountKnown ? `${details.anime.episodeCount ?? 0} episodes` : "Episode total unknown"}</p>
+          {details.seasonNumber !== undefined && (
+            <p className="text-xs text-slate-300">
+              Season {details.seasonNumber}{details.partNumber !== undefined && " · Part " + details.partNumber}
+            </p>
+          )}
           <p className="text-xs">Genres: {details.genres.join(", ") || "Not available"}</p>
           <p className="text-xs">Demographics: {details.demographics?.join(", ") || "Not available"}</p>
           <p className="text-xs">Studios: {details.studios.join(", ") || "Not available"}</p>

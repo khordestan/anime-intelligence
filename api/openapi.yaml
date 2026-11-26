@@ -1207,6 +1207,8 @@ components:
               externalId: { type: string }
         provider: { type: string }
         observedAt: { type: string, format: date-time }
+        seasonNumber: { type: integer, format: int32, minimum: 1, description: Sourced franchise season number. Omitted when absent. }
+        partNumber: { type: integer, format: int32, minimum: 1, description: Sourced split-season part number. Returned only with seasonNumber. }
         synonyms: { type: array, items: { type: string } }
         genres: { type: array, items: { type: string } }
         themes: { type: array, items: { type: string }, description: Sourced themes; may contain spoilers. }
