@@ -50,6 +50,9 @@ var analysisFields = []struct {
 	{"status", []string{"status", "finished", "ongoing", "cancelled", "announced", "airing"}},
 	{"genres", []string{"genre", "genres", "category", "categories"}},
 	{"studios", []string{"studio", "studios", "animated", "production"}},
+	{"nativeTitle", []string{"native", "japanese"}},
+	{"season", []string{"quarter", "winter", "spring", "summer", "fall", "autumn"}},
+	{"demographics", []string{"demographic", "demographics"}},
 }
 
 type CatalogFieldSelector func(context.Context, string, []string) ([]string, string, error)
@@ -277,6 +280,16 @@ func projectAnalysisFact(details store.CatalogDetails, field string) catalogAnal
 		fact.Values = append(fact.Values, details.Genres...)
 	case "studios":
 		fact.Values = append(fact.Values, details.Studios...)
+	case "nativeTitle":
+		if details.Anime.NativeTitle != "" {
+			fact.Values = []string{details.Anime.NativeTitle}
+		}
+	case "season":
+		if details.Anime.Season != "" {
+			fact.Values = []string{details.Anime.Season}
+		}
+	case "demographics":
+		fact.Values = append(fact.Values, details.Demographics...)
 	}
 	if len(fact.Values) == 0 {
 		return fact
