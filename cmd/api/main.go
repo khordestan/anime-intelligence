@@ -18,6 +18,11 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	metricsServer, metricsListener, metrics, err := requestMetricsServer(os.Getenv("HTTP_METRICS_ADDR"))
+	if err != nil {
+		logger.Error("HTTP metrics configuration rejected", "error", err)
+		os.Exit(1)
+	}
 	dsn, configErr := databaseURLFromEnv(os.Getenv)
 	if configErr != nil {
 		logger.Error("PostgreSQL configuration rejected", "error", configErr)
@@ -105,6 +110,15 @@ func main() {
 			os.Exit(1)
 		}
 		handler = httpapi.NewRouter(logger, data)
+	}
+	if metricsServer != nil {
+		defer metricsServer.Close()
+		handler = metrics.Wrap(handler)
+		go func() {
+			if err := metricsServer.Serve(metricsListener); err != nil && err != http.ErrServerClosed {
+				logger.Error("HTTP metrics listener failed")
+			}
+		}()
 	}
 	addr := os.Getenv("HTTP_ADDR")
 	if addr == "" {
