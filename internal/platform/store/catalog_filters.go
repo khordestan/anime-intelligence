@@ -31,6 +31,7 @@ type CatalogFilter struct {
 	Theme            string
 	Demographic      string
 	Studio           string
+	Staff            string `json:",omitempty"`
 }
 type FilteredCatalog interface {
 	FilterCatalog(context.Context, CatalogFilter, int, int) ([]Anime, error)
@@ -87,10 +88,11 @@ func (f CatalogFilter) Normalize() (CatalogFilter, error) {
 	f.Theme = strings.TrimSpace(f.Theme)
 	f.Demographic = strings.TrimSpace(f.Demographic)
 	f.Studio = strings.TrimSpace(f.Studio)
+	f.Staff = strings.TrimSpace(f.Staff)
 	if !utf8.ValidString(f.Query) || strings.ContainsRune(f.Query, 0) || len(f.Query) > 2048 {
 		return f, ErrCatalogFilter
 	}
-	for _, v := range []string{f.Genre, f.Theme, f.Demographic, f.Studio} {
+	for _, v := range []string{f.Genre, f.Theme, f.Demographic, f.Studio, f.Staff} {
 		if !utf8.ValidString(v) || strings.ContainsRune(v, 0) || len(v) > 256 {
 			return f, ErrCatalogFilter
 		}
@@ -136,7 +138,7 @@ func (f CatalogFilter) Normalize() (CatalogFilter, error) {
 	return f, nil
 }
 func (f CatalogFilter) HasMetadataFilters() bool {
-	return f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.SeasonNumber != nil || f.PartNumber != nil || f.MinYear != nil || f.MaxYear != nil || f.Sort != "" || f.MinEpisodes != nil || f.MaxEpisodes != nil || f.MediaType != "" || f.Status != "" || f.ReleaseYear != 0 || f.Season != "" || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != ""
+	return f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.SeasonNumber != nil || f.PartNumber != nil || f.MinYear != nil || f.MaxYear != nil || f.Sort != "" || f.MinEpisodes != nil || f.MaxEpisodes != nil || f.MediaType != "" || f.Status != "" || f.ReleaseYear != 0 || f.Season != "" || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != "" || f.Staff != ""
 }
 
 // Local has no imported taxonomy. An active source-label filter has no matches.
@@ -163,7 +165,7 @@ func (s Local) filterCatalog(ctx context.Context, f CatalogFilter, limit, offset
 		return nil, err
 	}
 	out := []Anime{}
-	if f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.SeasonNumber != nil || f.PartNumber != nil || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != "" {
+	if f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.SeasonNumber != nil || f.PartNumber != nil || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != "" || f.Staff != "" {
 		return out, nil
 	}
 	for _, a := range s.Store.Catalog(f.Query, 100000, 0) {

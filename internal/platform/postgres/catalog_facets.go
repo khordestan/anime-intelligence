@@ -7,7 +7,8 @@ func(r *Repository)CatalogFacets(ctx context.Context,field,prefix string,limit i
  tx,err:=r.db.beginTx(ctx,pgx.TxOptions{AccessMode:pgx.ReadOnly});if err!=nil{return out,err};defer rollback(tx)
  if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return out,err}
  query := `SELECT min(btrim(label.value) COLLATE "C") AS label FROM catalog_metadata m
- CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(m.payload->$1::text,'[]'::jsonb)) label(value)
+ CROSS JOIN LATERAL jsonb_array_elements(COALESCE(m.payload->(CASE WHEN $1::text='staff' THEN 'staffCredits' ELSE $1 END),'[]'::jsonb)) item(value)
+ CROSS JOIN LATERAL (SELECT CASE WHEN $1='staff' THEN item.value->>'name' ELSE item.value#>>'{}' END) label(value)
  WHERE btrim(label.value)<>'' AND octet_length(btrim(label.value))<=256
  AND starts_with(lower(btrim(label.value)),lower($2))
  GROUP BY lower(btrim(label.value)) ORDER BY lower(btrim(label.value)) LIMIT $3`

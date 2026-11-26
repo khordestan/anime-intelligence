@@ -41,6 +41,24 @@ func TestCatalogDetailsPublicAndConsistent(t *testing.T) {
 	if err != nil || len(matches) != 1 || matches[0].ID != id {
 		t.Fatal("imported alias search", matches, err)
 	}
+	repo := db.Repository("")
+	for _, fixture := range []struct {
+		name  string
+		count int
+	}{
+		{"  SYNTHETIC DIRECTOR  ", 1},
+		{"Synthetic", 0},
+		{"Synthetic Hidden Character", 0},
+	} {
+		matches, err := repo.FilterCatalog(ctx, store.CatalogFilter{Staff: fixture.name}, 10, 0)
+		if err != nil || len(matches) != fixture.count || (fixture.count == 1 && matches[0].ID != id) {
+			t.Fatalf("staff filter %q: %v, %v", fixture.name, matches, err)
+		}
+	}
+	facets, err := repo.CatalogFacets(ctx, "staff", "sYnThEtIc", 1)
+	if err != nil || len(facets.Items) != 1 || facets.Items[0] != "Synthetic Director" || facets.HasMore {
+		t.Fatalf("staff facet: %+v, %v", facets, err)
+	}
 	h := httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), db)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/anime/"+id+"/details", nil))

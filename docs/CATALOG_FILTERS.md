@@ -12,12 +12,13 @@ GET /api/v1/anime supports the existing q, limit and offset parameters plus:
 | theme | One exact selected-source theme label |
 | demographic | One exact selected-source demographic label |
 | studio | One exact selected-source studio label |
+| staff | One exact reviewed staff name from the selected source |
 
 All supplied filters combine with AND before title/ID sorting and pagination. Input labels are trimmed (stored ASCII-space padding is ignored) and matched case-insensitively as whole values, without wildcard, regular-expression or fuzzy matching. Labels are at most 256 UTF-8 bytes; q is trimmed and at most 2,048 bytes. NUL and invalid UTF-8 are rejected. q continues to search canonical/native titles and imported synonyms by literal case-insensitive substring. Values are SQL parameters, never query fragments.
 
 Omit a filter to disable it. Empty, repeated or invalid recognized filter parameters return 400 invalid_catalog_filter; malformed query encoding is rejected. Existing limit/offset clamping remains (1–100 results, offset 0–100,000). Unknown query keys keep their existing ignored behavior. Enums match their uppercase spelling.
 
-Missing genre/theme/demographic/studio/year/quarter metadata cannot satisfy that filter. Legacy tags do not masquerade as themes or demographics. Filters select reported metadata, not verified accuracy, complete catalog coverage or confirmed availability. The endpoint remains public and does not use account progress/follows.
+Missing genre/theme/demographic/studio/staff/year/quarter metadata cannot satisfy that filter. Legacy tags do not masquerade as themes or demographics. Filters select reported metadata, not verified accuracy, complete catalog coverage or confirmed availability. The endpoint remains public and does not use account progress/follows.
 
 PostgreSQL filters use a read-only transaction, two-second statement timeout and three-second overall context deadline. No total-count aggregation, arbitrary sorting, taxonomy inference, source activation, schema migration or grant expansion is added. Reads still use the existing no-store/security header boundary. Local mode filters only known starter scalar fields; source-label filters return an empty list.
 
@@ -58,3 +59,5 @@ Use `metadataProvider=<provider-key>` to require the exact primary source of a t
 Use `confirmedTrack=SUB`, `DUB`, `RAW` or `UNKNOWN` to require a confirmed release on a specific track. A latest observation whose release time is missing or in the future does not qualify. The track filter is independent of the checkbox for any confirmed release and is bound to the catalog cursor.
 
 **Sourced season number** and **Sourced split-part number** match exact labels on the primary catalog observation. You can combine either with the airing quarter or with other filters. The split-part filter requires a sourced season number on the matching title. The filters do not group canonical titles by number.
+
+**Source staff name** matches a whole reviewed name from the primary title metadata and combines with the other filters. Use `GET /api/v1/anime/facets?field=staff&prefix=...` for case-insensitive prefix suggestions. These matches do not establish that identically named people are the same person. Character credits remain outside these filters and suggestions.
