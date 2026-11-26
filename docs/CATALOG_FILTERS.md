@@ -54,3 +54,5 @@ Each page starts after the previous page's year/title/ID or title/ID key. Insert
 Use `confirmedRelease=true` to find titles with a confirmed release on any track. The filter reads the latest fact for each episode and track and requires a recorded release time at or before the current database time. Omit the parameter or use `false` to include titles regardless of release evidence.
 
 Use `metadataProvider=<provider-key>` to require the exact primary source of a title's retained metadata. This combines with the other filters and is bound to the catalog cursor. The dashboard can suggest provider keys from `GET /api/v1/anime/facets?field=providers`. Suggestions use retained catalog attribution, including older metadata from providers whose network access is disabled.
+
+Use `confirmedTrack=SUB`, `DUB`, `RAW` or `UNKNOWN` to require a confirmed release on a specific track. A latest observation whose release time is missing or in the future does not qualify. The track filter is independent of the checkbox for any confirmed release and is bound to the catalog cursor.

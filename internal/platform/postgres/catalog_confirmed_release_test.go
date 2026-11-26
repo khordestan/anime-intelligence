@@ -53,6 +53,18 @@ func TestCatalogConfirmedReleaseUsesLatestTrackFactsAndBindsCursor(t *testing.T)
 	if len(second.Items) != 1 || second.Items[0].ID != "10000000-0000-4000-8000-000000000001" || second.NextCursor != "" {
 		t.Fatalf("second page: %+v", second)
 	}
+	for track, suffix := range map[string]string{"SUB": "1", "DUB": "2"} {
+		matching := request("confirmedTrack="+track+"&cursor=start&limit=1", 200)
+		if len(matching.Items) != 1 || matching.Items[0].ID != "10000000-0000-4000-8000-00000000000"+suffix || matching.NextCursor != "" {
+			t.Fatalf("%s page: %+v", track, matching)
+		}
+	}
+	if raw := request("confirmedRelease=true&confirmedTrack=RAW", 200); len(raw.Items) != 0 {
+		t.Fatalf("RAW page: %+v", raw)
+	}
+	request("confirmedRelease=true&confirmedTrack=SUB&cursor="+cursor+"&limit=1", 400)
+	request("confirmedTrack=sub", 400)
+	request("confirmedTrack=SUB&confirmedTrack=DUB", 400)
 	request("cursor="+cursor+"&limit=1", 400)
 	request("confirmedRelease=1", 400)
 	request("confirmedRelease=true&confirmedRelease=false", 400)

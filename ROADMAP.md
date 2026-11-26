@@ -100,6 +100,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Dashboard cursor navigation with destination retry
 - [x] Confirmed-release catalog filter based on latest observed episode and track facts
 - [x] Exact primary metadata provider filter and catalog provider suggestions
+- [x] Track-specific confirmed-release browsing with stable cursor boundaries
 - [ ] Broader catalog browsing
 - [x] Reviewed prequel-to-sequel retraction with reciprocal scope, immutable audit and import replay fence
 - [x] Reviewed continuity additions with transactional cycle checks and source attribution
