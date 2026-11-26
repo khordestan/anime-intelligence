@@ -185,6 +185,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Tool-constrained analyst for broader queries
 - [x] Two-title catalog comparison with sourced numeric explanations
 - [x] Analyst evidence for confirmed release observations and upcoming predictions with per-track attribution
+- [x] Analyst evidence for direct attributed prequel and sequel links
 - [ ] Evidence-grounded explanations across broader analyst tools
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
 - [x] Discovery hide/restore and add-to-Planning feedback

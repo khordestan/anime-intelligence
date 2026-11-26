@@ -50,6 +50,14 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
           { field: "upcomingSchedule", values: [], episodeFacts: [{ number: 2, track: "DUB", time: "2027-01-01T00:00:00Z", provider: "synthetic-prediction" }] },
         ] }] });
       }
+      if (payload.question === "Which sequel is recorded?") {
+        expect(payload.animeIds).toEqual([id]);
+        return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
+          { field: "continuity", values: [], truncated: true, continuityFacts: [
+            { animeId: secondID, title: secondTitle, relation: "SEQUEL", providers: ["synthetic-continuity"] },
+          ] },
+        ] }] });
+      }
       expect(payload).toEqual({ question: "How many episodes?", animeIds: [id] });
       return reply({
         engine: "catalog-facts-v1", model: assisted ? "synthetic-model" : undefined, topicMatched: true, items: [
@@ -89,6 +97,12 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
     await expect(evidence.getByText("Upcoming schedule (unconfirmed)", { exact: true })).toBeVisible();
     await expect(evidence.getByText("Source: synthetic-confirmed")).toBeVisible();
     await expect(evidence.getByText("Source: synthetic-prediction")).toBeVisible();
+    await page.getByLabel("Question about this title").fill("Which sequel is recorded?");
+    await page.getByRole("button", { name: "Show evidence" }).click();
+    await expect(evidence.getByText("Direct continuity", { exact: true })).toBeVisible();
+    await expect(evidence.getByText("Sequel · " + secondTitle)).toBeVisible();
+    await expect(evidence.getByText("Source: synthetic-continuity")).toBeVisible();
+    await expect(evidence.getByText("Continuity evidence is limited")).toBeVisible();
     await page.getByLabel("Question about this title").fill("How many episodes?");
   }
   if (!assisted) {

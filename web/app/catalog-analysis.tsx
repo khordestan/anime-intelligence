@@ -5,7 +5,8 @@ import { ApiClient } from "../lib/api";
 import ProviderCredit from "./provider-credit";
 
 type ComparisonTitle = { id: string; title: string; releaseYear?: number };
-type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean; episodeFacts?: { number: number; track: string; time: string; provider?: string }[] };
+type ContinuityFact = { animeId: string; title: string; relation: "PREQUEL" | "SEQUEL"; providers: string[] | null };
+type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean; episodeFacts?: { number: number; track: string; time: string; provider?: string }[]; continuityFacts?: ContinuityFact[] };
 type Comparison = { field: "episodeCount" | "releaseYear"; difference: number; animeIds: [string, string] };
 type Analysis = { model?: string; comparisons?: Comparison[]; sharedEvidence?: { field: "genres" | "studios"; values: string[] }[]; topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
 
@@ -21,6 +22,7 @@ const labels: Record<string, string> = {
   demographics: "Demographics",
   confirmedReleases: "Confirmed releases",
   upcomingSchedule: "Upcoming schedule (unconfirmed)",
+  continuity: "Direct continuity",
 };
 
 function explainComparison({ field, difference, animeIds }: Comparison, items: Analysis["items"]) {
@@ -176,8 +178,17 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
                               </li>
                             ))}
                           </ul>
+                        ) : fact.continuityFacts?.length ? (
+                          <ul className="space-y-1">
+                            {fact.continuityFacts.map(link => (
+                              <li key={link.relation + link.animeId}>
+                                {link.relation === "PREQUEL" ? "Prequel" : "Sequel"} · {link.title}
+                                {link.providers?.map(provider => <span key={provider}> · {provider === "tvmaze" ? <ProviderCredit provider="tvmaze" /> : "Source: " + provider}</span>)}
+                              </li>
+                            ))}
+                          </ul>
                         ) : fact.values.join(", ") || "Unknown"}
-                        {fact.truncated && <span> · More values in catalog details</span>}
+                        {fact.truncated && <span> · {fact.field === "continuity" ? "Continuity evidence is limited" : "More values in catalog details"}</span>}
                       </dd>
                       {fact.provider && <dd className="text-slate-400">
                         Source: {fact.provider}{fact.observedAt && " · Observed " + new Date(fact.observedAt).toLocaleString()}

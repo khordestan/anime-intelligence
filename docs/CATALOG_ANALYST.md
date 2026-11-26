@@ -1,6 +1,6 @@
 # Catalog evidence tool
 
-In catalog details, **Ask about catalog facts** selects evidence for a question about the displayed title. Open **Compare with another title** to search the catalog, select a second title and view the evidence side by side. It recognizes English terms related to format, release year or quarter, episode count, status, native title, genres, studios, demographics, confirmed releases or upcoming schedules. When the topic is outside this list, it shows the supported facts with an explicit fallback message.
+In catalog details, **Ask about catalog facts** selects evidence for a question about the displayed title. Open **Compare with another title** to search the catalog, select a second title and view the evidence side by side. It recognizes English terms related to format, release year or quarter, episode count, status, native title, genres, studios, demographics, confirmed releases, upcoming schedules or direct prequel and sequel links. When the topic is outside this list, it shows the supported facts with an explicit fallback message.
 
 `POST /api/v1/analysis/catalog` also accepts two distinct canonical IDs for side-by-side evidence. The request takes `question` and `animeIds`. Evidence uses resolved catalog fields and their reviewed field provenance when present. Blank evidence represents an unknown value. A known episode total of zero is returned as zero. Some starter catalog values have no external source. Long genre and studio lists are capped and marked truncated. When both titles have a known episode count or release year, the API includes a numeric difference for that field. The dashboard describes the difference beside the underlying facts. Unknown values never participate in a comparison.
 
@@ -21,3 +21,5 @@ Apply migration 000025 and refresh the restricted runtime grants before upgrade.
 When both returned evidence lists contain the same genre or studio label, the comparison includes that value in `sharedEvidence`. Matching ignores case and keeps the first title's spelling. The dashboard shows these shared values above the title evidence and its sources. A missing shared value may reflect unknown or truncated evidence.
 
 Release evidence lists up to 20 of the latest confirmed observations at or before the response time, with attribution per episode and track. Upcoming schedules show up to 20 future predictions, soonest first. They are labelled unconfirmed. Both use the latest catalog revision per episode and track.
+
+Continuity evidence includes up to 20 direct prequel or sequel links and their recorded source labels. A limited result can reflect the evidence cap or the catalog graph cap. Link direction describes the recorded relationship and does not suggest a viewing order.
