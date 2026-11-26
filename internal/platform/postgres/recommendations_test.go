@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -73,6 +74,54 @@ SELECT $1,id,$2,1,$3,jsonb_build_object('reference',$4::text),'SERIES',$5 FROM a
 	if err != nil || len(unknown.Items) != 0 {
 		t.Fatalf("unknown feature results: %+v err=%v", unknown, err)
 	}
+	if ok, err := a.SetDiscoveryTitleFeedback(ctx, watched, 1); err != nil || ok {
+		t.Fatal("tracked title accepted as Discovery feedback", err)
+	}
+	if ok, err := a.SetDiscoveryTitleFeedback(ctx, strong, 1); err != nil || !ok {
+		t.Fatal("could not set positive Discovery feedback", err)
+	}
+	reacted, err := a.DiscoverTitles(ctx, 20)
+	if err != nil || len(reacted) != 2 || reacted[0].FeedbackDirection != 1 {
+		t.Fatalf("owner reaction missing from Discovery: %+v %v", reacted, err)
+	}
+	saved, err := a.DiscoveryTitleFeedback(ctx, "")
+	if err != nil || len(saved.Items) != 1 || saved.Items[0].AnimeID != strong || saved.Items[0].Direction != 1 {
+		t.Fatalf("owner reaction missing from management list: %+v %v", saved, err)
+	}
+	unrelated, err := b.DiscoveryTitleFeedback(ctx, "")
+	if err != nil || len(unrelated.Items) != 0 {
+		t.Fatalf("foreign reaction leaked: %+v %v", unrelated, err)
+	}
+	learned, err := a.PersonalMatches(ctx, 20)
+	if err != nil || len(learned.Items) != 2 || learned.Items[0].AnimeID != strong ||
+		len(learned.Profile) != 1 || learned.Profile[0].Feedback == nil || learned.Profile[0].Feedback.FeedbackCount != 1 {
+		t.Fatalf("title reaction was not used for matching: %+v %v", learned, err)
+	}
+	unaffected, err := b.PersonalMatches(ctx, 20)
+	if err != nil || len(unaffected.Items) != 0 {
+		t.Fatalf("foreign reaction affected matching: %+v %v", unaffected, err)
+	}
+	if ok, err := a.SetDiscoveryTitleFeedback(ctx, strong, -1); err != nil || !ok {
+		t.Fatal("could not change Discovery feedback", err)
+	}
+	if negative, err := a.PersonalMatches(ctx, 20); err != nil || len(negative.Items) != 2 || negative.Items[0].AnimeID != weak {
+		t.Fatalf("negative reaction failed to change ranking: %+v %v", negative, err)
+	}
+	down, err := os.ReadFile("../../../migrations/000029_discovery_title_feedback.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.Exec(ctx, string(down)); err == nil || !strings.Contains(err.Error(), "refusing to drop retained") {
+		t.Fatalf("rollback did not preserve saved reactions: %v", err)
+	}
+
+	if ok, err := a.SetDiscoveryTitleFeedback(ctx, strong, 0); err != nil || !ok {
+		t.Fatal("could not clear Discovery feedback", err)
+	}
+	if cleared, err := a.PersonalMatches(ctx, 20); err != nil || len(cleared.Items) != 0 || len(cleared.Profile) != 0 {
+		t.Fatalf("cleared feedback influenced matching: %+v %v", cleared, err)
+	}
+
 	positive,negative:=1.0,-1.0
 	if ok,err:=a.SetFeaturePreference(ctx,"synthetic.power",&positive);err!=nil||!ok{t.Fatal(err)}
 	if ok,err:=b.SetFeaturePreference(ctx,"synthetic.power",&negative);err!=nil||!ok{t.Fatal(err)}

@@ -173,7 +173,8 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Personal Match dashboard result-limit control using the existing API
 - [x] Dashboard notification filtering by event type, combined with unread and history controls
 - [x] Offline Personal Match ranking evaluator with repeatable fixtures and a baseline
-- [ ] Feedback learning and representative evaluation datasets
+- [x] Private Discovery title feedback with bounded explainable Personal Match learning
+- [ ] Representative feedback learning evaluation datasets
 
 ## Milestone 6 — AI and discovery
 - [x] Read-only catalog evidence tool with bounded topic selection and source attribution

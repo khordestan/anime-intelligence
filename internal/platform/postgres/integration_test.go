@@ -87,7 +87,7 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT SELECT (id,provider_key) ON data_sources TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _, err = owner.Exec(ctx, `GRANT INSERT,UPDATE,DELETE ON user_follows TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE ON notifications TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON domain_events TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
 	if _, err = owner.Exec(ctx, `GRANT SELECT ON anime_features,anime_feature_observations TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE,DELETE ON user_preferences TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
-	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,DELETE ON personal_match_dismissals TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,DELETE ON personal_match_dismissals TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON discovery_title_feedback TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT ON watch_cycles TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
@@ -479,6 +479,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
     SELECT accounts.uid,$3,'PERSONAL_MATCH',0.75,'synthetic-test-v1' FROM (VALUES($1::uuid),($2::uuid)) accounts(uid)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO recommendation_feedback(recommendation_id,user_id,feedback)
     SELECT id,user_id,'INTERESTED' FROM recommendations WHERE user_id=$1 OR user_id=$2`, []any{one.User.ID, two.User.ID}},
+		{`INSERT INTO discovery_title_feedback(user_id,anime_id,direction) VALUES($1,$3,1),($2,$3,-1)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO personal_match_dismissals(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO user_follows(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO catalog_analysis_owner_budget(user_id,window_start,requests) VALUES($1,now(),1),($2,now(),1)`, []any{one.User.ID,two.User.ID}},
@@ -496,7 +497,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 11 {
+	if exported.User.ID != one.User.ID || exported.SchemaVersion != 1 || len(exported.Data) != 12 {
 		t.Fatal("export contract failed")
 	}
 	encoded, err := json.Marshal(exported)
@@ -508,7 +509,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("export leaked another account or credential field")
 		}
 	}
-	for _, key := range []string{"tracker", "watchCycles", "ratings", "progress", "preferences", "recommendations", "feedback", "personalMatchDismissals", "follows", "notifications"} {
+	for _, key := range []string{"tracker", "watchCycles", "ratings", "progress", "preferences", "recommendations", "feedback", "personalMatchDismissals", "discoveryTitleFeedback", "follows", "notifications"} {
 		var rows []map[string]any
 		if err = json.Unmarshal(exported.Data[key], &rows); err != nil || len(rows) != 1 {
 			t.Fatalf("export %s: %v", key, err)
@@ -531,7 +532,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 			t.Fatal("deleted account session accepted", err)
 		}
 	}
-	for _, table := range []string{"users", "auth_sessions", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications", "catalog_analysis_owner_budget"} {
+	for _, table := range []string{"users", "auth_sessions", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "discovery_title_feedback", "user_follows", "notifications", "catalog_analysis_owner_budget"} {
 		field := "user_id"
 		if table == "users" {
 			field = "id"

@@ -32,9 +32,9 @@ func checkRuntime(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	var secured int
 	err = c.QueryRow(ctx, `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
- WHERE n.nspname='public' AND c.relname IN ('users','auth_sessions','user_anime','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','personal_match_dismissals','auth_challenges','identity_outbox','identity_requests','watch_cycles','catalog_analysis_owner_budget','release_email_jobs')
+ WHERE n.nspname='public' AND c.relname IN ('users','auth_sessions','user_anime','watch_progress','user_ratings','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','personal_match_dismissals','auth_challenges','identity_outbox','identity_requests','watch_cycles','catalog_analysis_owner_budget','release_email_jobs','discovery_title_feedback')
  AND c.relrowsecurity AND c.relforcerowsecurity`).Scan(&secured)
-	if err != nil || secured != 17 {
+	if err != nil || secured != 18 {
 		return errors.New("required forced row-level security is missing; apply schema migrations")
 	}
 	if _, err = c.Exec(ctx, `SELECT login_failure_started_at,release_email_since FROM users LIMIT 0; SELECT user_id,available_at,event_id,attempts,lease FROM release_email_jobs LIMIT 0`); err != nil {
@@ -46,7 +46,7 @@ func checkRuntime(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err = c.Exec(ctx, `SELECT watch_cycle FROM user_anime LIMIT 0; SELECT cycle_number,episodes_watched,total_episodes,watched_episode_numbers,rating,archived_at FROM watch_cycles LIMIT 0; SELECT watched_episode_numbers FROM watch_progress LIMIT 0; SELECT release_track,schedule_notices_since FROM user_follows LIMIT 0; SELECT id,event_key,event_type,aggregate_type,aggregate_id,payload,occurred_at FROM domain_events LIMIT 0`); err != nil {
 		return errors.New("required release-alert schema or grants are missing; apply migrations and runtime grants")
 	}
-	if _, err = c.Exec(ctx, `SELECT user_id,anime_id FROM personal_match_dismissals LIMIT 0; SELECT feature_key FROM anime_features LIMIT 0; SELECT anime_id,feature_id,value,confidence,source_kind,evidence,scope,spoiler_level,observed_at FROM anime_feature_observations LIMIT 0`); err != nil {
+	if _, err = c.Exec(ctx, `SELECT user_id,anime_id FROM personal_match_dismissals LIMIT 0; SELECT user_id,anime_id,direction,updated_at FROM discovery_title_feedback LIMIT 0; SELECT feature_key FROM anime_features LIMIT 0; SELECT anime_id,feature_id,value,confidence,source_kind,evidence,scope,spoiler_level,observed_at FROM anime_feature_observations LIMIT 0`); err != nil {
 		return errors.New("required recommendation evidence grants are missing; reapply runtime grants")
 	}
 	if _, err = c.Exec(ctx, `SELECT user_id,window_start,requests FROM catalog_analysis_owner_budget LIMIT 0; SELECT singleton,window_start,requests FROM catalog_analysis_global_budget LIMIT 0`); err != nil {

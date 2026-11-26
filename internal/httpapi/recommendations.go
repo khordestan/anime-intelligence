@@ -70,6 +70,49 @@ func registerRecommendationRoutes(mux *http.ServeMux,db *postgres.DB,protect fun
 	}
 	mux.HandleFunc("PUT /api/v1/recommendations/dismissals/{id}", setDismissed(true))
 	mux.HandleFunc("DELETE /api/v1/recommendations/dismissals/{id}", setDismissed(false))
+	feedback := func(remove bool) http.HandlerFunc {
+		return protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+			id := r.PathValue("id")
+			if !validSessionID(id) {
+				authError(w, 400, "invalid_anime_id")
+				return
+			}
+			direction := 0
+			if !remove {
+				var body struct { Direction int `json:"direction"` }
+				if decodeAuth(w, r, &body) != nil || (body.Direction != 1 && body.Direction != -1) {
+					authError(w, 400, "invalid_feedback_direction")
+					return
+				}
+				direction = body.Direction
+			}
+			ok, err := db.Repository(token).SetDiscoveryTitleFeedback(r.Context(), id, direction)
+			if err != nil {
+				matchError(w, err)
+				return
+			}
+			if !ok {
+				authError(w, 404, "discovery_title_unavailable")
+				return
+			}
+			w.WriteHeader(204)
+		})
+	}
+	mux.HandleFunc("GET /api/v1/recommendations/discovery/feedback", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		after := r.URL.Query().Get("after")
+		if after != "" && !validSessionID(after) {
+			authError(w, 400, "invalid_feedback_cursor")
+			return
+		}
+		page, err := db.Repository(token).DiscoveryTitleFeedback(r.Context(), after)
+		if err != nil {
+			matchError(w, err)
+			return
+		}
+		writeJSON(w, 200, page)
+	}))
+	mux.HandleFunc("PUT /api/v1/recommendations/discovery/feedback/{id}", feedback(false))
+	mux.HandleFunc("DELETE /api/v1/recommendations/discovery/feedback/{id}", feedback(true))
 	mux.HandleFunc("GET /api/v1/recommendations/discovery", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 		query := r.URL.Query()

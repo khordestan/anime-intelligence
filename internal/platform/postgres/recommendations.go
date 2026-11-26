@@ -24,11 +24,13 @@ type PreferenceSignal struct {
 	Weight float64 `json:"weight"`
 	Confidence float64 `json:"confidence"`
 	RatingCount int `json:"ratingCount,omitempty"`
+	FeedbackCount int `json:"feedbackCount,omitempty"`
 }
 type FeatureTaste struct {
 	Key string `json:"key"`
 	Declared *PreferenceSignal `json:"declared,omitempty"`
 	Inferred *PreferenceSignal `json:"inferred,omitempty"`
+	Feedback *PreferenceSignal `json:"feedback,omitempty"`
 }
 type PersonalMatches struct {
 	Profile []FeatureTaste `json:"profile"`
@@ -135,9 +137,16 @@ JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECL
 		rated[i].Features = features[rated[i].AnimeID]
 	}
 	profile := intelligence.BuildTasteProfile(rated, explicit)
+	feedback, err := loadDiscoveryTitleFeedback(ctx, tx, u.ID)
+	if err != nil {
+		return out, err
+	}
+	profile.ApplyTitleFeedback(feedback)
+	out.AlgorithmVersion = profile.AlgorithmVersion()
 	keys:=map[string]bool{}
 	for key:=range profile.Explicit{keys[key]=true}
 	for key:=range profile.Inferred{keys[key]=true}
+	for key := range profile.Feedback { keys[key] = true }
 	ordered:=make([]string,0,len(keys))
 	for key:=range keys{ordered=append(ordered,key)}
 	sort.Strings(ordered)
@@ -146,6 +155,7 @@ JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECL
 		signal:=FeatureTaste{Key:key}
 		if p,ok:=profile.Explicit[key];ok{signal.Declared=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence}}
 		if p,ok:=profile.Inferred[key];ok{signal.Inferred=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence,RatingCount:profile.InferredRatingCounts[key]}}
+		if p, ok := profile.Feedback[key]; ok { signal.Feedback = &PreferenceSignal{Weight: p.Weight, Confidence:p.Confidence, FeedbackCount: profile.FeedbackCounts[key]} }
 		out.Profile=append(out.Profile,signal)
 	}
 	if scoringKeys := intelligence.PersonalMatchFeatureKeys(profile); len(scoringKeys) != 0 {
@@ -308,6 +318,7 @@ type DiscoveryTitle struct {
 	Title string `json:"title"`
 	EvidenceCount int `json:"evidenceCount"`
 	UnfamiliarCount int `json:"unfamiliarCount,omitempty"`
+	FeedbackDirection int `json:"feedbackDirection,omitempty"`
 }
 
 // DiscoverTitles offers eligible catalog titles even before a taste profile exists.
@@ -378,8 +389,9 @@ func (r *Repository) DiscoverWithOptions(ctx context.Context, limit int, after *
 			WHERE value>0 GROUP BY anime_id
 			HAVING ($5::text='' OR bool_or(feature_key=$5)) AND (NOT $6 OR bool_or(k.feature_id IS NULL))
 		)
-		SELECT a.id::text,a.canonical_title,s.feature_count,s.rank_count,s.feature_names,s.feature_keys
+		SELECT a.id::text,a.canonical_title,s.feature_count,s.rank_count,s.feature_names,s.feature_keys,COALESCE(fb.direction,0)
 		FROM supported s JOIN anime a ON a.id=s.anime_id
+		LEFT JOIN discovery_title_feedback fb ON fb.user_id=$1 AND fb.anime_id=a.id
 		WHERE $3::bigint=0 OR s.rank_count<$3 OR (s.rank_count=$3 AND a.id>NULLIF($4,'')::uuid)
 		ORDER BY s.rank_count DESC,a.id LIMIT $2`, owner.ID, limit+1, afterCount, afterID, featureKey, unfamiliar)
 		if err != nil {
@@ -391,7 +403,7 @@ func (r *Repository) DiscoverWithOptions(ctx context.Context, limit int, after *
 			var item DiscoveryTitle
 			var featureKeys []string
 			var rankCount int
-			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount, &rankCount, &item.SupportedFeatures, &featureKeys); err != nil {
+			if err := rows.Scan(&item.AnimeID, &item.Title, &item.EvidenceCount, &rankCount, &item.SupportedFeatures, &featureKeys, &item.FeedbackDirection); err != nil {
 				return DiscoveryPage{}, err
 			}
 			if unfamiliar {
