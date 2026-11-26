@@ -25,3 +25,7 @@ In My Library, select up to 25 eligible entries and choose **Add one watched epi
 `PATCH /api/v1/tracker/bulk-progress` takes `entries` with `id`, `expectedCycle` and `expectedEpisodesWatched`. A retry with the old counts receives a conflict. A stale viewing pass, stale count, exact selection, or exhausted known total rolls back the entire batch.
 
 For count-mode entries with a known episode total, **Set selected watched counts to known totals** sends each selected total as `expectedTotalEpisodes`. The whole batch fails if any current total differs from the displayed value. The update preserves watch status and ratings.
+
+## Clear current series ratings
+
+Choose **Clear series rating** and **Clear rating for selected**. The dashboard sends `score: null` and the selected entry IDs with their current viewing passes. All selected current series ratings are cleared in one transaction. An already unrated entry can be included. Progress, statuses, season ratings and prior viewing-pass archives are preserved.

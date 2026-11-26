@@ -20,7 +20,7 @@ type createRequest struct {
 	EpisodesWatched int    `json:"episodesWatched"`
 }
 type updateRequest struct {
-	ExpectedCycle *int `json:"expectedCycle"`
+	ExpectedCycle   *int    `json:"expectedCycle"`
 	WatchStatus     *string `json:"watchStatus"`
 	EpisodesWatched *int    `json:"episodesWatched"`
 }
@@ -100,18 +100,26 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var e store.Entry
- var ok bool
- var err error
- if q.ExpectedCycle!=nil{
-  conditional,supported:=h.data.(store.CycleUpdater)
-  if !supported||*q.ExpectedCycle<1||*q.ExpectedCycle>1000{writeError(w,400,"invalid_watch_cycle","Use a valid viewing pass in PostgreSQL mode");return}
-  e,ok,err=conditional.UpdateCycle(r.Context(),id,q.WatchStatus,q.EpisodesWatched,*q.ExpectedCycle)
- }else{e,ok,err=h.data.Update(r.Context(),id,q.WatchStatus,q.EpisodesWatched)}
+	var ok bool
+	var err error
+	if q.ExpectedCycle != nil {
+		conditional, supported := h.data.(store.CycleUpdater)
+		if !supported || *q.ExpectedCycle < 1 || *q.ExpectedCycle > 1000 {
+			writeError(w, 400, "invalid_watch_cycle", "Use a valid viewing pass in PostgreSQL mode")
+			return
+		}
+		e, ok, err = conditional.UpdateCycle(r.Context(), id, q.WatchStatus, q.EpisodesWatched, *q.ExpectedCycle)
+	} else {
+		e, ok, err = h.data.Update(r.Context(), id, q.WatchStatus, q.EpisodesWatched)
+	}
 	if err != nil {
 		if authorizationError(w, err) {
 			return
 		}
-		if errors.Is(err,store.ErrWatchCycleConflict){writeError(w,409,"rewatch_state_changed","Viewing pass changed; refresh your library");return}
+		if errors.Is(err, store.ErrWatchCycleConflict) {
+			writeError(w, 409, "rewatch_state_changed", "Viewing pass changed; refresh your library")
+			return
+		}
 		writeError(w, 500, "tracker_update_failed", "Could not update library entry")
 		return
 	}
@@ -232,74 +240,79 @@ func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) BulkStatus(w http.ResponseWriter, r *http.Request) {
- var request struct {
-  Status string `json:"watchStatus"`
-  Entries []store.BulkStatusTarget `json:"entries"`
- }
- invalid := func() {
-  writeError(w, 400, "invalid_bulk_tracker_status", "Provide a watch status and up to 25 entry IDs with their viewing passes")
- }
- if decode(w, r, &request) != nil || !validStatus(request.Status) ||
-  len(request.Entries) == 0 || len(request.Entries) > store.MaxBulkStatusEntries {
-  invalid()
-  return
- }
- for _, target := range request.Entries {
-  if !validUUID(target.ID) {
-   invalid()
-   return
-  }
- }
- data, ok := h.data.(store.BulkStatusTracker)
- if !ok {
-  writeError(w, 503, "tracker_unavailable", "Bulk status edits are unavailable")
-  return
- }
- items, found, err := data.UpdateStatuses(r.Context(), strings.ToUpper(request.Status), request.Entries)
- writeBulkEditResult(w, items, found, err, invalid)
+	var request struct {
+		Status  string                   `json:"watchStatus"`
+		Entries []store.BulkStatusTarget `json:"entries"`
+	}
+	invalid := func() {
+		writeError(w, 400, "invalid_bulk_tracker_status", "Provide a watch status and up to 25 entry IDs with their viewing passes")
+	}
+	if decode(w, r, &request) != nil || !validStatus(request.Status) ||
+		len(request.Entries) == 0 || len(request.Entries) > store.MaxBulkStatusEntries {
+		invalid()
+		return
+	}
+	for _, target := range request.Entries {
+		if !validUUID(target.ID) {
+			invalid()
+			return
+		}
+	}
+	data, ok := h.data.(store.BulkStatusTracker)
+	if !ok {
+		writeError(w, 503, "tracker_unavailable", "Bulk status edits are unavailable")
+		return
+	}
+	items, found, err := data.UpdateStatuses(r.Context(), strings.ToUpper(request.Status), request.Entries)
+	writeBulkEditResult(w, items, found, err, invalid)
 }
 
 func (h *Handler) BulkRating(w http.ResponseWriter, r *http.Request) {
- var request struct {
-  Score int `json:"score"`
-  Entries []store.BulkStatusTarget `json:"entries"`
- }
- invalid := func() {
-  writeError(w, 400, "invalid_bulk_tracker_rating", "Provide a rating from 1 to 5 and up to 25 entry IDs with their viewing passes")
- }
- if decode(w, r, &request) != nil || request.Score < 1 || request.Score > 5 ||
-  len(request.Entries) == 0 || len(request.Entries) > store.MaxBulkStatusEntries {
-  invalid()
-  return
- }
- for _, target := range request.Entries {
-  if !validUUID(target.ID) {
-   invalid()
-   return
-  }
- }
- data, ok := h.data.(store.BulkRatingTracker)
- if !ok {
-  writeError(w, 503, "tracker_unavailable", "Bulk rating edits are unavailable")
-  return
- }
- items, found, err := data.UpdateRatings(r.Context(), request.Score, request.Entries)
- writeBulkEditResult(w, items, found, err, invalid)
+	var request struct {
+		Score   json.RawMessage          `json:"score"`
+		Entries []store.BulkStatusTarget `json:"entries"`
+	}
+	invalid := func() {
+		writeError(w, 400, "invalid_bulk_tracker_rating", "Provide a rating from 1 to 5 or null to clear ratings, and up to 25 entry IDs with their viewing passes")
+	}
+	if decode(w, r, &request) != nil ||
+		len(request.Entries) == 0 || len(request.Entries) > store.MaxBulkStatusEntries {
+		invalid()
+		return
+	}
+	var score int
+	if string(request.Score) != "null" && (json.Unmarshal(request.Score, &score) != nil || score < 1 || score > 5) {
+		invalid()
+		return
+	}
+	for _, target := range request.Entries {
+		if !validUUID(target.ID) {
+			invalid()
+			return
+		}
+	}
+	data, ok := h.data.(store.BulkRatingTracker)
+	if !ok {
+		writeError(w, 503, "tracker_unavailable", "Bulk rating edits are unavailable")
+		return
+	}
+	items, found, err := data.UpdateRatings(r.Context(), score, request.Entries)
+	writeBulkEditResult(w, items, found, err, invalid)
 }
 
 func writeBulkEditResult(w http.ResponseWriter, items []store.Entry, found bool, err error, invalid func()) {
- switch {
- case errors.Is(err, store.ErrBulkStatusInvalid):
-  invalid()
- case errors.Is(err, store.ErrWatchCycleConflict):
-  writeError(w, 409, "rewatch_state_changed", "Viewing pass changed; refresh your library")
- case err != nil:
-  if !authorizationError(w, err) {
-   writeError(w, 500, "tracker_update_failed", "Could not update library entries")
-  }
- case !found:
-  writeError(w, 404, "tracker_entry_not_found", "A library entry was not found")
- default:
-  writeJSON(w, 200, map[string]any{"items": items})
- }
+	switch {
+	case errors.Is(err, store.ErrBulkStatusInvalid):
+		invalid()
+	case errors.Is(err, store.ErrWatchCycleConflict):
+		writeError(w, 409, "rewatch_state_changed", "Viewing pass changed; refresh your library")
+	case err != nil:
+		if !authorizationError(w, err) {
+			writeError(w, 500, "tracker_update_failed", "Could not update library entries")
+		}
+	case !found:
+		writeError(w, 404, "tracker_entry_not_found", "A library entry was not found")
+	default:
+		writeJSON(w, 200, map[string]any{"items": items})
+	}
 }
