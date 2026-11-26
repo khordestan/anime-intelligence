@@ -780,8 +780,8 @@ paths:
   /api/v1/tracker/bulk-progress:
     patch:
       security: [{ bearerAuth: [] }]
-      summary: Add one watched episode to each selected count-mode entry
-      description: Atomically advances up to 25 owned entries. Checks current viewing pass and watched count. Exact selections and entries at a known total are rejected. Watch statuses stay unchanged.
+      summary: Advance watched counts for selected count-mode entries
+      description: Atomically advances up to 25 owned entries. Checks current viewing pass and watched count. By default adds one episode. A supplied expectedTotalEpisodes sets the count to that total if the catalog still agrees. Exact selections and entries at a known total are rejected. Watch statuses stay unchanged.
       requestBody:
         required: true
         content:
@@ -803,6 +803,7 @@ paths:
                       id: { type: string, format: uuid }
                       expectedCycle: { type: integer, minimum: 1, maximum: 1000 }
                       expectedEpisodesWatched: { type: integer, minimum: 0, maximum: 99999 }
+                      expectedTotalEpisodes: { type: integer, minimum: 1, maximum: 100000 }
       responses:
         "200": { description: Updated tracker entries in request order }
         "400": { description: Invalid batch }

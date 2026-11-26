@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("bulk edits submit selected viewing passes, recover from conflicts, and advance count progress", async ({ page }) => {
   const entries = [
-    { id: "entry-one", animeId: "anime-one", title: "Synthetic First", watchStatus: "WATCHING", episodesWatched: 1, watchCycle: 2 },
+    { id: "entry-one", animeId: "anime-one", title: "Synthetic First", watchStatus: "WATCHING", episodesWatched: 1, watchCycle: 2, totalEpisodes: 12 },
     { id: "entry-two", animeId: "anime-two", title: "Synthetic Second", watchStatus: "WATCHING", episodesWatched: 2, watchCycle: 1 },
   ];
   const calls: unknown[] = [];
@@ -33,7 +33,10 @@ test("bulk edits submit selected viewing passes, recover from conflicts, and adv
     if (path === "/tracker/bulk-progress") {
       expect(request.method()).toBe("PATCH");
       progressCalls.push(request.postDataJSON());
-      for (const entry of entries) entry.episodesWatched++;
+      for (const target of request.postDataJSON().entries) {
+        const entry = entries.find(item => item.id === target.id)!;
+        entry.episodesWatched = target.expectedTotalEpisodes ?? entry.episodesWatched + 1;
+      }
       return send({ items: entries });
     }
     if (path === "/tracker/bulk-status") {
@@ -86,4 +89,15 @@ test("bulk edits submit selected viewing passes, recover from conflicts, and adv
     { id: "entry-one", expectedCycle: 3, expectedEpisodesWatched: 1 },
     { id: "entry-two", expectedCycle: 1, expectedEpisodesWatched: 2 },
   ] }]);
+  await library.getByRole("button", { name: "Edit multiple entries" }).click();
+  await second.check();
+  const setTotals = library.getByRole("button", { name: "Set selected watched counts to known totals" });
+  await expect(setTotals).toBeDisabled();
+  await second.uncheck();
+  await first.check();
+  await setTotals.click();
+  await expect(library.getByRole("button", { name: "Edit multiple entries" })).toBeVisible();
+  expect(progressCalls.at(-1)).toEqual({ entries: [
+    { id: "entry-one", expectedCycle: 3, expectedEpisodesWatched: 2, expectedTotalEpisodes: 12 },
+  ] });
 });

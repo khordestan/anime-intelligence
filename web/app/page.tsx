@@ -43,7 +43,7 @@ type Entry = {
   totalEpisodes?: number;
   rating?: number;
 };
-type BulkStatusTarget = { id: string; expectedCycle: number; expectedEpisodesWatched: number; canAdvance: boolean };
+type BulkStatusTarget = { id: string; expectedCycle: number; expectedEpisodesWatched: number; canAdvance: boolean; expectedTotalEpisodes?: number };
 const maxBulkStatusEntries = 25;
 
 const statuses = [
@@ -431,13 +431,13 @@ export default function Home() {
       if (account === accountRevision.current) setBusy(false);
     }
   }
-  async function applyBulkEdit(action: "status" | "rating" | "progress") {
+  async function applyBulkEdit(action: "status" | "rating" | "progress", toKnownTotal = false) {
     const value = action === "status" ? bulkStatus : action === "rating" ? bulkRating : "advance";
     if (busy || !bulkEntries?.length || !value) return;
-    if (action === "progress" && !bulkEntries.every(target => target.canAdvance)) return;
+    if (action === "progress" && !bulkEntries.every(target => target.canAdvance && (!toKnownTotal || target.expectedTotalEpisodes !== undefined))) return;
     const change = action === "status" ? { watchStatus: value } : action === "rating" ? { score: Number(value) } : {};
-    const targets = bulkEntries.map(({ id, expectedCycle, expectedEpisodesWatched }) =>
-      action === "progress" ? { id, expectedCycle, expectedEpisodesWatched } : { id, expectedCycle });
+    const targets = bulkEntries.map(({ id, expectedCycle, expectedEpisodesWatched, expectedTotalEpisodes }) =>
+      action === "progress" ? { id, expectedCycle, expectedEpisodesWatched, ...(toKnownTotal ? { expectedTotalEpisodes } : {}) } : { id, expectedCycle });
     const account = accountRevision.current;
     setBusy(true);
     setError("");
@@ -836,6 +836,10 @@ export default function Home() {
                   onClick={() => void applyBulkEdit("progress")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
                   Add one watched episode to selected
                 </button>
+                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkEntries.every(target => target.canAdvance && target.expectedTotalEpisodes !== undefined)}
+                  onClick={() => void applyBulkEdit("progress", true)} className="rounded-lg border border-white/20 px-3 py-2 disabled:opacity-50">
+                  Set selected watched counts to known totals
+                </button>
                 {bulkEntries.some(target => !target.canAdvance) && <span className="text-xs text-slate-300">
                   Bulk progress requires count-mode entries with episodes remaining.
                 </span>}
@@ -885,6 +889,7 @@ export default function Home() {
                                 id: e.id,
                                 expectedCycle: e.watchCycle ?? 1,
                                 expectedEpisodesWatched: e.episodesWatched,
+                                expectedTotalEpisodes: e.totalEpisodes && e.totalEpisodes > e.episodesWatched ? e.totalEpisodes : undefined,
                                 canAdvance: !e.exactProgress && e.episodesWatched < (e.totalEpisodes || 100000),
                               }];
                             });

@@ -10,6 +10,7 @@ var ErrBulkProgressConflict = errors.New("bulk progress state changed")
 type BulkProgressTarget struct {
 	BulkStatusTarget
 	ExpectedEpisodesWatched *int `json:"expectedEpisodesWatched"`
+	ExpectedTotalEpisodes   *int `json:"expectedTotalEpisodes,omitempty"`
 }
 
 type BulkProgressTracker interface {
