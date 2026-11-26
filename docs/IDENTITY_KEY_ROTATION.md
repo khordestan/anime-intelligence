@@ -24,21 +24,13 @@ Keep the total within the four-key limit at every phase; retire drained older ma
 
 Because legacy ciphertext has no key identifier, queue counts cannot classify rows by encryption key. The simplest retirement procedure is to pause new admission, keep compatible workers running until both queues drain/expire and clear all payloads, then remove A. For uninterrupted admission, record a database-time cutoff after all A writers have stopped. Retain A until every payload row created on or before that cutoff has been consumed or expired and cleared. This conservatively includes some B-written rows but excludes no A-written row. Never infer readiness from an empty ready-to-send list: leased, delayed or temporarily unreadable work still matters.
 
-An operator using an authorized administrative connection can inspect counts without reading private envelopes:
+With the existing restricted diagnostic connection, run `identity-status` and record its `asOf` timestamp after all A writers have stopped. Then use that database timestamp for both queues:
 
-```sql
-SELECT 'request_inbox' AS queue,
-       count(*) FILTER (WHERE payload IS NOT NULL) AS encrypted_rows,
-       max(expires_at) FILTER (WHERE payload IS NOT NULL) AS latest_expiry
-FROM identity_requests
-UNION ALL
-SELECT 'mail_outbox',
-       count(*) FILTER (WHERE payload IS NOT NULL),
-       max(expires_at) FILTER (WHERE payload IS NOT NULL)
-FROM identity_outbox;
+```sh
+identity-status -payload-cutoff="$RETIREMENT_CUTOFF"
 ```
 
-For the cutoff method, apply the same recorded `created_at <= cutoff` predicate to both table queries. Use parameterized operator tooling; do not copy private payloads into diagnostics. Requests have fifteen-minute deadlines and mail proofs last at most one hour from issuance, but expiry alone does not erase rows while workers are stopped. Confirm payload erasure before retirement. Completed rows with NULL payload need no old decryption key.
+The JSON report includes the count of retained encrypted rows created at or before the cutoff for the inbox and outbox. After the cutoff is recorded, check that both counts reach zero before retiring the old key. The report counts every retained payload through that time, including leased, delayed and expired rows. Retain the old key while those counts are nonzero. The command reads one queue snapshot and requires no key or mail credential. Requests have fifteen-minute deadlines and mail proofs last at most one hour from issuance, but expiry alone does not erase rows while workers are stopped.
 
 ## Rollback and limitations
 

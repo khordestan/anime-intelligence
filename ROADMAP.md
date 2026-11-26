@@ -61,6 +61,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Allowlisted queue terminal outcomes with conservative legacy classification
 - [x] Bounded Prometheus text export from the queue diagnostic CLI
 - [x] Atomic collector snapshots, disabled systemd/Prometheus examples and promtool-tested alert rules
+- [x] Queue diagnostics for the database-time key retirement cutoff
 - [ ] Host activation/target inventory/receiver routing and broader provider telemetry, automated secret rollout and key/backup recovery exercises
 - [x] Persisted per-account password-failure window shared across login, password changes, deletion and API instances
 - [ ] Production ingress/distributed abuse controls and monitoring
