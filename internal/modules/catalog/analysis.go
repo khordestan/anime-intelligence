@@ -24,6 +24,7 @@ type catalogAnalysisFact struct {
 	Truncated       bool                     `json:"truncated,omitempty"`
 	EpisodeFacts    []analysisEpisodeFact    `json:"episodeFacts,omitempty"`
 	ContinuityFacts []analysisContinuityFact `json:"continuityFacts,omitempty"`
+	StaffCredits    []store.CatalogCredit    `json:"staffCredits,omitempty"`
 }
 
 type analysisEpisodeFact struct {
@@ -70,6 +71,7 @@ var analysisFields = []struct {
 	{"nativeTitle", []string{"native", "japanese"}},
 	{"season", []string{"quarter", "winter", "spring", "summer", "fall", "autumn"}},
 	{"demographics", []string{"demographic", "demographics"}},
+	{"staffCredits", []string{"staff", "director", "directors", "directed", "writer", "writers"}},
 	{"confirmedReleases", []string{"confirmed", "released", "premiered"}},
 	{"upcomingSchedule", []string{"schedule", "scheduled", "airdate", "airdates", "upcoming"}},
 	{"continuity", []string{"continuity", "prequel", "prequels", "sequel", "sequels"}},
@@ -372,6 +374,14 @@ func projectAnalysisFact(details store.CatalogDetails, field string, asOf time.T
 		}
 	case "demographics":
 		fact.Values = append(fact.Values, details.Demographics...)
+	case "staffCredits":
+		if len(details.StaffCredits) > 0 {
+			const maxCredits = 20
+			fact.StaffCredits = details.StaffCredits[:min(len(details.StaffCredits), maxCredits)]
+			fact.Truncated = len(details.StaffCredits) > maxCredits
+			fact.Provider, fact.ObservedAt = details.Provider, details.ObservedAt
+		}
+		return fact
 	case "confirmedReleases", "upcomingSchedule":
 		fact.EpisodeFacts, fact.Truncated = analysisEpisodeFacts(details.Episodes, field == "confirmedReleases", asOf, scope)
 		return fact

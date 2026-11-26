@@ -18,11 +18,13 @@ type analysisCatalog struct {
 
 func (analysisCatalog) CatalogDetails(_ context.Context, id string) (store.CatalogDetails, bool, error) {
 	return store.CatalogDetails{
-		Anime:        store.Anime{ID: id, Title: "Synthetic title", NativeTitle: "Synthetic native", Season: "SPRING", EpisodeCountKnown: true, Synopsis: "Hidden story"},
-		Provider:     "base",
-		FieldSources: []store.CatalogFieldSource{{Field: "episodeCount", Mode: "SELECT", Provider: "reviewed"}, {Field: "season", Mode: "SELECT", Provider: "reviewed-season"}},
-		Demographics: []string{"Synthetic demographic"},
-		Themes:       []string{"Hidden theme"},
+		Anime:               store.Anime{ID: id, Title: "Synthetic title", NativeTitle: "Synthetic native", Season: "SPRING", EpisodeCountKnown: true, Synopsis: "Hidden story"},
+		Provider:            "base",
+		FieldSources:        []store.CatalogFieldSource{{Field: "episodeCount", Mode: "SELECT", Provider: "reviewed"}, {Field: "season", Mode: "SELECT", Provider: "reviewed-season"}},
+		Demographics:        []string{"Synthetic demographic"},
+		Themes:              []string{"Hidden theme"},
+		StaffCredits:        []store.CatalogCredit{{Name: "Synthetic staff", Role: "Director"}},
+		HasCharacterCredits: true,
 	}, true, nil
 }
 
@@ -77,6 +79,8 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 	}{
 		{[]string{"episodeCount"}, 200},
 		{[]string{"continuity"}, 200},
+		{[]string{"staffCredits"}, 200},
+		{[]string{"characterCredits"}, 502},
 		{[]string{"nativeTitle", "season", "demographics"}, 200},
 		{[]string{"episodeCount", "episodeCount"}, 502},
 		{[]string{"synopsis"}, 502},
@@ -85,7 +89,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog/assisted",
 			strings.NewReader(`{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
 		handler.AnalyzeWithSelector(response, request, func(_ context.Context, question string, allowed []string) ([]string, string, error) {
-			if question != "How long?" || len(allowed) != 12 {
+			if question != "How long?" || len(allowed) != 13 {
 				t.Fatalf("unexpected provider input: %q %v", question, allowed)
 			}
 			return tc.fields, "synthetic-1", nil
@@ -287,5 +291,30 @@ func TestAnalysisScopesReleaseEvidenceBeforeLimiting(t *testing.T) {
 	}
 	for _, invalid := range []string{`{}`, `{"track":"ALL"}`, `{"episodeNumber":0}`, `{"episodeNumber":100001}`, `{"track":"SUB","owner":"invalid"}`} {
 		call(`{"question":"Release evidence",`+anime+`,"releaseScope":`+invalid+`}`, 400, nil)
+	}
+}
+
+func TestAnalyzeStaffEvidenceIsAttributedAndBounded(t *testing.T) {
+	handler := NewHandler(analysisCatalog{})
+	response := httptest.NewRecorder()
+	handler.Analyze(response, httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog",
+		strings.NewReader(`{"question":"Who directed this?","animeIds":["10000000-0000-4000-8000-000000000001"]}`)))
+	var payload struct{ Items []catalogAnalysisTitle }
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &payload) != nil ||
+		len(payload.Items) != 1 || len(payload.Items[0].Evidence) != 1 {
+		t.Fatalf("unexpected response: %d %s", response.Code, response.Body)
+	}
+	fact := payload.Items[0].Evidence[0]
+	if fact.Field != "staffCredits" || fact.Provider != "base" || len(fact.StaffCredits) != 1 ||
+		fact.StaffCredits[0] != (store.CatalogCredit{Name: "Synthetic staff", Role: "Director"}) ||
+		strings.Contains(response.Body.String(), "characterCredits") {
+		t.Fatalf("unexpected staff evidence: %s", response.Body)
+	}
+	now := time.Now().UTC()
+	fact = projectAnalysisFact(store.CatalogDetails{
+		StaffCredits: make([]store.CatalogCredit, 21), Provider: "synthetic", ObservedAt: &now,
+	}, "staffCredits", now, analysisReleaseScope{})
+	if len(fact.StaffCredits) != 20 || !fact.Truncated || fact.ObservedAt == nil || !fact.ObservedAt.Equal(now) {
+		t.Fatalf("credit limit or attribution missing: %+v", fact)
 	}
 }
