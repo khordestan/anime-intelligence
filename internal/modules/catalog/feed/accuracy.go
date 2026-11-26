@@ -66,9 +66,10 @@ func CompareReviewedFields(candidate, reference Snapshot, now time.Time) (FieldA
 
 func judgmentFields(title Title) map[string][]string {
 	values := map[string][]string{
-		"genres":  normalizedJudgmentLabels(title.Genres),
-		"studios": normalizedJudgmentLabels(title.Studios),
-		"themes":  normalizedJudgmentLabels(title.Themes),
+		"genres":       normalizedJudgmentLabels(title.Genres),
+		"demographics": normalizedJudgmentLabels(title.Demographics),
+		"studios":      normalizedJudgmentLabels(title.Studios),
+		"themes":       normalizedJudgmentLabels(title.Themes),
 	}
 	for key, value := range map[string]string{
 		"title": title.Title, "nativeTitle": title.NativeTitle,
@@ -77,6 +78,12 @@ func judgmentFields(title Title) map[string][]string {
 		if value = strings.TrimSpace(value); value != "" && (value != "UNKNOWN" || (key != "mediaType" && key != "status")) {
 			values[key] = []string{value}
 		}
+	}
+	if title.SeasonNumber > 0 {
+		values["seasonNumber"] = []string{strconv.Itoa(int(title.SeasonNumber))}
+	}
+	if title.PartNumber > 0 {
+		values["partNumber"] = []string{strconv.Itoa(int(title.PartNumber))}
 	}
 	if title.ReleaseYear != 0 {
 		values["releaseYear"] = []string{strconv.Itoa(title.ReleaseYear)}

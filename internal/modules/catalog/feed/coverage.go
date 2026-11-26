@@ -20,7 +20,7 @@ func (s Snapshot) Coverage() SnapshotCoverage {
 		Titles: len(s.Titles),
 		Fields: map[string]int{
 			"nativeTitle": 0, "synopsis": 0, "mediaType": 0, "status": 0,
-			"releaseYear": 0, "season": 0, "episodeCount": 0, "synonyms": 0,
+			"releaseYear": 0, "season": 0, "seasonNumber": 0, "partNumber": 0, "episodeCount": 0, "synonyms": 0,
 			"genres": 0, "tags": 0, "themes": 0, "demographics": 0,
 			"studios": 0, "relations": 0,
 		},
@@ -34,6 +34,8 @@ func (s Snapshot) Coverage() SnapshotCoverage {
 			"status":       title.Status != "UNKNOWN",
 			"releaseYear":  title.ReleaseYear != 0,
 			"season":       title.Season != "",
+			"seasonNumber": title.SeasonNumber > 0,
+			"partNumber":   title.PartNumber > 0,
 			"episodeCount": title.EpisodeCount != nil,
 			"synonyms":     len(title.Synonyms) > 0,
 			"genres":       len(title.Genres) > 0,

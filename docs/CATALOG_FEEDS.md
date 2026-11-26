@@ -63,3 +63,24 @@ Run `go run ./cmd/catalog-check -input snapshot.json -coverage` to append aggreg
 ## Preview schedule moves
 
 Run `go run ./cmd/catalog-check -previous previous.json -input next.json -schedule-changes` to preview stated schedule moves alongside confirmed release events. Moves compare matching external title IDs, episode numbers and tracks from two ordered snapshots of the same source. Each item includes the before and after times and whether the stated schedule moved earlier or later. New, omitted and unchanged times and rows with a release confirmation contribute no schedule move. The same comparison uses PostgreSQL timestamp precision. A first snapshot produces an empty preview. This offline comparison creates no alerts and keeps schedule moves separate from release confirmations.
+
+## Check reviewed field quality offline
+
+Use a policy file to check minimum title counts, field presence in the candidate snapshot and agreement with a separate reviewed reference. Run:
+
+```sh
+go run ./cmd/catalog-check -input snapshot.json -reference reviewed.json -quality-policy policy.json
+```
+
+The example policy below is for a synthetic test. Choose field thresholds and minimum sample sizes after review for each actual source and scope.
+
+```json
+{
+  "version": 1,
+  "minTitles": 2,
+  "presence": {"seasonNumber": 0.5},
+  "accuracy": {"episodeCount": {"minJudgments": 2, "minCorrectRate": 0.9}}
+}
+```
+
+Presence uses all candidate titles as its denominator. Accuracy counts correct, missing and mismatching values against exact reviewed source IDs. Unknown reference values produce no judgment. If fewer values are judged than the policy requires, that field fails even when every available judgment matches. The report includes each numerator, denominator, rate and decision. A valid report that misses a threshold is printed before the command exits with status 1. A presence-only policy needs no reference. These checks use files only and neither certify production catalog coverage nor activate an operational SLO.
