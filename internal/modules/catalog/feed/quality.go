@@ -82,7 +82,7 @@ func EvaluateQuality(policy QualityPolicy, coverage SnapshotCoverage, reference 
 
 var judgedQualityFields = [...]string{
 	"title", "nativeTitle", "mediaType", "status", "season", "seasonNumber", "partNumber",
-	"releaseYear", "episodeCount", "genres", "studios", "themes", "demographics",
+	"releaseYear", "episodeCount", "genres", "studios", "themes", "demographics", "staffCredits", "characterCredits",
 }
 
 func qualityRate(numerator, denominator, minSamples int, threshold float64) QualityResult {

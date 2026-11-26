@@ -83,6 +83,8 @@ The example policy below is for a synthetic test. Choose field thresholds and mi
 }
 ```
 
+Staff and character credits can be checked independently for presence or reviewed accuracy. Credit agreement compares complete name and role pairs regardless of order or case. The reports emit aggregate counts.
+
 Presence uses all candidate titles as its denominator. Accuracy counts correct, missing and mismatching values against exact reviewed source IDs. Unknown reference values produce no judgment. If fewer values are judged than the policy requires, that field fails even when every available judgment matches. The report includes each numerator, denominator, rate and decision. A valid report that misses a threshold is printed before the command exits with status 1. A presence-only policy needs no reference. These checks use files only and neither certify production catalog coverage nor activate an operational SLO.
 
 ## Reviewed staff and character credits

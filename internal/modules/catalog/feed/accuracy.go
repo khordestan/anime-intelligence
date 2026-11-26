@@ -66,10 +66,12 @@ func CompareReviewedFields(candidate, reference Snapshot, now time.Time) (FieldA
 
 func judgmentFields(title Title) map[string][]string {
 	values := map[string][]string{
-		"genres":       normalizedJudgmentLabels(title.Genres),
-		"demographics": normalizedJudgmentLabels(title.Demographics),
-		"studios":      normalizedJudgmentLabels(title.Studios),
-		"themes":       normalizedJudgmentLabels(title.Themes),
+		"genres":           normalizedJudgmentLabels(title.Genres),
+		"demographics":     normalizedJudgmentLabels(title.Demographics),
+		"studios":          normalizedJudgmentLabels(title.Studios),
+		"themes":           normalizedJudgmentLabels(title.Themes),
+		"staffCredits":     normalizedJudgmentCredits(title.StaffCredits),
+		"characterCredits": normalizedJudgmentCredits(title.CharacterCredits),
 	}
 	for key, value := range map[string]string{
 		"title": title.Title, "nativeTitle": title.NativeTitle,
@@ -98,6 +100,16 @@ func normalizedJudgmentLabels(labels []string) []string {
 	values := make([]string, len(labels))
 	for i, label := range labels {
 		values[i] = strings.ToLower(strings.TrimSpace(label))
+	}
+	slices.Sort(values)
+	return values
+}
+
+// Validation excludes NUL from both labels, so the separator preserves the pair.
+func normalizedJudgmentCredits(credits []Credit) []string {
+	values := make([]string, len(credits))
+	for i, credit := range credits {
+		values[i] = strings.ToLower(credit.Name) + "\x00" + strings.ToLower(credit.Role)
 	}
 	slices.Sort(values)
 	return values
