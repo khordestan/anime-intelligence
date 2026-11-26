@@ -177,11 +177,11 @@ func TestAnalysisSeparatesConfirmedReleasesFromUpcomingSchedules(t *testing.T) {
 		{Number: 2, Track: "DUB", ScheduledAt: &future, Provider: "synthetic-schedule"},
 		{Number: 3, Track: "SUB", ReleasedAt: &future, Provider: "synthetic-invalid"},
 	}}
-	released := projectAnalysisFact(details, "confirmedReleases", now)
+	released := projectAnalysisFact(details, "confirmedReleases", now, analysisReleaseScope{})
 	if len(released.EpisodeFacts) != 1 || released.EpisodeFacts[0].Provider != "synthetic-release" || !released.EpisodeFacts[0].Time.Equal(past) {
 		t.Fatalf("release evidence: %+v", released)
 	}
-	scheduled := projectAnalysisFact(details, "upcomingSchedule", now)
+	scheduled := projectAnalysisFact(details, "upcomingSchedule", now, analysisReleaseScope{})
 	if len(scheduled.EpisodeFacts) != 1 || scheduled.EpisodeFacts[0].Track != "DUB" || !scheduled.EpisodeFacts[0].Time.Equal(future) {
 		t.Fatalf("schedule evidence: %+v", scheduled)
 	}
@@ -189,7 +189,7 @@ func TestAnalysisSeparatesConfirmedReleasesFromUpcomingSchedules(t *testing.T) {
 		at := now.Add(time.Duration(i) * time.Minute)
 		details.Episodes = append(details.Episodes, store.CatalogEpisode{Number: i + 3, Track: "SUB", ScheduledAt: &at})
 	}
-	scheduled = projectAnalysisFact(details, "upcomingSchedule", now)
+	scheduled = projectAnalysisFact(details, "upcomingSchedule", now, analysisReleaseScope{})
 	if !scheduled.Truncated || len(scheduled.EpisodeFacts) != 20 || scheduled.EpisodeFacts[0].Number != 4 || scheduled.EpisodeFacts[19].Number != 23 {
 		t.Fatalf("schedule evidence was not bounded in timestamp order: %+v", scheduled)
 	}
@@ -229,5 +229,63 @@ func TestAnalyzeContinuityReturnsDirectAttributedEdges(t *testing.T) {
 		len(prior.Providers) != 1 || prior.Providers[0] != "synthetic-review" ||
 		later.AnimeID != "later" || later.Relation != "SEQUEL" || len(later.Providers) != 0 {
 		t.Fatalf("relations: %+v", facts[0].ContinuityFacts)
+	}
+}
+
+type scopedReleaseCatalog struct{ analysisCatalog }
+
+func (c scopedReleaseCatalog) CatalogDetails(ctx context.Context, id string) (store.CatalogDetails, bool, error) {
+	details, found, err := c.analysisCatalog.CatalogDetails(ctx, id)
+	past := time.Now().Add(-time.Hour)
+	future := past.Add(2 * time.Hour)
+	details.Episodes = []store.CatalogEpisode{
+		{Number: 7, Track: "SUB", ReleasedAt: &past, Provider: "synthetic-confirmed"},
+		{Number: 7, Track: "DUB", ScheduledAt: &future, Provider: "synthetic-future"},
+	}
+	for i := 8; i < 40; i++ {
+		recent := past.Add(time.Duration(i) * time.Second)
+		details.Episodes = append(details.Episodes, store.CatalogEpisode{Number: i, Track: "SUB", ReleasedAt: &recent})
+	}
+	return details, found, err
+}
+
+func TestAnalysisScopesReleaseEvidenceBeforeLimiting(t *testing.T) {
+	handler := NewHandler(scopedReleaseCatalog{})
+	const anime = `"animeIds":["10000000-0000-4000-8000-000000000001"]`
+	call := func(query string, status int, selector CatalogFieldSelector) []catalogAnalysisFact {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog", strings.NewReader(query))
+		response := httptest.NewRecorder()
+		handler.AnalyzeWithSelector(response, request, selector)
+		if response.Code != status {
+			t.Fatalf("status=%d want=%d: %s", response.Code, status, response.Body)
+		}
+		if status != 200 {
+			return nil
+		}
+		var report struct{ Items []catalogAnalysisTitle }
+		if json.Unmarshal(response.Body.Bytes(), &report) != nil || len(report.Items) != 1 {
+			t.Fatalf("invalid response: %s", response.Body)
+		}
+		return report.Items[0].Evidence
+	}
+	facts := call(`{"question":"Which releases are confirmed?",`+anime+`,"releaseScope":{"episodeNumber":7,"track":"SUB"}}`, 200, nil)
+	if len(facts) != 1 || facts[0].Truncated || len(facts[0].EpisodeFacts) != 1 ||
+		facts[0].EpisodeFacts[0].Number != 7 || facts[0].EpisodeFacts[0].Provider != "synthetic-confirmed" {
+		t.Fatalf("scoped confirmed release: %+v", facts)
+	}
+	facts = call(`{"question":"What date is recorded?",`+anime+`,"releaseScope":{"track":"DUB"}}`, 200,
+		func(_ context.Context, question string, allowed []string) ([]string, string, error) {
+			if question != "What date is recorded?" || len(allowed) != 2 ||
+				allowed[0] != "confirmedReleases" || allowed[1] != "upcomingSchedule" {
+				t.Fatalf("selector input: %q %v", question, allowed)
+			}
+			return []string{"upcomingSchedule"}, "synthetic-model", nil
+		})
+	if len(facts) != 1 || len(facts[0].EpisodeFacts) != 1 || facts[0].EpisodeFacts[0].Provider != "synthetic-future" {
+		t.Fatalf("scoped upcoming release: %+v", facts)
+	}
+	for _, invalid := range []string{`{}`, `{"track":"ALL"}`, `{"episodeNumber":0}`, `{"episodeNumber":100001}`, `{"track":"SUB","owner":"invalid"}`} {
+		call(`{"question":"Release evidence",`+anime+`,"releaseScope":`+invalid+`}`, 400, nil)
 	}
 }

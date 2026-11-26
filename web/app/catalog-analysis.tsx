@@ -39,6 +39,8 @@ function explainComparison({ field, difference, animeIds }: Comparison, items: A
 
 export default function CatalogAnalysis({ client, animeID, assistedAvailable }: { client: ApiClient; animeID: string; assistedAvailable?: boolean }) {
   const [question, setQuestion] = useState("");
+  const [episodeNumber, setEpisodeNumber] = useState("");
+  const [track, setTrack] = useState("");
   const [comparisonQuery, setComparisonQuery] = useState("");
   const [candidates, setCandidates] = useState<ComparisonTitle[] | null>(null);
   const [comparison, setComparison] = useState<ComparisonTitle | null>(null);
@@ -72,6 +74,10 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
   async function ask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || searchBusy || !question.trim()) return;
+    const releaseScope = episodeNumber || track ? {
+      episodeNumber: episodeNumber ? Number(episodeNumber) : undefined,
+      track: track || undefined,
+    } : undefined;
     const current = ++revision.current;
     setBusy(true);
     setResult(null);
@@ -80,7 +86,7 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
       const response = await client.request<Analysis>(assistedAvailable && assisted ? "/analysis/catalog/assisted" : "/analysis/catalog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: question.trim(), animeIds: comparison ? [animeID, comparison.id] : [animeID] }),
+        body: JSON.stringify({ question: question.trim(), animeIds: comparison ? [animeID, comparison.id] : [animeID], releaseScope }),
       });
       if (current === revision.current) setResult(response);
     } catch {
@@ -135,6 +141,27 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
             className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" />
         </label>
         <p className="text-slate-400">Ask about format, release year, status, episode count, genres or studios.</p>
+        <details>
+          <summary className="cursor-pointer underline">
+            Narrow to release evidence{episodeNumber || track ? ` (${[episodeNumber && "episode " + episodeNumber, track].filter(Boolean).join(" · ")})` : ""}
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <label>
+              Episode number
+              <input disabled={busy} type="number" min={1} max={100000} step={1} value={episodeNumber}
+                onChange={event => setEpisodeNumber(event.target.value)}
+                className="mt-1 block rounded-lg border border-white/10 bg-slate-950 p-2" />
+            </label>
+            <label>
+              Release track
+              <select disabled={busy} value={track} onChange={event => setTrack(event.target.value)}
+                className="mt-1 block rounded-lg border border-white/10 bg-slate-950 p-2">
+                <option value="">Any track</option>
+                {["SUB", "DUB", "RAW", "UNKNOWN"].map(value => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+        </details>
         {assistedAvailable && <label className="block">
           <input type="checkbox" checked={assisted} disabled={busy}
             onChange={event => setAssisted(event.target.checked)} className="mr-2" />

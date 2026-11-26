@@ -50,6 +50,12 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
           { field: "upcomingSchedule", values: [], episodeFacts: [{ number: 2, track: "DUB", time: "2027-01-01T00:00:00Z", provider: "synthetic-prediction" }] },
         ] }] });
       }
+      if (payload.question === "Is the selected track scheduled?") {
+        expect(payload).toEqual({ question: "Is the selected track scheduled?", animeIds: [id], releaseScope: { episodeNumber: 2, track: "DUB" } });
+        return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
+          { field: "upcomingSchedule", values: [], episodeFacts: [{ number: 2, track: "DUB", time: "2027-01-01T00:00:00Z", provider: "synthetic-scoped" }] },
+        ] }] });
+      }
       if (payload.question === "Which sequel is recorded?") {
         expect(payload.animeIds).toEqual([id]);
         return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
@@ -103,6 +109,16 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
     await expect(evidence.getByText("Sequel · " + secondTitle)).toBeVisible();
     await expect(evidence.getByText("Source: synthetic-continuity")).toBeVisible();
     await expect(evidence.getByText("Continuity evidence is limited")).toBeVisible();
+    await page.getByText("Narrow to release evidence", { exact: true }).click();
+    const episode = page.getByLabel("Episode number", { exact: true });
+    const track = page.getByRole("combobox", { name: "Release track", exact: true });
+    await episode.fill("2");
+    await track.selectOption("DUB");
+    await page.getByLabel("Question about this title").fill("Is the selected track scheduled?");
+    await page.getByRole("button", { name: "Show evidence" }).click();
+    await expect(evidence.getByText("Source: synthetic-scoped")).toBeVisible();
+    await episode.clear();
+    await track.selectOption("");
     await page.getByLabel("Question about this title").fill("How many episodes?");
   }
   if (!assisted) {

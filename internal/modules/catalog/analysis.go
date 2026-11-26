@@ -75,6 +75,32 @@ var analysisFields = []struct {
 	{"continuity", []string{"continuity", "prequel", "prequels", "sequel", "sequels"}},
 }
 
+type analysisReleaseScope struct {
+	EpisodeNumber *int   `json:"episodeNumber,omitempty"`
+	Track         string `json:"track,omitempty"`
+}
+
+func (scope analysisReleaseScope) valid() bool {
+	if scope.EpisodeNumber != nil && (*scope.EpisodeNumber < 1 || *scope.EpisodeNumber > 100000) {
+		return false
+	}
+	switch scope.Track {
+	case "", "RAW", "SUB", "DUB", "UNKNOWN":
+		return true
+	default:
+		return false
+	}
+}
+
+func (scope analysisReleaseScope) active() bool {
+	return scope.EpisodeNumber != nil || scope.Track != ""
+}
+
+func (scope analysisReleaseScope) matches(episode store.CatalogEpisode) bool {
+	return (scope.EpisodeNumber == nil || episode.Number == *scope.EpisodeNumber) &&
+		(scope.Track == "" || episode.Track == scope.Track)
+}
+
 type CatalogFieldSelector func(context.Context, string, []string) ([]string, string, error)
 
 var ErrAnalysisCapacity = errors.New("analysis capacity reached")
@@ -87,14 +113,23 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 	decoder.DisallowUnknownFields()
 	var request struct {
-		Question string   `json:"question"`
-		AnimeIDs []string `json:"animeIds"`
+		Question     string                `json:"question"`
+		AnimeIDs     []string              `json:"animeIds"`
+		ReleaseScope *analysisReleaseScope `json:"releaseScope,omitempty"`
 	}
 	if decoder.Decode(&request) != nil || decoder.Decode(new(any)) != io.EOF ||
 		strings.TrimSpace(request.Question) == "" || len(request.Question) > 400 ||
 		len(request.AnimeIDs) < 1 || len(request.AnimeIDs) > 2 {
 		writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Enter a question and select one or two anime")
 		return
+	}
+	var scope analysisReleaseScope
+	if request.ReleaseScope != nil {
+		scope = *request.ReleaseScope
+		if !scope.valid() || !scope.active() {
+			writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Choose a valid episode number or release track")
+			return
+		}
 	}
 	for i, id := range request.AnimeIDs {
 		if !validUUID(id) {
@@ -135,9 +170,17 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 
 	engine := "catalog-facts-v1"
 	fields, matched := selectAnalysisFields(request.Question)
+	allowed := allAnalysisFields()
+	if scope.active() {
+		allowed = []string{"confirmedReleases", "upcomingSchedule"}
+		fields = slices.DeleteFunc(fields, func(field string) bool { return !slices.Contains(allowed, field) })
+		if len(fields) == 0 {
+			fields = allowed
+		}
+		matched = true
+	}
 	var model string
 	if selector != nil {
-		allowed := allAnalysisFields()
 		selected, selectedModel, err := selector(r.Context(), request.Question, slices.Clone(allowed))
 		if errors.Is(err, ErrAnalysisCapacity) {
 			w.Header().Set("Retry-After", "60")
@@ -159,7 +202,7 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 	for _, details := range detailsList {
 		item := catalogAnalysisTitle{AnimeID: details.Anime.ID, Title: details.Anime.Title}
 		for _, field := range fields {
-			fact := projectAnalysisFact(details, field, asOf)
+			fact := projectAnalysisFact(details, field, asOf, scope)
 			if field == "continuity" && hasContinuity {
 				graph, found, err := continuity.CatalogContinuity(continuityCtx, details.Anime.ID)
 				if err != nil {
@@ -296,7 +339,7 @@ func validateSelectedFields(allowed, selected []string) ([]string, bool, bool) {
 	return fields, true, true
 }
 
-func projectAnalysisFact(details store.CatalogDetails, field string, asOf time.Time) catalogAnalysisFact {
+func projectAnalysisFact(details store.CatalogDetails, field string, asOf time.Time, scope analysisReleaseScope) catalogAnalysisFact {
 	fact := catalogAnalysisFact{Field: field, Values: []string{}}
 	switch field {
 	case "mediaType":
@@ -330,7 +373,7 @@ func projectAnalysisFact(details store.CatalogDetails, field string, asOf time.T
 	case "demographics":
 		fact.Values = append(fact.Values, details.Demographics...)
 	case "confirmedReleases", "upcomingSchedule":
-		fact.EpisodeFacts, fact.Truncated = analysisEpisodeFacts(details.Episodes, field == "confirmedReleases", asOf)
+		fact.EpisodeFacts, fact.Truncated = analysisEpisodeFacts(details.Episodes, field == "confirmedReleases", asOf, scope)
 		return fact
 	}
 	if len(fact.Values) == 0 {
@@ -351,9 +394,12 @@ func projectAnalysisFact(details store.CatalogDetails, field string, asOf time.T
 	return fact
 }
 
-func analysisEpisodeFacts(episodes []store.CatalogEpisode, confirmed bool, asOf time.Time) ([]analysisEpisodeFact, bool) {
+func analysisEpisodeFacts(episodes []store.CatalogEpisode, confirmed bool, asOf time.Time, scope analysisReleaseScope) ([]analysisEpisodeFact, bool) {
 	var facts []analysisEpisodeFact
 	for _, episode := range episodes {
+		if !scope.matches(episode) {
+			continue
+		}
 		var timestamp *time.Time
 		if confirmed {
 			if episode.ReleasedAt == nil || episode.ReleasedAt.After(asOf) {
