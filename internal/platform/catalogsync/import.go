@@ -276,7 +276,10 @@ func syncRelations(ctx context.Context,tx pgx.Tx,source,provider string) (int,er
 			}
 			tag,err:=tx.Exec(ctx,`INSERT INTO anime_relations(source_anime_id,target_anime_id,relation_type,source_id)
 VALUES($1,$2,$3,$4) ON CONFLICT(source_anime_id,target_anime_id,relation_type)
-DO UPDATE SET confidence=1 WHERE anime_relations.source_id=excluded.source_id`,record.id,target,relation.Type,source)
+DO UPDATE SET confidence=1 WHERE anime_relations.source_id=excluded.source_id
+OR (excluded.relation_type='SEQUEL' AND EXISTS (
+  SELECT 1 FROM catalog_continuity_additions c WHERE c.relation_id=anime_relations.id
+))`,record.id,target,relation.Type,source)
 			if err!=nil {return 0,err}
 			if tag.RowsAffected()!=1 {return 0,ErrConflict}
 		}

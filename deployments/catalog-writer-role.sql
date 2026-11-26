@@ -38,3 +38,4 @@ GRANT SELECT ON catalog_identity_retractions TO anime_catalog_writer;
 
 -- Migration 000028: exclude reviewed retired continuity links during import.
 GRANT SELECT(prequel_id, sequel_id) ON catalog_continuity_retractions TO anime_catalog_writer;
+GRANT SELECT(relation_id) ON catalog_continuity_additions TO anime_catalog_writer;
