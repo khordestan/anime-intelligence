@@ -112,7 +112,13 @@ func registerReleaseRoutes(mux *http.ServeMux,db *postgres.DB,protect func(func(
 			}
 			unreadOnly = values[0] == "true"
 		}
-		page,err:=db.Repository(token).FilterNotificationHistory(r.Context(),query.Get("cursor"),unreadOnly)
+		kind := query.Get("kind")
+		if values, ok := query["kind"]; ok &&
+			(len(values) != 1 || (kind != "release" && kind != "announcement" && kind != "schedule")) {
+			authError(w, 400, "invalid_notification_filter")
+			return
+		}
+		page,err:=db.Repository(token).FilterNotificationHistoryByKind(r.Context(),query.Get("cursor"),unreadOnly,kind)
 		if err!=nil {releaseError(w,err);return}
 		response:=map[string]any{"items":page.Items,"count":len(page.Items),"unreadCount":page.UnreadCount,"limit":100,"nextCursor":page.NextCursor}
 		if page.Materialization!=nil{response["materialization"]=page.Materialization}

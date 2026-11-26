@@ -226,16 +226,20 @@ func (r *Repository) NotificationHistory(ctx context.Context,cursor string) (Not
 
 // FilterNotificationHistory applies the unread filter before the page limit.
 func (r *Repository) FilterNotificationHistory(ctx context.Context, cursor string, unreadOnly bool) (NotificationPage, error) {
-	return r.readNotificationPage(ctx, cursor, unreadOnly, 101)
+	return r.FilterNotificationHistoryByKind(ctx, cursor, unreadOnly, "")
+}
+
+func (r *Repository) FilterNotificationHistoryByKind(ctx context.Context, cursor string, unreadOnly bool, kind string) (NotificationPage, error) {
+	return r.readNotificationPage(ctx, cursor, unreadOnly, kind, 101)
 }
 
 // NotificationSummary materializes the latest batch and counts unread notices
 // without selecting any notification text.
 func (r *Repository) NotificationSummary(ctx context.Context) (NotificationPage, error) {
-	return r.readNotificationPage(ctx, "", false, 0)
+	return r.readNotificationPage(ctx, "", false, "", 0)
 }
 
-func (r *Repository) readNotificationPage(ctx context.Context, cursor string, unreadOnly bool, pageLimit int) (NotificationPage, error) {
+func (r *Repository) readNotificationPage(ctx context.Context, cursor string, unreadOnly bool, kind string, pageLimit int) (NotificationPage, error) {
 	out:=NotificationPage{Items:[]Notification{}}
 	tx,u,err:=r.db.productTx(ctx,r.token)
 	if err!=nil {return out,err}
@@ -302,10 +306,16 @@ LEFT JOIN LATERAL (SELECT created_at FROM eligible ORDER BY created_at,event_id 
 			COALESCE(CASE WHEN e.event_type IN ('SCHEDULE_CHANGED','TITLE_CANCELLED','TITLE_CANCELLATION_CORRECTED','EPISODE_DELAY_REPORTED') THEN e.payload->>'provider' END, '') AS provider
 		FROM notifications n LEFT JOIN domain_events e ON e.id=n.event_id
 		WHERE n.user_id=$1 AND n.channel='IN_APP' AND (NOT $4::boolean OR n.read_at IS NULL)
+		  AND CASE $6::text
+		    WHEN '' THEN true
+		    WHEN 'release' THEN e.event_type='EPISODE_RELEASED'
+		    WHEN 'announcement' THEN e.event_type='SEASON_ANNOUNCED'
+		    WHEN 'schedule' THEN e.event_type IN ('SCHEDULE_CHANGED','TITLE_CANCELLED','TITLE_CANCELLATION_CORRECTED','EPISODE_DELAY_REPORTED')
+		    ELSE false END
 		  AND ($2::timestamptz IS NULL OR (n.created_at,n.id)<($2::timestamptz,$3::uuid))
 		ORDER BY n.created_at DESC,n.id DESC LIMIT $5
 	) page ON true
-	ORDER BY page.created_at DESC,page.id DESC`, u.ID, before, beforeID, unreadOnly, pageLimit)
+	ORDER BY page.created_at DESC,page.id DESC`, u.ID, before, beforeID, unreadOnly, pageLimit, kind)
 	if err != nil {
 		return out, err
 	}
