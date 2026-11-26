@@ -7,10 +7,10 @@ test("private library browsing combines status, title and rating without changin
     "Access-Control-Allow-Methods": "GET, OPTIONS",
   };
   const entries = [
-    {id:"one",animeId:"a",title:"Zeta Synthetic",watchStatus:"WATCHING",episodesWatched:12,rating:5,exactProgress:true},
-    {id:"two",animeId:"b",title:"Alpha Synthetic",watchStatus:"COMPLETED",episodesWatched:24,rating:2,exactProgress:false},
+    {id:"one",animeId:"a",title:"Zeta Synthetic",watchStatus:"WATCHING",episodesWatched:12,rating:5,exactProgress:true,totalEpisodes:20,seasonRatingAvailable:true,seasonRating:4},
+    {id:"two",animeId:"b",title:"Alpha Synthetic",watchStatus:"COMPLETED",episodesWatched:24,rating:2,exactProgress:false,seasonRatingAvailable:true},
     {id:"three",animeId:"c",title:"Beta Synthetic",watchStatus:"WATCHING",episodesWatched:2},
-    {id:"four",animeId:"d",title:"Delta Synthetic",watchStatus:"WATCHING",episodesWatched:12,rating:5},
+    {id:"four",animeId:"d",title:"Delta Synthetic",watchStatus:"WATCHING",episodesWatched:12,rating:5,totalEpisodes:10},
   ];
   const writes: string[] = [];
   await page.route("http://localhost:8080/api/v1**", async route => {
@@ -44,8 +44,12 @@ test("private library browsing combines status, title and rating without changin
   await library.getByText("Library summary", { exact: true }).click();
   const summary = library.getByRole("region", { name: "Library summary" });
   await expect(summary.getByText("3 of 4 titles rated")).toBeVisible();
-  await expect(summary.getByText("Average 4.0 out of 5")).toBeVisible();
-  await expect(summary.getByRole("list", { name: "Rating distribution" }).getByRole("listitem").last()).toHaveText(/5 \/ 5.*2 titles/);
+  await expect(summary.getByRole("region", { name: "Series ratings" }).getByText("Average 4.0 out of 5")).toBeVisible();
+  await expect(summary.getByRole("list", { name: "Rating distribution", exact: true }).getByRole("listitem").last()).toHaveText(/5 \/ 5.*2 titles/);
+  await expect(summary.getByText("1 of 4 titles track exact episodes", { exact: true })).toBeVisible();
+  await expect(summary.getByText("8 episodes left across 2 titles with recorded totals (3 watching or on hold)", { exact: true })).toBeVisible();
+  await expect(summary.getByText("1 of 2 eligible seasons or parts rated", { exact: true })).toBeVisible();
+  await expect(summary.getByRole("list", { name: "Season rating distribution" }).getByRole("listitem").nth(3)).toHaveText(/4 \/ 5.*1 title/);
 
   await page.getByLabel("Library rating filter",{exact:true}).selectOption("UNRATED");
   await expect(titles).toHaveCount(0);

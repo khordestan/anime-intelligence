@@ -157,7 +157,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 ## Milestone 5 — Taste intelligence
 - [x] Owner-scoped declared preferences and bounded runtime rating-derived profile signals
 - [x] Private library status and rating distribution summary
-- [ ] Richer profile analytics and feedback learning
+- [x] Private library progress estimates and separate season rating analytics
 - [x] Explain inferred feature signals with contributing rating counts
 - [x] Grounded comparison of shared genre and studio labels in catalog analysis
 - [x] Explain inferred feature signals with recent contributing title ratings

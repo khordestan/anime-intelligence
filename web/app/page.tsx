@@ -1065,21 +1065,61 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 
+type RatingSummary = { counts: number[]; rated: number; total: number };
+
+function summarizeRatings(scores: (number | undefined)[]): RatingSummary {
+  const summary = { counts: [0, 0, 0, 0, 0], rated: 0, total: 0 };
+  for (const score of scores) {
+    if (score == null || !Number.isInteger(score) || score < 1 || score > 5) continue;
+    summary.counts[score - 1]++;
+    summary.rated++;
+    summary.total += score;
+  }
+  return summary;
+}
+
+function RatingDistribution({ summary, label }: { summary: RatingSummary; label: string }) {
+  if (!summary.rated) return null;
+  return (
+    <>
+      <p className="text-slate-300">Average {(summary.total / summary.rated).toFixed(1)} out of 5</p>
+      <ul aria-label={label} className="mt-2 space-y-1">
+        {summary.counts.map((count, index) => (
+          <li key={index} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 text-slate-300">
+            <span>{index + 1} / 5</span>
+            <meter className="w-full" aria-hidden="true" min={0} max={summary.rated} value={count} />
+            <span className="tabular-nums">{count} {count === 1 ? "title" : "titles"}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function LibrarySummary({ entries }: { entries: Entry[] }) {
   const summary = useMemo(() => {
     const byStatus = new Map<string, number>();
-    const byRating = [0, 0, 0, 0, 0];
-    let rated = 0;
-    let ratingTotal = 0;
+    const seasonEntries = entries.filter(entry => entry.seasonRatingAvailable);
+    let active = 0;
+    let withTotal = 0;
+    let remaining = 0;
+    let exact = 0;
     for (const entry of entries) {
       byStatus.set(entry.watchStatus, (byStatus.get(entry.watchStatus) ?? 0) + 1);
-      if (entry.rating != null && Number.isInteger(entry.rating) && entry.rating >= 1 && entry.rating <= byRating.length) {
-        byRating[entry.rating - 1]++;
-        rated++;
-        ratingTotal += entry.rating;
+      if (entry.exactProgress) exact++;
+      if (entry.watchStatus !== "WATCHING" && entry.watchStatus !== "ON_HOLD") continue;
+      active++;
+      if (entry.totalEpisodes != null && entry.totalEpisodes > 0) {
+        withTotal++;
+        remaining += Math.max(entry.totalEpisodes - entry.episodesWatched, 0);
       }
     }
-    return { byStatus, byRating, rated, ratingTotal };
+    return {
+      byStatus, active, withTotal, remaining, exact,
+      series: summarizeRatings(entries.map(entry => entry.rating)),
+      season: summarizeRatings(seasonEntries.map(entry => entry.seasonRating)),
+      seasonEntries: seasonEntries.length,
+    };
   }, [entries]);
 
   return (
@@ -1097,24 +1137,29 @@ function LibrarySummary({ entries }: { entries: Entry[] }) {
             ))}
           </dl>
         </div>
+        <section aria-labelledby="series-rating-summary">
+          <h3 id="series-rating-summary" className="font-medium">Series ratings</h3>
+          <p className="mt-2 text-slate-300">{summary.series.rated} of {entries.length} titles rated</p>
+          <RatingDistribution summary={summary.series} label="Rating distribution" />
+        </section>
         <div>
-          <h3 className="font-medium">Ratings</h3>
-          <p className="mt-2 text-slate-300">{summary.rated} of {entries.length} titles rated</p>
-          {summary.rated > 0 && (
-            <>
-              <p className="text-slate-300">Average {(summary.ratingTotal / summary.rated).toFixed(1)} out of 5</p>
-              <ul aria-label="Rating distribution" className="mt-2 space-y-1">
-                {summary.byRating.map((count, index) => (
-                  <li key={index} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 text-slate-300">
-                    <span>{index + 1} / 5</span>
-                    <meter className="w-full" aria-hidden="true" min={0} max={summary.rated} value={count} />
-                    <span className="tabular-nums">{count} {count === 1 ? "title" : "titles"}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
+          <h3 className="font-medium">Episode progress</h3>
+          <p className="mt-2 text-slate-300">{summary.exact} of {entries.length} titles track exact episodes</p>
+          {summary.active > 0 && (
+            <p className="mt-1 text-slate-300">
+              {summary.withTotal > 0
+                ? `${summary.remaining} episodes left across ${summary.withTotal} titles with recorded totals (${summary.active} watching or on hold)`
+                : "No watching or on-hold titles have a recorded positive episode total"}
+            </p>
           )}
         </div>
+        {summary.seasonEntries > 0 && (
+          <section aria-labelledby="season-rating-summary">
+            <h3 id="season-rating-summary" className="font-medium">Season and split-part ratings</h3>
+            <p className="mt-2 text-slate-300">{summary.season.rated} of {summary.seasonEntries} eligible seasons or parts rated</p>
+            <RatingDistribution summary={summary.season} label="Season rating distribution" />
+          </section>
+        )}
       </section>
     </details>
   );
