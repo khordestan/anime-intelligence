@@ -10,6 +10,7 @@ on:
       - 'scripts/check-bundle-ingress.sh'
       - 'deployments/ingress/bundle-loopback.conf'
       - 'scripts/package-release-images.sh'
+      - 'scripts/check-bundle-migrations.sh'
       - '.github/workflows/release-bundle.yml'
   workflow_dispatch:
 permissions:
@@ -32,9 +33,10 @@ jobs:
           commit=$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
           api="anime-intelligence/api:$commit"
           web="anime-intelligence/web:$commit"
-          docker image rm "$api" "$web"
+          migrate="anime-intelligence/migrate:$commit"
+          docker image rm "$api" "$web" "$migrate"
           docker image load --input images.tar.gz
-          for image in "$api" "$web"; do
+          for image in "$api" "$web" "$migrate"; do
             id=$(docker image inspect --format '{{.Id}}' "$image")
             key=${image##*/}
             grep -Fqx "${key%%:*}_image_id=$id" manifest.txt
@@ -42,6 +44,7 @@ jobs:
           done
           "$GITHUB_WORKSPACE/scripts/check-containers.sh" "$api" "$web"
           "$GITHUB_WORKSPACE/scripts/check-bundle-ingress.sh" "$api" "$web"
+          "$GITHUB_WORKSPACE/scripts/check-bundle-migrations.sh" "$migrate" "$api"
       - uses: actions/upload-artifact@v4
         if: github.event_name == 'workflow_dispatch'
         with:
