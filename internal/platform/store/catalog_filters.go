@@ -15,6 +15,8 @@ type CatalogFilter struct {
 	ConfirmedRelease bool   `json:",omitempty"`
 	ConfirmedTrack   string `json:",omitempty"`
 	MetadataProvider string `json:",omitempty"`
+	SeasonNumber     *int   `json:",omitempty"`
+	PartNumber       *int   `json:",omitempty"`
 	MinEpisodes      *int
 	MaxEpisodes      *int
 	MinYear          *int
@@ -110,6 +112,11 @@ func (f CatalogFilter) Normalize() (CatalogFilter, error) {
 	if !allowed(f.MediaType, "TV", "MOVIE", "OVA", "ONA", "SPECIAL", "MUSIC", "UNKNOWN") || !allowed(f.Status, "UNKNOWN", "ANNOUNCED", "RELEASING", "FINISHED", "CANCELLED", "HIATUS") || !allowed(f.Season, "WINTER", "SPRING", "SUMMER", "FALL") || (f.ReleaseYear != 0 && (f.ReleaseYear < 1900 || f.ReleaseYear > 9999)) {
 		return f, ErrCatalogFilter
 	}
+	for _, number := range []*int{f.SeasonNumber, f.PartNumber} {
+		if number != nil && (*number < 1 || *number > math.MaxInt32) {
+			return f, ErrCatalogFilter
+		}
+	}
 	for _, bound := range []*int{f.MinEpisodes, f.MaxEpisodes} {
 		if bound != nil && (*bound < 0 || *bound > 100000) {
 			return f, ErrCatalogFilter
@@ -129,7 +136,7 @@ func (f CatalogFilter) Normalize() (CatalogFilter, error) {
 	return f, nil
 }
 func (f CatalogFilter) HasMetadataFilters() bool {
-	return f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.MinYear != nil || f.MaxYear != nil || f.Sort != "" || f.MinEpisodes != nil || f.MaxEpisodes != nil || f.MediaType != "" || f.Status != "" || f.ReleaseYear != 0 || f.Season != "" || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != ""
+	return f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.SeasonNumber != nil || f.PartNumber != nil || f.MinYear != nil || f.MaxYear != nil || f.Sort != "" || f.MinEpisodes != nil || f.MaxEpisodes != nil || f.MediaType != "" || f.Status != "" || f.ReleaseYear != 0 || f.Season != "" || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != ""
 }
 
 // Local has no imported taxonomy. An active source-label filter has no matches.
@@ -156,7 +163,7 @@ func (s Local) filterCatalog(ctx context.Context, f CatalogFilter, limit, offset
 		return nil, err
 	}
 	out := []Anime{}
-	if f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != "" {
+	if f.ConfirmedRelease || f.ConfirmedTrack != "" || f.MetadataProvider != "" || f.SeasonNumber != nil || f.PartNumber != nil || f.Genre != "" || f.Theme != "" || f.Demographic != "" || f.Studio != "" {
 		return out, nil
 	}
 	for _, a := range s.Store.Catalog(f.Query, 100000, 0) {

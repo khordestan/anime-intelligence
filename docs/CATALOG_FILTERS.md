@@ -56,3 +56,5 @@ Use `confirmedRelease=true` to find titles with a confirmed release on any track
 Use `metadataProvider=<provider-key>` to require the exact primary source of a title's retained metadata. This combines with the other filters and is bound to the catalog cursor. The dashboard can suggest provider keys from `GET /api/v1/anime/facets?field=providers`. Suggestions use retained catalog attribution, including older metadata from providers whose network access is disabled.
 
 Use `confirmedTrack=SUB`, `DUB`, `RAW` or `UNKNOWN` to require a confirmed release on a specific track. A latest observation whose release time is missing or in the future does not qualify. The track filter is independent of the checkbox for any confirmed release and is bound to the catalog cursor.
+
+**Sourced season number** and **Sourced split-part number** match exact labels on the primary catalog observation. You can combine either with the airing quarter or with other filters. The split-part filter requires a sourced season number on the matching title. The filters do not group canonical titles by number.

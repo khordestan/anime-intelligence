@@ -72,8 +72,13 @@ func (r *Repository) filterCatalog(ctx context.Context, f store.CatalogFilter, l
    SELECT 1 FROM catalog_metadata m JOIN data_sources d ON d.id=m.source_id
    WHERE m.anime_id=anime.id AND d.provider_key=$21
  ))
+ AND (($23::int IS NULL AND $24::int IS NULL) OR EXISTS (
+   SELECT 1 FROM catalog_metadata cm WHERE cm.anime_id=anime.id AND (`+catalogHasSeasonNumber+`)
+     AND ($23::int IS NULL OR cm.payload->'seasonNumber' = to_jsonb($23::int))
+     AND ($24::int IS NULL OR cm.payload->'partNumber' = to_jsonb($24::int))
+ ))
  AND ($17::bigint IS NULL OR ((`+sortYear+`),canonical_title,id) > ($17,$18,NULLIF($19,'')::uuid))
- ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`, f.Query, limit, offset, f.MediaType, f.Status, f.ReleaseYear, f.Season, f.Genre, f.Theme, f.Demographic, f.Studio, f.MinEpisodes, f.MaxEpisodes, f.Sort, f.MinYear, f.MaxYear, yearKey, title, id, f.ConfirmedRelease, f.MetadataProvider, f.ConfirmedTrack)
+ ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`, f.Query, limit, offset, f.MediaType, f.Status, f.ReleaseYear, f.Season, f.Genre, f.Theme, f.Demographic, f.Studio, f.MinEpisodes, f.MaxEpisodes, f.Sort, f.MinYear, f.MaxYear, yearKey, title, id, f.ConfirmedRelease, f.MetadataProvider, f.ConfirmedTrack, f.SeasonNumber, f.PartNumber)
 	if err != nil {
 		return nil, err
 	}

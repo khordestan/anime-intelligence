@@ -7,6 +7,8 @@ import CatalogLabels from "./catalog-labels";
 export type CatalogFilterValues = {
   confirmedRelease: string;
   confirmedTrack: string;
+  seasonNumber: string;
+  partNumber: string;
   metadataProvider: string;
   minYear: string; maxYear: string;
   sort: string;
@@ -15,7 +17,7 @@ export type CatalogFilterValues = {
   genre: string; theme: string; demographic: string; studio: string;
 };
 export const emptyCatalogFilters: CatalogFilterValues = {
-  confirmedRelease:"", confirmedTrack:"", metadataProvider:"", minYear:"", maxYear:"", sort:"", minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
+  confirmedRelease:"", confirmedTrack:"", seasonNumber:"", partNumber:"", metadataProvider:"", minYear:"", maxYear:"", sort:"", minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
 };
 export default function CatalogFilters({ client, values, onApply }: {
   client: ApiClient; values: CatalogFilterValues; onApply: (values: CatalogFilterValues) => void;
@@ -38,6 +40,9 @@ export default function CatalogFilters({ client, values, onApply }: {
       if ([next.genre, next.theme, next.demographic, next.studio].some(value => new TextEncoder().encode(value).length > 256)) { setError("Each source label must be at most 256 UTF-8 bytes."); return; }
       if(next.minEpisodes!==""&&next.maxEpisodes!==""&&Number(next.minEpisodes)>Number(next.maxEpisodes)){setError("Minimum episodes must not exceed maximum episodes.");return;}
       if(next.minYear!==""&&next.maxYear!==""&&Number(next.minYear)>Number(next.maxYear)){setError("Earliest year must not exceed latest year.");return;}
+      for (const key of ["seasonNumber", "partNumber"] as const) {
+        if (next[key]) next[key] = String(Number(next[key]));
+      }
       setError(""); onApply(next);
     }}>
       <p className="text-xs text-slate-400">Filters combine. Source labels match whole values; missing metadata does not match. A release quarter does not confirm episode availability.</p>
@@ -65,6 +70,13 @@ export default function CatalogFilters({ client, values, onApply }: {
           ["status", "Catalog release status", ["UNKNOWN", "ANNOUNCED", "RELEASING", "FINISHED", "CANCELLED", "HIATUS"]],
           ["season", "Catalog release quarter", ["WINTER", "SPRING", "SUMMER", "FALL"]],
         ] as const).map(([key, label, options]) => <label key={key} className="text-xs text-slate-300">{label}<select aria-label={label} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-900 p-2"><option value="">Any</option>{options.map(value => <option key={value} value={value}>{value}</option>)}</select></label>)}
+        {([["seasonNumber", "Sourced season number"], ["partNumber", "Sourced split-part number"]] as const).map(([key, label]) => (
+          <label key={key} className="text-xs text-slate-300">{label}
+            <input type="number" min={1} max={2147483647} step={1} value={draft[key]}
+              onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))}
+              className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" />
+          </label>
+        ))}
         <label className="text-xs text-slate-300">Catalog release year<input aria-label="Catalog release year" type="number" min={1900} max={9999} step={1} value={draft.releaseYear} onChange={event => setDraft(current => ({ ...current, releaseYear: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>
         {([["genre", "Source genre"], ["theme", "Source theme (may contain spoilers)"], ["demographic", "Source demographic"], ["studio", "Source studio"]] as const).map(([key, label]) => <div key={key}><label className="text-xs text-slate-300">{label}<input aria-label={label} maxLength={256} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label><CatalogLabels key={key+":"+labelGeneration} client={client} field={{genre:"genres",theme:"themes",demographic:"demographics",studio:"studios"}[key]} value={draft[key]} onSelect={value=>setDraft(current=>({...current,[key]:value}))} /></div>)}
       </div>
