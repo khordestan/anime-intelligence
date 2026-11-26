@@ -289,7 +289,9 @@ test("notification kind combines with unread filtering and keeps the account-wid
   await kind.selectOption("schedule");
   await expect(panel.getByText("Private synthetic release for account one")).toHaveCount(0);
   await expect(panel.getByText("Unread alerts: 2", { exact: true })).toBeVisible();
-  await panel.getByRole("checkbox", { name: "Show unread alerts only" }).check();
+  const onlyUnread = panel.getByRole("checkbox", { name: "Show unread alerts only" });
+  await onlyUnread.click();
+  await expect(onlyUnread).toBeChecked();
   await expect(panel.getByText("Synthetic reviewed delay")).toBeVisible();
   const request = api.calls.filter(call => call.path === "/notifications").at(-1);
   expect(new URLSearchParams(request?.query).get("kind")).toBe("schedule");
