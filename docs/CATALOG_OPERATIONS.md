@@ -22,8 +22,20 @@ Enabled sources with missing policy records, no observation, future observations
 
 ## Operator follow-through
 
-Register/enable only reviewed sources. Wikidata CC0 explicit-item fetch is available for sparse facts for reviewed explicit TV/season/movie/OVA/ONA classes; Jikan source-use permissions remain unverified and AniList is excluded under current tracker/collection restrictions. No scheduler, host service or alert receiver is activated. Retention policies, provider-wide/per-title SLOs, metrics export, catalog writer-role hardening, availability verification and load tests remain work before public operation.
+Register/enable only reviewed sources. Wikidata CC0 explicit-item fetch is available for sparse facts for reviewed explicit TV/season/movie/OVA/ONA classes; Jikan source-use permissions remain unverified and AniList is excluded under current tracker/collection restrictions. No scheduler, host service or alert receiver is activated. Retention policies, provider and title SLOs, availability verification and representative load tests remain work before public operation.
 
 See [feed ingestion](CATALOG_FEEDS.md), [provider registry](PROVIDERS.md), [exact episodes](EPISODE_PROGRESS.md) and [in-app alerts](RELEASE_ALERTS.md). Do not expose the API publicly.
 
 Migration 000014 and refreshed reader grants are required for attempt diagnostics. A stale source in a provider cooldown is not permission to retry early; inspect nextAttemptAt and respect it. No raw response/error strings or item-selection lists are persisted.
+
+## Atomic Prometheus collection
+
+Build the CLI with `go build -o catalog-status ./cmd/catalog-status`. To publish a snapshot to a trusted local node_exporter textfile directory, run:
+
+```sh
+catalog-status -format=prometheus -output-file=/var/lib/node_exporter/textfile_collector/anime_catalog.prom
+```
+
+Use the diagnostics-only login and keep its connection string in an out-of-band environment file readable by the authorized service account. Use one writer per destination. A failed read or render preserves the previous file. Its embedded snapshot time lets the freshness rules detect interruptions.
+
+The inactive systemd examples collect once per minute. They install and enable nothing themselves. The catalog alert rules apply only to explicitly marked targets. See [catalog alert rules](CATALOG_ALERT_RULES.md).
