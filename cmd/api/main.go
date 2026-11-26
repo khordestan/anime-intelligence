@@ -18,7 +18,11 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	dsn := os.Getenv("DATABASE_URL")
+	dsn, configErr := databaseURLFromEnv(os.Getenv)
+	if configErr != nil {
+		logger.Error("PostgreSQL configuration rejected", "error", configErr)
+		os.Exit(1)
+	}
 	sender, configErr := identitySenderFromEnv(os.Getenv, dsn != "")
 	if configErr != nil {
 		logger.Error("identity mail requires PostgreSQL and complete valid delivery configuration")
