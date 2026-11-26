@@ -189,6 +189,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Explicit feature feedback from Discovery through the private Personal Match preference controls
 - [x] LLM provider abstraction, OpenAI adapter and process-local usage controls
 - [x] Shared PostgreSQL model budgets across API replicas
+- [x] Offline analyst topic evaluation against reviewed judgments with recorded model output replay
 - [ ] Representative model evaluation and deployment quota tuning
 
 ## Milestone 7 — Production readiness
