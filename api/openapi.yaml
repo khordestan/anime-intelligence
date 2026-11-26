@@ -125,6 +125,10 @@ paths:
           name: confirmedRelease
           description: Require a latest episode/track observation with a confirmed release timestamp at or before now. Local starter mode has no release observations.
           schema: { type: boolean, default: false }
+        - in: query
+          name: metadataProvider
+          description: Exact provider key for the title's primary metadata.
+          schema: { type: string, maxLength: 128 }
       responses:
         "200":
           description: Catalog page
@@ -165,6 +169,23 @@ paths:
               schema: { $ref: '#/components/schemas/Anime' }
         "400": { description: Missing, duplicated or invalid identity }
         "404": { description: Unknown exact identity }
+  /api/v1/anime/facets:
+    get:
+      summary: Suggest stored catalog facet values
+      parameters:
+        - in: query
+          name: field
+          required: true
+          schema: { type: string, enum: [genres, themes, demographics, studios, providers] }
+        - in: query
+          name: prefix
+          schema: { type: string, maxLength: 128 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200": { description: Items and hasMore flag. Provider suggestions include keys with retained primary catalog metadata. }
+        "400": { description: Invalid facet query }
   /api/v1/anime/{id}:
     get:
       summary: Get anime by ID

@@ -9,7 +9,7 @@ test("source labels load explicitly and selection only changes filter drafts",as
   if(path==="")return respond({authenticationRequired:false});
   if(path==="/tracker")return respond({items:[]});
   if(path==="/anime")return respond({items:[]});
-  if(path==="/anime/facets"){calls.push(u.searchParams.get("field")??"");return respond({items:u.searchParams.get("field")==="themes"?["Synthetic theme"]:["Action"],hasMore:true});}
+  if(path==="/anime/facets"){calls.push(u.searchParams.get("field")??"");return respond({items:u.searchParams.get("field")==="themes"?["Synthetic theme"]:u.searchParams.get("field")==="providers"?["synthetic-primary"]:["Action"],hasMore:true});}
   return respond({});
  });
  await page.goto("/");
@@ -29,6 +29,12 @@ test("source labels load explicitly and selection only changes filter drafts",as
  await form.getByRole("button",{name:"Find theme labels (may contain spoilers)",exact:true}).click();
  await expect(form.getByRole("button",{name:"Synthetic theme",exact:true})).toBeVisible();
  expect(calls).toEqual(["genres","themes"]);
+ await form.getByRole("button",{name:"Find metadata providers",exact:true}).click();
+ await form.getByRole("button",{name:"synthetic-primary",exact:true}).click();
+ await expect(form.getByLabel("Metadata provider",{exact:true})).toHaveValue("synthetic-primary");
+ await expect(page.getByRole("button",{name:"Hide catalog filters",exact:true})).toBeVisible();
+ expect(calls).toEqual(["genres","themes","providers"]);
  await form.getByRole("button",{name:"Clear catalog filters",exact:true}).click();
  await expect(form.getByRole("button",{name:"Synthetic theme",exact:true})).toHaveCount(0);
+ await expect(form.getByLabel("Metadata provider",{exact:true})).toHaveValue("");
 });
