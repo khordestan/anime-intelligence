@@ -435,7 +435,7 @@ export default function Home() {
     const value = action === "status" ? bulkStatus : action === "rating" ? bulkRating : "advance";
     if (busy || !bulkEntries?.length || !value) return;
     if (action === "progress" && !bulkEntries.every(target => target.canAdvance && (!toKnownTotal || target.expectedTotalEpisodes !== undefined))) return;
-    const change = action === "status" ? { watchStatus: value } : action === "rating" ? { score: Number(value) } : {};
+    const change = action === "status" ? { watchStatus: value } : action === "rating" ? { score: value === "clear" ? null : Number(value) } : {};
     const targets = bulkEntries.map(({ id, expectedCycle, expectedEpisodesWatched, expectedTotalEpisodes }) =>
       action === "progress" ? { id, expectedCycle, expectedEpisodesWatched, ...(toKnownTotal ? { expectedTotalEpisodes } : {}) } : { id, expectedCycle });
     const account = accountRevision.current;
@@ -826,11 +826,12 @@ export default function Home() {
                   onChange={event => setBulkRating(event.target.value)}
                   className="rounded-lg border border-white/10 bg-slate-900 p-2">
                   <option value="">Choose series rating</option>
+                  <option value="clear">Clear series rating</option>
                   {[1, 2, 3, 4, 5].map(score => <option key={score} value={score}>{score} / 5</option>)}
                 </select>
                 <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkRating}
                   onClick={() => void applyBulkEdit("rating")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
-                  Apply rating to selected
+                  {bulkRating === "clear" ? "Clear rating for selected" : "Apply rating to selected"}
                 </button>
                 <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkEntries.every(target => target.canAdvance)}
                   onClick={() => void applyBulkEdit("progress")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">

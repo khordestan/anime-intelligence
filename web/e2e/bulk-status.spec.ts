@@ -81,6 +81,12 @@ test("bulk edits submit selected viewing passes, recover from conflicts, and adv
   await expect(library.getByRole("button", { name: "Edit multiple entries" })).toBeVisible();
   expect(ratingCalls).toEqual([{ score: 4, entries: [{ id: "entry-two", expectedCycle: 1 }] }]);
   await library.getByRole("button", { name: "Edit multiple entries" }).click();
+  await second.check();
+  await library.getByLabel("Bulk series rating").selectOption("clear");
+  await library.getByRole("button", { name: "Clear rating for selected" }).click();
+  await expect(library.getByRole("button", { name: "Edit multiple entries" })).toBeVisible();
+  expect(ratingCalls.at(-1)).toEqual({ score: null, entries: [{ id: "entry-two", expectedCycle: 1 }] });
+  await library.getByRole("button", { name: "Edit multiple entries" }).click();
   await first.check();
   await second.check();
   await library.getByRole("button", { name: "Add one watched episode to selected" }).click();
