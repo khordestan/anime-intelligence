@@ -38,9 +38,28 @@ type requestTotals struct {
 
 // RequestMetrics records completed API requests using fixed labels. It belongs
 // to one process and is exposed by a separate monitoring listener.
+type PushEvent int
+
+const (
+	PushAccepted PushEvent = iota
+	PushRetry
+	PushGone
+	PushClaimError
+	PushRecheckError
+	PushSubscriptionError
+	PushFinishError
+)
+
+var pushEventNames = [...]string{
+	PushAccepted: "provider_accepted", PushRetry: "provider_retry", PushGone: "provider_gone",
+	PushClaimError: "claim_error", PushRecheckError: "recheck_error",
+	PushSubscriptionError: "subscription_error", PushFinishError: "finish_error",
+}
+
 type RequestMetrics struct {
-	mu     sync.Mutex
-	totals [len(requestGroups)]requestTotals
+	pushEvents [len(pushEventNames)]uint64
+	mu         sync.Mutex
+	totals     [len(requestGroups)]requestTotals
 }
 
 func (m *RequestMetrics) Wrap(next http.Handler) http.Handler {
@@ -102,12 +121,22 @@ func routeGroup(route, prefix string) bool {
 	return route == prefix || strings.HasPrefix(route, prefix+"/")
 }
 
+// RecordPush counts an event from the browser delivery loop. The listener is optional.
+func (m *RequestMetrics) RecordPush(event PushEvent) {
+	if m == nil || event < 0 || int(event) >= len(pushEventNames) {
+		return
+	}
+	m.mu.Lock()
+	m.pushEvents[event]++
+	m.mu.Unlock()
+}
+
 func (m *RequestMetrics) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) {
 		var output bytes.Buffer
 		m.mu.Lock()
-		totals := m.totals
+		totals, pushEvents := m.totals, m.pushEvents
 		m.mu.Unlock()
 
 		fmt.Fprintln(&output, "# HELP anime_http_requests_total Completed API requests by route group and response class.")
@@ -132,6 +161,12 @@ func (m *RequestMetrics) Handler() http.Handler {
 			fmt.Fprintf(&output, "anime_http_request_duration_seconds_bucket{group=%q,le=\"+Inf\"} %d\n", group, totals[i].count)
 			fmt.Fprintf(&output, "anime_http_request_duration_seconds_sum{group=%q} %g\n", group, totals[i].totalTime)
 			fmt.Fprintf(&output, "anime_http_request_duration_seconds_count{group=%q} %d\n", group, totals[i].count)
+		}
+
+		fmt.Fprintln(&output, "# HELP anime_release_push_events_total Browser delivery loop events by fixed outcome.")
+		fmt.Fprintln(&output, "# TYPE anime_release_push_events_total counter")
+		for i, name := range pushEventNames {
+			fmt.Fprintf(&output, "anime_release_push_events_total{outcome=%q} %d\n", name, pushEvents[i])
 		}
 
 		w.Header().Set("Cache-Control", "no-store")

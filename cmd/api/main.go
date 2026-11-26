@@ -104,7 +104,7 @@ func main() {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				runReleasePush(ctx, db, pushSender, logger)
+				runReleasePush(ctx, db, pushSender, logger, metrics)
 			}()
 			defer func() {
 				cancel()
