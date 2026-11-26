@@ -18,7 +18,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 | Capability | Available | Remaining |
 | --- | --- | --- |
 | Catalog freshness and coverage | Reviewed imports, opt-in bounded jobs, exact mappings, review/retraction tools and metrics | Licensed comprehensive sources, broader people/character data, confirmed availability, active operations and quality objectives |
-| Season-level library | Canonical title-level progress, separate series and sourced season-part ratings, relations and viewing passes | Franchise corrections and more bulk editing |
+| Season-level library | Canonical title-level progress, separate series and sourced season-part ratings, viewing passes and reviewed bulk edits | Franchise corrections |
 | Alerts | Verified-owner in-app episode and season-announcement notices, follow pagination and an upcoming schedule calendar | Delay/movie alert rules, explicit corrections, background channels and operational delivery |
 | Recommendations | PostgreSQL Personal Match, offline evaluators, opt-in Global Essentials and paginated Discovery with evidence navigation and dismissals | Reviewed Essentials corpus, deliberate exploration beyond evidence coverage, representative judgments and feedback learning |
 | Production operations | Security tests, recovery drill, bounded diagnostics and monitoring examples | Independent review, ingress abuse controls, load testing, activated monitoring, real backup/recovery and deployment workflows |
@@ -127,7 +127,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Atomic bulk one-episode progress for count-mode tracker entries
 - [x] Atomic bulk update to reviewed known episode totals for count-mode tracker entries
 - [x] Atomic bulk clearing of current series ratings
-- [ ] Further bulk editing actions
+- [x] Atomic bulk library removal with explicit title review and current-entry checks
 - [x] Transitive linked-season follows with explicit per-title scope
 
 ## Milestone 4 — Release intelligence

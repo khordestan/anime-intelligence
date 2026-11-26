@@ -866,6 +866,39 @@ paths:
         "403": { description: Verified email required }
         "404": { description: Selected entry not found }
         "409": { description: Viewing pass or progress changed, exact mode selected or known total reached }
+  /api/v1/tracker/bulk-remove:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Remove reviewed owned tracker entries atomically
+      description: PostgreSQL mode requires verified email. Send the exact updatedAt timestamp and viewing pass returned for each selected entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  minItems: 1
+                  maxItems: 25
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, expectedCycle, expectedUpdatedAt]
+                    properties:
+                      id: { type: string, format: uuid }
+                      expectedCycle: { type: integer, minimum: 1, maximum: 1000 }
+                      expectedUpdatedAt: { type: string, format: date-time }
+      responses:
+        "204": { description: All entries removed }
+        "400": { description: Invalid batch }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Selected entry not found }
+        "409": { description: A selected tracker entry changed }
   /api/v1/tracker/bulk-rating:
     patch:
       security: [{ bearerAuth: [] }]

@@ -44,8 +44,9 @@ type Entry = {
   rating?: number;
   seasonRating?: number;
   seasonRatingAvailable?: boolean;
+  updatedAt?: string;
 };
-type BulkStatusTarget = { id: string; expectedCycle: number; expectedEpisodesWatched: number; canAdvance: boolean; expectedTotalEpisodes?: number };
+type BulkStatusTarget = { id: string; title: string; expectedUpdatedAt?: string; expectedCycle: number; expectedEpisodesWatched: number; canAdvance: boolean; expectedTotalEpisodes?: number };
 const maxBulkStatusEntries = 25;
 
 const statuses = [
@@ -105,6 +106,7 @@ export default function Home() {
   const [bulkEntries, setBulkEntries] = useState<BulkStatusTarget[] | null>(null);
   const [bulkRating, setBulkRating] = useState("");
   const [bulkStatus, setBulkStatus] = useState("");
+  const [reviewBulkRemoval, setReviewBulkRemoval] = useState(false);
   const [removal, setRemoval] = useState<string | null>(null);
   const accountRevision = useRef(0);
   const refreshRevision = useRef(0);
@@ -117,6 +119,7 @@ export default function Home() {
       refreshRevision.current++;
       setRemoval(null);
       setBulkEntries(null);
+      setReviewBulkRemoval(false);
       setBulkStatus("");
       setBulkRating("");
       setWatchListFile(null);
@@ -433,24 +436,31 @@ export default function Home() {
       if (account === accountRevision.current) setBusy(false);
     }
   }
-  async function applyBulkEdit(action: "status" | "rating" | "progress", toKnownTotal = false) {
-    const value = action === "status" ? bulkStatus : action === "rating" ? bulkRating : "advance";
+  async function applyBulkEdit(action: "status" | "rating" | "progress" | "remove", toKnownTotal = false) {
+    const value = action === "status" ? bulkStatus : action === "rating" ? bulkRating : action;
     if (busy || !bulkEntries?.length || !value) return;
     if (action === "progress" && !bulkEntries.every(target => target.canAdvance && (!toKnownTotal || target.expectedTotalEpisodes !== undefined))) return;
+    if (action === "remove" && (!reviewBulkRemoval || bulkEntries.some(target => !target.expectedUpdatedAt))) return;
     const change = action === "status" ? { watchStatus: value } : action === "rating" ? { score: value === "clear" ? null : Number(value) } : {};
-    const targets = bulkEntries.map(({ id, expectedCycle, expectedEpisodesWatched, expectedTotalEpisodes }) =>
-      action === "progress" ? { id, expectedCycle, expectedEpisodesWatched, ...(toKnownTotal ? { expectedTotalEpisodes } : {}) } : { id, expectedCycle });
+    const targets = bulkEntries.map(({ id, expectedCycle, expectedEpisodesWatched, expectedTotalEpisodes, expectedUpdatedAt }) => {
+      if (action === "progress") {
+        return { id, expectedCycle, expectedEpisodesWatched, ...(toKnownTotal ? { expectedTotalEpisodes } : {}) };
+      }
+      if (action === "remove") return { id, expectedCycle, expectedUpdatedAt };
+      return { id, expectedCycle };
+    });
     const account = accountRevision.current;
     setBusy(true);
     setError("");
     try {
       await client.request("/tracker/bulk-" + action, {
-        method: "PATCH",
+        method: action === "remove" ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...change, entries: targets }),
       });
       if (account !== accountRevision.current) return;
       setBulkEntries(null);
+      setReviewBulkRemoval(false);
       setBulkStatus("");
       setBulkRating("");
       await refresh();
@@ -458,6 +468,7 @@ export default function Home() {
       if (account !== accountRevision.current) return;
       if (error instanceof ApiError && (error.status === 409 || error.status === 404)) {
         setBulkEntries([]);
+        setReviewBulkRemoval(false);
         await refresh();
         if (account === accountRevision.current) {
           setError(action === "progress"
@@ -807,6 +818,7 @@ export default function Home() {
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
             <button type="button" disabled={busy} className="underline" onClick={() => {
               setBulkEntries(bulkEntries === null ? [] : null);
+              setReviewBulkRemoval(false);
               setBulkStatus("");
               setBulkRating("");
             }}>
@@ -815,37 +827,60 @@ export default function Home() {
             {bulkEntries !== null && (
               <>
                 <span role="status">{bulkEntries.length} selected (maximum {maxBulkStatusEntries})</span>
-                <select aria-label="Bulk watch status" disabled={busy} value={bulkStatus} onChange={event => setBulkStatus(event.target.value)}
-                  className="rounded-lg border border-white/10 bg-slate-900 p-2">
-                  <option value="">Choose status</option>
-                  {statuses.slice(1).map(status => <option key={status} value={status}>{labels[status]}</option>)}
-                </select>
-                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkStatus}
-                  onClick={() => void applyBulkEdit("status")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
-                  Apply status to selected
-                </button>
-                <select aria-label="Bulk series rating" disabled={busy} value={bulkRating}
-                  onChange={event => setBulkRating(event.target.value)}
-                  className="rounded-lg border border-white/10 bg-slate-900 p-2">
-                  <option value="">Choose series rating</option>
-                  <option value="clear">Clear series rating</option>
-                  {[1, 2, 3, 4, 5].map(score => <option key={score} value={score}>{score} / 5</option>)}
-                </select>
-                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkRating}
-                  onClick={() => void applyBulkEdit("rating")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
-                  {bulkRating === "clear" ? "Clear rating for selected" : "Apply rating to selected"}
-                </button>
-                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkEntries.every(target => target.canAdvance)}
-                  onClick={() => void applyBulkEdit("progress")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
-                  Add one watched episode to selected
-                </button>
-                <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkEntries.every(target => target.canAdvance && target.expectedTotalEpisodes !== undefined)}
-                  onClick={() => void applyBulkEdit("progress", true)} className="rounded-lg border border-white/20 px-3 py-2 disabled:opacity-50">
-                  Set selected watched counts to known totals
-                </button>
-                {bulkEntries.some(target => !target.canAdvance) && <span className="text-xs text-slate-300">
-                  Bulk progress requires count-mode entries with episodes remaining.
-                </span>}
+                {reviewBulkRemoval ? (
+                  <div role="group" aria-label="Review library removals" className="basis-full rounded-lg border border-rose-400/30 p-3">
+                    <p>Remove these titles and their ratings, progress, notes and archived viewing passes?</p>
+                    <ul className="my-2 list-disc space-y-1 pl-5">
+                      {bulkEntries.map(target => <li key={target.id}>{target.title}</li>)}
+                    </ul>
+                    <div className="flex gap-3">
+                      <button type="button" disabled={busy} className="text-rose-300 underline" onClick={() => void applyBulkEdit("remove")}>
+                        Confirm removal of selected entries
+                      </button>
+                      <button type="button" disabled={busy} className="underline" onClick={() => setReviewBulkRemoval(false)}>
+                        Keep selected entries
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <select aria-label="Bulk watch status" disabled={busy} value={bulkStatus} onChange={event => setBulkStatus(event.target.value)}
+                      className="rounded-lg border border-white/10 bg-slate-900 p-2">
+                      <option value="">Choose status</option>
+                      {statuses.slice(1).map(status => <option key={status} value={status}>{labels[status]}</option>)}
+                    </select>
+                    <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkStatus}
+                      onClick={() => void applyBulkEdit("status")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+                      Apply status to selected
+                    </button>
+                    <select aria-label="Bulk series rating" disabled={busy} value={bulkRating}
+                      onChange={event => setBulkRating(event.target.value)}
+                      className="rounded-lg border border-white/10 bg-slate-900 p-2">
+                      <option value="">Choose series rating</option>
+                      <option value="clear">Clear series rating</option>
+                      {[1, 2, 3, 4, 5].map(score => <option key={score} value={score}>{score} / 5</option>)}
+                    </select>
+                    <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkRating}
+                      onClick={() => void applyBulkEdit("rating")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+                      {bulkRating === "clear" ? "Clear rating for selected" : "Apply rating to selected"}
+                    </button>
+                    <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkEntries.every(target => target.canAdvance)}
+                      onClick={() => void applyBulkEdit("progress")} className="rounded-lg bg-violet-300 px-3 py-2 text-slate-950 disabled:opacity-50">
+                      Add one watched episode to selected
+                    </button>
+                    <button type="button" disabled={busy || bulkEntries.length === 0 || !bulkEntries.every(target => target.canAdvance && target.expectedTotalEpisodes !== undefined)}
+                      onClick={() => void applyBulkEdit("progress", true)} className="rounded-lg border border-white/20 px-3 py-2 disabled:opacity-50">
+                      Set selected watched counts to known totals
+                    </button>
+                    {bulkEntries.some(target => !target.canAdvance) && <span className="text-xs text-slate-300">
+                      Bulk progress requires count-mode entries with episodes remaining.
+                    </span>}
+                    <button type="button" disabled={busy || !bulkEntries.length || bulkEntries.some(target => !target.expectedUpdatedAt)}
+                      onClick={() => setReviewBulkRemoval(true)} className="rounded-lg border border-rose-400/30 px-3 py-2 text-rose-300 disabled:opacity-50">
+                      Review selected entries for removal
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -881,7 +916,7 @@ export default function Home() {
                       <label className="mt-2 flex items-center gap-2 text-xs text-slate-300">
                         <input type="checkbox" aria-label={"Select " + e.title + " for bulk edit"}
                           checked={bulkEntries.some(target => target.id === e.id)}
-                          disabled={busy || (bulkEntries.length >= maxBulkStatusEntries && !bulkEntries.some(target => target.id === e.id))}
+                          disabled={busy || reviewBulkRemoval || (bulkEntries.length >= maxBulkStatusEntries && !bulkEntries.some(target => target.id === e.id))}
                           onChange={event => {
                             const checked = event.target.checked;
                             setBulkEntries(current => {
@@ -890,6 +925,8 @@ export default function Home() {
                               if (current.length >= maxBulkStatusEntries || current.some(target => target.id === e.id)) return current;
                               return [...current, {
                                 id: e.id,
+                                title: e.title,
+                                expectedUpdatedAt: e.updatedAt,
                                 expectedCycle: e.watchCycle ?? 1,
                                 expectedEpisodesWatched: e.episodesWatched,
                                 expectedTotalEpisodes: e.totalEpisodes && e.totalEpisodes > e.episodesWatched ? e.totalEpisodes : undefined,

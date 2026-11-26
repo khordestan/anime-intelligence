@@ -195,8 +195,16 @@ func (r *Repository) Remove(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	defer rollback(tx)
+	found, err := removeOwnedTracker(ctx, tx, u.ID, id)
+	if err != nil || !found {
+		return found, err
+	}
+	return true, tx.Commit(ctx)
+}
+
+func removeOwnedTracker(ctx context.Context, tx pgx.Tx, owner, id string) (bool, error) {
 	var animeID string
-	err = tx.QueryRow(ctx, `DELETE FROM user_anime WHERE id=$1 AND user_id=$2 RETURNING anime_id::text`, id, u.ID).Scan(&animeID)
+	err := tx.QueryRow(ctx, `DELETE FROM user_anime WHERE id=$1 AND user_id=$2 RETURNING anime_id::text`, id, owner).Scan(&animeID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -204,9 +212,9 @@ func (r *Repository) Remove(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	for _, table := range []string{"watch_progress", "user_ratings"} {
-		if _, err = tx.Exec(ctx, `DELETE FROM `+pgx.Identifier{table}.Sanitize()+` WHERE user_id=$1 AND anime_id=$2`, u.ID, animeID); err != nil {
+		if _, err = tx.Exec(ctx, `DELETE FROM `+pgx.Identifier{table}.Sanitize()+` WHERE user_id=$1 AND anime_id=$2`, owner, animeID); err != nil {
 			return false, err
 		}
 	}
-	return true, tx.Commit(ctx)
+	return true, nil
 }
