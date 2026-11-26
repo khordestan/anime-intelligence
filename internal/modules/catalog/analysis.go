@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,11 +17,19 @@ import (
 )
 
 type catalogAnalysisFact struct {
-	Field      string     `json:"field"`
-	Values     []string   `json:"values"`
-	Provider   string     `json:"provider,omitempty"`
-	ObservedAt *time.Time `json:"observedAt,omitempty"`
-	Truncated  bool       `json:"truncated,omitempty"`
+	Field        string                `json:"field"`
+	Values       []string              `json:"values"`
+	Provider     string                `json:"provider,omitempty"`
+	ObservedAt   *time.Time            `json:"observedAt,omitempty"`
+	Truncated    bool                  `json:"truncated,omitempty"`
+	EpisodeFacts []analysisEpisodeFact `json:"episodeFacts,omitempty"`
+}
+
+type analysisEpisodeFact struct {
+	Number   int       `json:"number"`
+	Track    string    `json:"track"`
+	Time     time.Time `json:"time"`
+	Provider string    `json:"provider,omitempty"`
 }
 
 type catalogAnalysisTitle struct {
@@ -53,6 +62,8 @@ var analysisFields = []struct {
 	{"nativeTitle", []string{"native", "japanese"}},
 	{"season", []string{"quarter", "winter", "spring", "summer", "fall", "autumn"}},
 	{"demographics", []string{"demographic", "demographics"}},
+	{"confirmedReleases", []string{"confirmed", "released", "premiered"}},
+	{"upcomingSchedule", []string{"schedule", "scheduled", "airdate", "airdates", "upcoming"}},
 }
 
 type CatalogFieldSelector func(context.Context, string, []string) ([]string, string, error)
@@ -127,11 +138,12 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 		}
 		engine, model = "model-selected-catalog-facts-v1", selectedModel
 	}
+	asOf := time.Now().UTC()
 	items := make([]catalogAnalysisTitle, 0, len(detailsList))
 	for _, details := range detailsList {
 		item := catalogAnalysisTitle{AnimeID: details.Anime.ID, Title: details.Anime.Title}
 		for _, field := range fields {
-			item.Evidence = append(item.Evidence, projectAnalysisFact(details, field))
+			item.Evidence = append(item.Evidence, projectAnalysisFact(details, field, asOf))
 		}
 		items = append(items, item)
 	}
@@ -257,7 +269,7 @@ func validateSelectedFields(allowed, selected []string) ([]string, bool, bool) {
 	return fields, true, true
 }
 
-func projectAnalysisFact(details store.CatalogDetails, field string) catalogAnalysisFact {
+func projectAnalysisFact(details store.CatalogDetails, field string, asOf time.Time) catalogAnalysisFact {
 	fact := catalogAnalysisFact{Field: field, Values: []string{}}
 	switch field {
 	case "mediaType":
@@ -290,6 +302,9 @@ func projectAnalysisFact(details store.CatalogDetails, field string) catalogAnal
 		}
 	case "demographics":
 		fact.Values = append(fact.Values, details.Demographics...)
+	case "confirmedReleases", "upcomingSchedule":
+		fact.EpisodeFacts, fact.Truncated = analysisEpisodeFacts(details.Episodes, field == "confirmedReleases", asOf)
+		return fact
 	}
 	if len(fact.Values) == 0 {
 		return fact
@@ -307,4 +322,40 @@ func projectAnalysisFact(details store.CatalogDetails, field string) catalogAnal
 		}
 	}
 	return fact
+}
+
+func analysisEpisodeFacts(episodes []store.CatalogEpisode, confirmed bool, asOf time.Time) ([]analysisEpisodeFact, bool) {
+	var facts []analysisEpisodeFact
+	for _, episode := range episodes {
+		var timestamp *time.Time
+		if confirmed {
+			if episode.ReleasedAt == nil || episode.ReleasedAt.After(asOf) {
+				continue
+			}
+			timestamp = episode.ReleasedAt
+		} else {
+			if episode.ReleasedAt != nil || episode.ScheduledAt == nil || episode.ScheduledAt.Before(asOf) {
+				continue
+			}
+			timestamp = episode.ScheduledAt
+		}
+		facts = append(facts, analysisEpisodeFact{Number: episode.Number, Track: episode.Track, Time: timestamp.UTC(), Provider: episode.Provider})
+	}
+	slices.SortFunc(facts, func(a, b analysisEpisodeFact) int {
+		if order := a.Time.Compare(b.Time); order != 0 {
+			if confirmed {
+				return -order
+			}
+			return order
+		}
+		if order := cmp.Compare(a.Number, b.Number); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.Track, b.Track)
+	})
+	const maxFacts = 20
+	if len(facts) > maxFacts {
+		return facts[:maxFacts], true
+	}
+	return facts, false
 }

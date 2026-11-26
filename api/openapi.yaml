@@ -51,7 +51,7 @@ paths:
   /api/v1/analysis/catalog:
     post:
       summary: Select sourced catalog facts for one or two canonical titles
-      description: Uses a deterministic topic selector. No question is sent to an external service. Eligible fields are format, release year and quarter, episode count, status, native title, genres, studios and demographics. An unrecognized topic returns the eligible fact list with topicMatched false.
+      description: Uses a deterministic topic selector. No question is sent to an external service. Eligible fields are format, release year and quarter, episode count, status, native title, genres, studios, demographics, confirmed releases and upcoming unconfirmed schedules. An unrecognized topic returns the eligible fact list with topicMatched false.
       requestBody:
         required: true
         content:
@@ -69,7 +69,7 @@ paths:
                   uniqueItems: true
                   items: { type: string, format: uuid }
       responses:
-        "200": { description: Engine version and topicMatched flag plus title evidence with field, values and available provider and observation time. Empty values mean unknown. Long value lists are capped at 20 and marked truncated. Two titles may include comparisons for known numeric fields, with difference equal to the first value minus the second. Optional sharedEvidence lists genre or studio values supported by both returned evidence lists. }
+        "200": { description: Engine version and topicMatched flag plus title evidence with field, values and available provider and observation time. Episode evidence uses episodeFacts with number, track, time and optional provider. A fact without values or episodeFacts is unknown. Long value lists are capped at 20 and marked truncated. Two titles may include comparisons for known numeric fields, with difference equal to the first value minus the second. Optional sharedEvidence lists genre or studio values supported by both returned evidence lists. }
         "400": { description: Invalid question or selection }
         "404": { description: One or more selected anime are missing }
   /api/v1/analysis/catalog/assisted:
