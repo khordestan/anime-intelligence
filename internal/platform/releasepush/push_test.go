@@ -85,3 +85,18 @@ func TestBrowserPushEnvelopeAndProviderResponse(t *testing.T) {
 		}
 	}
 }
+
+func TestRetryDelayBoundsBeforeConvertingToDuration(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for value, want := range map[string]time.Duration{
+		"0":                        0,
+		"-99999999999999999999999": 0,
+		"9223372036854775807":      24 * time.Hour,
+		"99999999999999999999999":  24 * time.Hour,
+		now.Add(time.Minute).Format(http.TimeFormat): time.Minute,
+	} {
+		if got := retryDelay(value, now); got != want {
+			t.Errorf("%q: got %v, want %v", value, got, want)
+		}
+	}
+}

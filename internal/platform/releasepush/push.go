@@ -249,11 +249,14 @@ func (s *Sender) Send(ctx context.Context, subscription Subscription) (Delivery,
 
 func retryDelay(value string, now time.Time) time.Duration {
 	const maxDelay = 24 * time.Hour
-	if value == "" {
+	if value == "" || value[0] == '-' {
 		return 0
 	}
-	if seconds, err := strconv.ParseUint(value, 10, 64); err == nil {
-		return time.Duration(min(seconds, uint64(maxDelay/time.Second))) * time.Second
+	if seconds, err := strconv.ParseInt(value, 10, 64); err == nil {
+		if seconds > int64(maxDelay/time.Second) {
+			return maxDelay
+		}
+		return time.Duration(seconds) * time.Second
 	} else if errors.Is(err, strconv.ErrRange) {
 		return maxDelay
 	}
