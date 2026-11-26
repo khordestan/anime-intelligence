@@ -6,6 +6,10 @@ In catalog details, **Ask about catalog facts** selects evidence for a question 
 
 The route reads public catalog data through the same repository used by catalog details. It exposes a fixed field list and omits prose, spoiler tags, schedules and all account records. The default engine uses deterministic word matching and does not contact a model provider.
 
+## Evaluate topic selection offline
+
+Run `go run ./cmd/evaluate-catalog-selector < suite.json` with a version 1 suite of cases. Each case supplies a synthetic or approved `id`, `question` and `expectedFields`. An empty expected list means abstain. Optional `modelFields` records a prior model selection for the same question. The report counts exact matches, abstentions and invalid model selections and calculates mean precision and recall. Empty predictions match empty judgments. Unknown and duplicate model keys count as invalid and score zero. The command reports case IDs and scores without echoing questions or contacting a provider.
+
 ## Model-assisted field selection
 
 A PostgreSQL operator can set `ANALYST_OPENAI_MODEL` and `ANALYST_OPENAI_API_KEY` together to enable model-assisted topic selection with a model that supports Structured Outputs in the Responses API. Both values are unset by default. The model receives the submitted question, instructions and the allowed field names. The application sends no title IDs, catalog records, account identifiers or library data. The request uses `store: false`. The checkbox in catalog details is off by default and names the destination before submission. [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
