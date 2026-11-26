@@ -8,15 +8,13 @@ An operator can run the workflow manually to retain a seven-day GitHub artifact.
 scripts/package-release-images.sh /tmp/anime-review-release
 ```
 
-Verify the archive in a disposable Docker environment.
+Verify the archive in a disposable Docker environment. Set `APPROVED_COMMIT` to the independently reviewed 40-character commit SHA.
 
 ```sh
-cd /tmp/anime-review-release
-sha256sum --check SHA256SUMS
-docker image load --input images.tar.gz
+scripts/verify-release-images.sh /tmp/anime-review-release "$APPROVED_COMMIT"
 ```
 
-Compare each loaded image ID and its `org.opencontainers.image.revision` label with the manifest and the approved commit. The hosted workflow exercises this round trip and checks non-root startup and same-origin ingress routing from the loaded images. The ingress exercise runs in an isolated network namespace. Keep the archive and checksum file from the same trusted workflow run.
+The verifier checks both archive files, the manifest, each loaded image ID, and its `org.opencontainers.image.revision` label against the supplied commit. Use a disposable Docker daemon where the expected tags are absent. The hosted workflow exercises this round trip and checks non-root startup and same-origin ingress routing from the loaded images. The ingress exercise runs in an isolated network namespace. Keep the archive and checksum file from the same trusted workflow run.
 
 The standalone migrator runs as a non-root user and requires an explicitly supplied `MIGRATION_DATABASE_URL`. The hosted rehearsal applies the same migrations twice in an isolated PostgreSQL container, provisions a synthetic restricted runtime role, and checks API readiness. A production rehearsal needs separately provisioned PostgreSQL, approved migration and runtime credentials, ingress and secrets. Keep the migration credential out of long-running API containers. Image readiness and checksum verification are useful inputs to deployment review.
 
