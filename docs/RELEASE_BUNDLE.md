@@ -29,3 +29,5 @@ ANIME_LOAD_EXTENDED=1 go test -count=1 -v ./internal/platform/postgres -run '^Te
 ```
 
 The default workload uses eight verified synthetic owners and 1,000 titles. The extended workload uses 24 owners and 10,000 titles. Both run two API replicas with independent connection pools and check that each competing pair of progress updates commits exactly once. The report includes request counts and client-side p50 and p95 latency by route. Use a comparable environment and fixture when comparing runs. Production workload and capacity still require environment-specific measurements.
+
+The PostgreSQL reliability test `TestDashboardProgressRetryAfterReplicaResponseLoss` drops an HTTP response after the first replica commits, then takes that replica offline. The second replica remains ready, rejects the stale retry and accepts the next update after the dashboard rereads progress.
