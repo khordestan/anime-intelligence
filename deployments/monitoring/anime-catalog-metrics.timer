@@ -1,0 +1,12 @@
+# Example only: review paths/users/grants before explicitly enabling it.
+[Unit]
+Description=Collect Anime Intelligence catalog freshness metrics each minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Unit=anime-catalog-metrics.service
+
+[Install]
+WantedBy=timers.target

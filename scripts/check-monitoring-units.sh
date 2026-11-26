@@ -4,7 +4,7 @@ set -eu
 repo_root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 verify_dir=$(mktemp -d)
 trap 'rm -rf -- "$verify_dir"' EXIT HUP INT TERM
-for collector in identity release-email; do
+for collector in identity release-email catalog; do
   unit=anime-$collector-metrics
   sed 's#^ExecStart=.*#ExecStart=/usr/bin/true#' \
     "$repo_root/deployments/monitoring/$unit.service" > "$verify_dir/$unit.service"
