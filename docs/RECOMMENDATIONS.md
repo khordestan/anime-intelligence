@@ -64,3 +64,9 @@ Choose a feature in Discovery to prefer, avoid or clear it for Personal Match. P
 The **Personal Match results limit** selector requests up to 10, 20, 50 or 100 matches. The current result stays visible after a failed change. The selection is retained while the account dashboard is mounted.
 
 Discovery’s **More like this** and **Less like this** save a private reaction to a title. Select an active reaction again to clear it. **Manage title feedback** includes reactions to titles you later tracked or hid. Personal Match uses the 100 most recent reactions to build fallback signals from eligible positive features. Declared preferences and rating-derived signals take precedence for each feature. The dashboard shows the number of reactions contributing to a fallback signal. Reactions are included in account export and deleted with the account.
+
+### Evaluate Discovery reactions
+
+A v1 Personal Match evaluation case can include up to 100 earlier title reactions under `feedback`. Each reaction supplies a unique `animeId`, a `direction` of 1 for a positive reaction or -1 for a negative reaction, and its eligible `features`. Reaction titles must be outside the case's candidate set, keeping the held-out judgments separate from training.
+
+The existing Personal Match metrics run with ratings and declared preferences. When a case supplies reactions, the evaluator runs the same candidate selection and ranking again with title feedback applied. It reports the paired means across cases with reactions and, when a retrieval cap is set, retrieval metrics for both runs. Use synthetic or approved evidence and judgments. A representative longitudinal dataset remains open.

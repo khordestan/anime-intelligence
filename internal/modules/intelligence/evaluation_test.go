@@ -7,7 +7,7 @@ import (
 
 func TestEvaluatePersonalMatchUsesHeldOutJudgments(t *testing.T) {
 	suite := EvaluationSuite{Version: 1, Cases: []EvaluationCase{{
-		ID: "synthetic",
+		ID:    "synthetic",
 		Rated: []RatedAnime{{AnimeID: "training", Score: 5, Features: []FeatureValue{{Key: "feature", Value: 1, Confidence: 1}}}},
 		Candidates: []Candidate{
 			{AnimeID: "training", Title: "Already rated", Features: []FeatureValue{{Key: "feature", Value: 1, Confidence: 1}}},
@@ -44,8 +44,8 @@ func TestEvaluatePersonalMatchMeasuresRetrievalLossSeparately(t *testing.T) {
 	suite := EvaluationSuite{Version: 1, CandidateLimit: 1, Cases: []EvaluationCase{{
 		ID: "retrieval",
 		Preferences: map[string]Preference{
-			"first": {Weight: 1, Confidence: 1},
-			"second": {Weight: 1, Confidence: 1},
+			"first":   {Weight: 1, Confidence: 1},
+			"second":  {Weight: 1, Confidence: 1},
 			"neutral": {Weight: 0, Confidence: 1},
 		},
 		Candidates: []Candidate{
@@ -70,5 +70,31 @@ func TestEvaluatePersonalMatchMeasuresRetrievalLossSeparately(t *testing.T) {
 	report, err = EvaluatePersonalMatch(suite, 2)
 	if err != nil || report.MeanRetrievalRecall != nil || report.Cases[0].Retrieval != nil {
 		t.Fatalf("default report=%+v err=%v", report, err)
+	}
+}
+
+func TestEvaluatePersonalMatchComparesTitleFeedbackOnHeldOutTitles(t *testing.T) {
+	feature := FeatureValue{Key: "synthetic-feature", Value: 1, Confidence: 1}
+	withFeedback := EvaluationCase{
+		ID:         "with-feedback",
+		Candidates: []Candidate{{AnimeID: "held-out", Title: "Held-out title", Features: []FeatureValue{feature}}},
+		Relevant:   []string{"held-out"},
+		Feedback:   []EvaluationTitleFeedback{{AnimeID: "training-title", Direction: 1, Features: []FeatureValue{feature}}},
+	}
+	withoutFeedback := withFeedback
+	withoutFeedback.ID = "without-feedback"
+	withoutFeedback.Feedback = nil
+	suite := EvaluationSuite{Version: 1, CandidateLimit: 1, Cases: []EvaluationCase{withFeedback, withoutFeedback}}
+	report, err := EvaluatePersonalMatch(suite, 1)
+	if err != nil || report.FeedbackComparison == nil || report.FeedbackComparison.CaseCount != 1 ||
+		report.FeedbackComparison.WithoutFeedback != (RankingMetrics{}) || report.FeedbackComparison.WithFeedback.Recall != 1 ||
+		report.Cases[0].WithFeedback == nil || report.Cases[0].WithFeedback.Retrieval == nil ||
+		report.Cases[0].WithFeedback.Retrieval.Recall != 1 || report.Cases[0].Retrieval.Recall != 0 ||
+		report.Cases[1].WithFeedback != nil {
+		t.Fatalf("paired report: %+v %v", report, err)
+	}
+	suite.Cases[0].Feedback[0].AnimeID = "held-out"
+	if _, err = EvaluatePersonalMatch(suite, 1); err == nil {
+		t.Fatal("held-out title accepted as reaction training input")
 	}
 }
