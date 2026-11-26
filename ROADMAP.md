@@ -19,9 +19,9 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 | --- | --- | --- |
 | Catalog freshness and coverage | Reviewed imports, opt-in bounded jobs, exact mappings, review/retraction tools and metrics | Licensed comprehensive sources, broader people/character data, confirmed availability, active operations and quality objectives |
 | Season-level library | Canonical title-level progress, separate series and sourced season-part ratings, viewing passes and reviewed bulk edits | Franchise corrections |
-| Alerts | Verified-owner in-app episode and season-announcement notices, follow pagination and an upcoming schedule calendar | Delay/movie alert rules, explicit corrections, background channels and operational delivery |
-| Recommendations | PostgreSQL Personal Match, offline evaluators, opt-in Global Essentials and paginated Discovery with evidence navigation and dismissals | Reviewed Essentials corpus, deliberate exploration beyond evidence coverage, representative judgments and feedback learning |
-| Production operations | Security tests, recovery drill, bounded diagnostics and monitoring examples | Independent review, ingress abuse controls, load testing, activated monitoring, real backup/recovery and deployment workflows |
+| Alerts | Verified-owner release, announcement, delay, schedule-change and cancellation/correction notices, plus opt-in background email and an upcoming schedule calendar | Production email activation and additional background channels |
+| Recommendations | PostgreSQL Personal Match with bounded reaction feedback, offline evaluators, opt-in Global Essentials and paginated Discovery with evidence and unfamiliar-feature exploration | Reviewed Essentials corpus, representative judgments and feedback evaluation |
+| Production operations | Security tests, synthetic recovery and two-replica rehearsals, loopback API metrics, inactive monitoring examples and verified release artifacts | Independent review, distributed ingress controls, representative load testing, live monitoring, real backup/recovery and deployment automation |
 
 ## Milestone 0 — Runnable foundation
 - [x] Go API process and graceful shutdown
