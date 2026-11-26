@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
@@ -32,6 +34,19 @@ func TestRollingKeyRotationResumesOldInboxAndMail(t *testing.T) {
 	if err = oldWriter.SubmitRequest(ctx, identitymail.PasswordReset, requestAccount.User.Email); err != nil {
 		t.Fatal(err)
 	}
+	before, err := db.IdentityQueueDiagnostics(ctx)
+	if err != nil || before.PayloadCutoff != nil || before.Requests.PayloadRowsThroughCutoff != nil {
+		t.Fatalf("default queue diagnostics: %+v %v", before, err)
+	}
+	if _, err := db.IdentityQueueDiagnosticsThrough(ctx, before.AsOf.Add(time.Hour)); !errors.Is(err, postgres.ErrIdentityPayloadCutoff) {
+		t.Fatalf("future retirement cutoff: %v", err)
+	}
+	cutoff, err := db.IdentityQueueDiagnosticsThrough(ctx, before.AsOf)
+	if err != nil || cutoff.PayloadCutoff == nil || !cutoff.PayloadCutoff.Equal(before.AsOf) ||
+		cutoff.Requests.PayloadRowsThroughCutoff == nil || *cutoff.Requests.PayloadRowsThroughCutoff != 1 ||
+		cutoff.Deliveries.PayloadRowsThroughCutoff == nil || *cutoff.Deliveries.PayloadRowsThroughCutoff != 1 {
+		t.Fatalf("initial key retirement counts: %+v %v", cutoff, err)
+	}
 	second, err := postgres.Open(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +73,12 @@ func TestRollingKeyRotationResumesOldInboxAndMail(t *testing.T) {
 	if err = owner.QueryRow(ctx, `SELECT challenge_id::text,payload FROM identity_outbox WHERE user_id=$1`, requestAccount.User.ID).Scan(&id, &payload); err != nil {
 		t.Fatal(err)
 	}
+	mixed, err := second.IdentityQueueDiagnosticsThrough(ctx, before.AsOf)
+	if err != nil || mixed.Deliveries.PayloadRows != 2 || mixed.Deliveries.PayloadRowsThroughCutoff == nil ||
+		*mixed.Deliveries.PayloadRowsThroughCutoff != 1 || mixed.Requests.PayloadRowsThroughCutoff == nil ||
+		*mixed.Requests.PayloadRowsThroughCutoff != 0 {
+		t.Fatalf("mixed-key cutoff counts: %+v %v", mixed, err)
+	}
 	if _, err = newCipher.Open(id, payload); err != nil {
 		t.Fatal("resumed request not encrypted with new primary", err)
 	}
@@ -70,6 +91,10 @@ func TestRollingKeyRotationResumesOldInboxAndMail(t *testing.T) {
 		if worked, err := rotated.DeliverNext(ctx, sender); !worked || err != nil {
 			t.Fatal("mixed-version mail not delivered", worked, err)
 		}
+	}
+	drained, err := second.IdentityQueueDiagnosticsThrough(ctx, before.AsOf)
+	if err != nil || drained.Deliveries.PayloadRowsThroughCutoff == nil || *drained.Deliveries.PayloadRowsThroughCutoff != 0 {
+		t.Fatalf("retained payload after drain: %+v %v", drained, err)
 	}
 	if len(delivered) != 2 {
 		t.Fatal("lost pre-rotation work")

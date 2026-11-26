@@ -28,7 +28,7 @@ func TestDiagnosticsFailWithoutLeakingConnectionDetails(t *testing.T) {
 }
 
 func TestOutputFlagsNeverEchoUntrustedArguments(t *testing.T) {
-	for _, args := range [][]string{{"-format=synthetic-secret"}, {"-unknown=synthetic-secret"}, {"synthetic-secret"}, {"-format"}} {
+	for _, args := range [][]string{{"-format=synthetic-secret"}, {"-unknown=synthetic-secret"}, {"synthetic-secret"}, {"-format"}, {"-payload-cutoff=synthetic-secret"}, {"-payload-cutoff="}, {"-format=prometheus", "-payload-cutoff=2026-01-01T00:00:00Z"}} {
 		var stdout, stderr bytes.Buffer
 		if code := run(args, "", &stdout, &stderr); code != 1 || stdout.Len() != 0 || strings.Contains(stderr.String(), "synthetic-secret") {
 			t.Fatal("argument failure exposed input or succeeded")
