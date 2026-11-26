@@ -23,3 +23,5 @@ When both returned evidence lists contain the same genre or studio label, the co
 Release evidence lists up to 20 of the latest confirmed observations at or before the response time, with attribution per episode and track. Upcoming schedules show up to 20 future predictions, soonest first. They are labelled unconfirmed. Both use the latest catalog revision per episode and track.
 
 Continuity evidence includes up to 20 direct prequel or sequel links and their recorded source labels. A limited result can reflect the evidence cap or the catalog graph cap. Link direction describes the recorded relationship and does not suggest a viewing order.
+
+Open **Narrow to release evidence** to choose an episode or a release track for the selected titles. The API accepts the optional `releaseScope` object with `episodeNumber`, `track`, or both. It applies the scope before limiting the evidence and uses only confirmed-release and upcoming-schedule topics. The assisted provider receives the question and allowed field names as usual. The application applies the episode and track selections locally.
