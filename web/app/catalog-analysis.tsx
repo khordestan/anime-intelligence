@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiClient } from "../lib/api";
+import ProviderCredit from "./provider-credit";
 
 type ComparisonTitle = { id: string; title: string; releaseYear?: number };
-type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean };
+type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean; episodeFacts?: { number: number; track: string; time: string; provider?: string }[] };
 type Comparison = { field: "episodeCount" | "releaseYear"; difference: number; animeIds: [string, string] };
 type Analysis = { model?: string; comparisons?: Comparison[]; sharedEvidence?: { field: "genres" | "studios"; values: string[] }[]; topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
 
@@ -18,6 +19,8 @@ const labels: Record<string, string> = {
   nativeTitle: "Native title",
   season: "Release quarter",
   demographics: "Demographics",
+  confirmedReleases: "Confirmed releases",
+  upcomingSchedule: "Upcoming schedule (unconfirmed)",
 };
 
 function explainComparison({ field, difference, animeIds }: Comparison, items: Analysis["items"]) {
@@ -163,7 +166,19 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
                   {item.evidence.map(fact => (
                     <div key={fact.field}>
                       <dt className="font-medium">{labels[fact.field]}</dt>
-                      <dd>{fact.values.join(", ") || "Unknown"}{fact.truncated && " · More values in catalog details"}</dd>
+                      <dd>
+                        {fact.episodeFacts?.length ? (
+                          <ul className="space-y-1">
+                            {fact.episodeFacts.map(episode => (
+                              <li key={episode.number + ":" + episode.track}>
+                                Episode {episode.number} · {episode.track} · <time dateTime={episode.time}>{new Date(episode.time).toLocaleString()}</time>
+                                {episode.provider && <> · {episode.provider === "tvmaze" ? <ProviderCredit provider="tvmaze" /> : "Source: " + episode.provider}</>}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : fact.values.join(", ") || "Unknown"}
+                        {fact.truncated && <span> · More values in catalog details</span>}
+                      </dd>
                       {fact.provider && <dd className="text-slate-400">
                         Source: {fact.provider}{fact.observedAt && " · Observed " + new Date(fact.observedAt).toLocaleString()}
                       </dd>}

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/khordestan/anime-intelligence/internal/platform/store"
 )
@@ -83,7 +84,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog/assisted",
 			strings.NewReader(`{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
 		handler.AnalyzeWithSelector(response, request, func(_ context.Context, question string, allowed []string) ([]string, string, error) {
-			if question != "How long?" || len(allowed) != 9 {
+			if question != "How long?" || len(allowed) != 11 {
 				t.Fatalf("unexpected provider input: %q %v", question, allowed)
 			}
 			return tc.fields, "synthetic-1", nil
@@ -162,5 +163,33 @@ func TestAnalyzeAdditionalTopicsPreserveFieldProvenance(t *testing.T) {
 	}
 	if strings.Contains(response.Body.String(), "Hidden") {
 		t.Fatal("additional topics exposed hidden evidence")
+	}
+}
+
+func TestAnalysisSeparatesConfirmedReleasesFromUpcomingSchedules(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	past := now.Add(-time.Hour)
+	future := now.Add(time.Hour)
+	details := store.CatalogDetails{Episodes: []store.CatalogEpisode{
+		{Number: 1, Track: "SUB", ReleasedAt: &past, Provider: "synthetic-release"},
+		{Number: 2, Track: "SUB", ScheduledAt: &past, Provider: "synthetic-expired"},
+		{Number: 2, Track: "DUB", ScheduledAt: &future, Provider: "synthetic-schedule"},
+		{Number: 3, Track: "SUB", ReleasedAt: &future, Provider: "synthetic-invalid"},
+	}}
+	released := projectAnalysisFact(details, "confirmedReleases", now)
+	if len(released.EpisodeFacts) != 1 || released.EpisodeFacts[0].Provider != "synthetic-release" || !released.EpisodeFacts[0].Time.Equal(past) {
+		t.Fatalf("release evidence: %+v", released)
+	}
+	scheduled := projectAnalysisFact(details, "upcomingSchedule", now)
+	if len(scheduled.EpisodeFacts) != 1 || scheduled.EpisodeFacts[0].Track != "DUB" || !scheduled.EpisodeFacts[0].Time.Equal(future) {
+		t.Fatalf("schedule evidence: %+v", scheduled)
+	}
+	for i := 1; i <= 22; i++ {
+		at := now.Add(time.Duration(i) * time.Minute)
+		details.Episodes = append(details.Episodes, store.CatalogEpisode{Number: i + 3, Track: "SUB", ScheduledAt: &at})
+	}
+	scheduled = projectAnalysisFact(details, "upcomingSchedule", now)
+	if !scheduled.Truncated || len(scheduled.EpisodeFacts) != 20 || scheduled.EpisodeFacts[0].Number != 4 || scheduled.EpisodeFacts[19].Number != 23 {
+		t.Fatalf("schedule evidence was not bounded in timestamp order: %+v", scheduled)
 	}
 }
