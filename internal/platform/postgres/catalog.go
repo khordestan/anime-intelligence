@@ -23,6 +23,8 @@ func (r *Repository) CatalogDetails(ctx context.Context,id string) (store.Catalo
 	if err!=nil && !errors.Is(err,pgx.ErrNoRows) {return out,false,err}
 	if len(payload)>0 {
 		var metadata struct {
+			SeasonNumber int32 `json:"seasonNumber"`
+			PartNumber int32 `json:"partNumber"`
 			Synonyms []string `json:"synonyms"`
 			Genres []string `json:"genres"`
 			Tags []string `json:"tags"`
@@ -31,6 +33,12 @@ func (r *Repository) CatalogDetails(ctx context.Context,id string) (store.Catalo
 			Studios []string `json:"studios"`
 		}
 		if err=json.Unmarshal(payload,&metadata);err!=nil {return out,false,err}
+		if metadata.SeasonNumber > 0 {
+			out.SeasonNumber = metadata.SeasonNumber
+			if metadata.PartNumber > 0 {
+				out.PartNumber = metadata.PartNumber
+			}
+		}
 		if metadata.Synonyms!=nil {out.Synonyms=metadata.Synonyms}
 		if metadata.Genres!=nil {out.Genres=metadata.Genres}
 		if metadata.Tags!=nil {out.Tags=metadata.Tags}

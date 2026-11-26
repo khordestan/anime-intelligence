@@ -111,7 +111,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Dashboard exact-episode editing
 - [x] Completed-pass archives, conditional rewatch starts and dashboard history
 - [x] Library title search, status/rating filters and explicit title/rating/episode ordering
-- [ ] Finer season conventions
+- [x] Sourced season and split-part numbering in catalog details
 - [x] Private tracker notes with conflict detection and dashboard editing
 - [ ] Finer season rating conventions
 - [x] Atomic, viewing-pass-guarded bulk status edit API

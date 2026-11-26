@@ -32,6 +32,8 @@ type Title struct {
 	Status string `json:"status"`
 	ReleaseYear int `json:"releaseYear,omitempty"`
 	Season string `json:"season,omitempty"`
+	SeasonNumber int32 `json:"seasonNumber,omitempty"`
+	PartNumber int32 `json:"partNumber,omitempty"`
 	EpisodeCount *int `json:"episodeCount,omitempty"`
 	Genres []string `json:"genres,omitempty"`
 	Tags []string `json:"tags,omitempty"`
@@ -100,6 +102,9 @@ func (s Snapshot) Validate(now time.Time) error {
 		if !oneOf(t.MediaType,"TV","MOVIE","OVA","ONA","SPECIAL","MUSIC","UNKNOWN") || !oneOf(t.Status,"UNKNOWN","ANNOUNCED","RELEASING","FINISHED","CANCELLED","HIATUS") { return ErrInvalid }
 		if t.ReleaseYear != 0 && (t.ReleaseYear < 1900 || t.ReleaseYear > 9999) { return ErrInvalid }
 		if t.Season != "" && !oneOf(t.Season,"WINTER","SPRING","SUMMER","FALL") { return ErrInvalid }
+		if t.SeasonNumber < 0 || t.PartNumber < 0 || (t.PartNumber > 0 && t.SeasonNumber == 0) {
+			return ErrInvalid
+		}
 		if t.EpisodeCount != nil && (*t.EpisodeCount < 0 || *t.EpisodeCount > 100000) { return ErrInvalid }
 		if !labels(t.Synonyms) || !labels(t.Genres) || !labels(t.Tags) || !labels(t.Themes) || !labels(t.Demographics) || !labels(t.Studios) || len(t.Episodes) > 100000 || len(t.Relations) > 1000 { return ErrInvalid }
 		relations := map[string]bool{}
