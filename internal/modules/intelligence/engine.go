@@ -15,8 +15,8 @@ type FeatureValue struct {
 }
 
 type RatedAnime struct {
-	AnimeID string
-	Score   int
+	AnimeID  string
+	Score    int
 	Features []FeatureValue
 }
 
@@ -26,16 +26,17 @@ type Preference struct {
 }
 
 type TasteProfile struct {
-	Explicit map[string]Preference
-	Inferred map[string]Preference
-	InferredRatingCounts map[string]int
-	Feedback map[string]Preference
-	FeedbackCounts map[string]int
+	Explicit               map[string]Preference
+	Inferred               map[string]Preference
+	InferredRatingCounts   map[string]int
+	InferredRatingExamples map[string][]string
+	Feedback               map[string]Preference
+	FeedbackCounts         map[string]int
 }
 
 type Candidate struct {
-	AnimeID string
-	Title   string
+	AnimeID  string
+	Title    string
 	Features []FeatureValue
 }
 
@@ -63,9 +64,10 @@ type Options struct {
 
 func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) TasteProfile {
 	profile := TasteProfile{
-		Explicit: make(map[string]Preference, len(explicit)),
-		Inferred: make(map[string]Preference),
-		InferredRatingCounts: make(map[string]int),
+		Explicit:               make(map[string]Preference, len(explicit)),
+		Inferred:               make(map[string]Preference),
+		InferredRatingCounts:   make(map[string]int),
+		InferredRatingExamples: make(map[string][]string),
 	}
 	for key, preference := range explicit {
 		key = strings.TrimSpace(key)
@@ -76,10 +78,11 @@ func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) Taste
 	}
 
 	type accumulator struct {
-		sum       float64
-		magnitude float64
+		sum         float64
+		magnitude   float64
 		ratingCount int
-		lastRating int
+		lastRating  int
+		examples    []string
 	}
 	acc := map[string]accumulator{}
 	for index, item := range rated {
@@ -100,7 +103,10 @@ func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) Taste
 			current.magnitude += math.Abs(signal) * feature.Confidence
 			if current.lastRating != index+1 {
 				current.ratingCount++
-				current.lastRating = index+1
+				current.lastRating = index + 1
+				if item.AnimeID != "" && len(current.examples) < 3 {
+					current.examples = append(current.examples, item.AnimeID)
+				}
 			}
 			acc[key] = current
 		}
@@ -114,6 +120,7 @@ func BuildTasteProfile(rated []RatedAnime, explicit map[string]Preference) Taste
 			continue
 		}
 		profile.InferredRatingCounts[key] = current.ratingCount
+		profile.InferredRatingExamples[key] = current.examples
 		profile.Inferred[key] = Preference{Weight: weight, Confidence: clamp(current.magnitude/float64(maxInt(1, len(rated))), 0, 1)}
 	}
 	return profile
@@ -171,7 +178,9 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 		}
 		score := clamp(50+50*(numerator/denominator), 0, 100)
 		sort.Slice(evidence, func(i, j int) bool {
-			if math.Abs(evidence[i].Impact) == math.Abs(evidence[j].Impact) { return evidence[i].FeatureKey < evidence[j].FeatureKey }
+			if math.Abs(evidence[i].Impact) == math.Abs(evidence[j].Impact) {
+				return evidence[i].FeatureKey < evidence[j].FeatureKey
+			}
 			return math.Abs(evidence[i].Impact) > math.Abs(evidence[j].Impact)
 		})
 		if len(evidence) > 4 {
@@ -184,7 +193,9 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 	}
 	sort.SliceStable(result, func(i, j int) bool {
 		if result[i].Score == result[j].Score {
-			if result[i].Title == result[j].Title { return result[i].AnimeID < result[j].AnimeID }
+			if result[i].Title == result[j].Title {
+				return result[i].AnimeID < result[j].AnimeID
+			}
 			return result[i].Title < result[j].Title
 		}
 		return result[i].Score > result[j].Score
@@ -259,11 +270,24 @@ func combinedPreference(profile TasteProfile, key string, options Options) (Pref
 	return Preference{Weight: clamp(weight, -1, 1), Confidence: clamp(confidence, 0, 1)}, true
 }
 
-func validUnit(value float64) bool { return !math.IsNaN(value) && !math.IsInf(value, 0) && value >= 0 && value <= 1 }
-func validSigned(value float64) bool { return !math.IsNaN(value) && !math.IsInf(value, 0) && value >= -1 && value <= 1 }
+func validUnit(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0) && value >= 0 && value <= 1
+}
+func validSigned(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0) && value >= -1 && value <= 1
+}
 func clamp(value, min, max float64) float64 {
-	if value < min { return min }
-	if value > max { return max }
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
 	return value
 }
-func maxInt(a, b int) int { if a > b { return a }; return b }
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

@@ -86,7 +86,7 @@ async function mockMatches(page: Page, hold = false) {
       }
       const items = preferences.get(token) === null || dismissed.has(token) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
       if (hold && token.endsWith("1")) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
-      try { return await respond({ items, profile: feedback.has(token) ? [{ key: "synthetic.mystery", feedback: { weight: feedback.get(token), confidence: 0.2, feedbackCount: 1 } }] : items.length ? [{ key: "synthetic.mystery", declared: { weight: preferences.get(token), confidence: 1 }, inferred: { weight: 0.5, confidence: 0.25 } }] : [] }); } catch { return; }
+      try { return await respond({ items, profile: feedback.has(token) ? [{ key: "synthetic.mystery", feedback: { weight: feedback.get(token), confidence: 0.2, feedbackCount: 1 } }] : items.length ? [{ key: "synthetic.mystery", declared: { weight: preferences.get(token), confidence: 1 }, inferred: { weight: 0.5, confidence: 0.25, ratingExamples: [{ animeId: "synthetic-training", title: "Synthetic training title", score: 5 }] } }] : [] }); } catch { return; }
     }
     return respond({}, 404);
   });
@@ -109,6 +109,8 @@ test("preferences save/reset and unsupported evidence remain explicit", async ({
   await panel.getByRole("button", { name: "Save preference Synthetic mystery", exact: true }).click();
   await expect(panel.getByText("Synthetic account match", { exact: false })).toBeVisible();
   await expect(panel.getByText("Rating-derived signal: prefers this feature · strength 0.25", { exact: true })).toBeVisible();
+  await panel.getByText("Recent ratings behind Synthetic mystery", { exact: true }).click();
+  await expect(panel.getByText("Synthetic training title · 5 / 5", { exact: true })).toBeVisible();
   expect(api.calls.some(call => call.path === "/preferences/synthetic.mystery" && (call.body as { weight?: number } | undefined)?.weight === 1)).toBe(true);
   await panel.getByRole("button", { name: "Reset preference Synthetic mystery", exact: true }).click();
   await expect(panel.getByText(/No supported matches yet/)).toBeVisible();
