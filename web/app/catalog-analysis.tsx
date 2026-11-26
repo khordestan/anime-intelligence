@@ -6,7 +6,7 @@ import ProviderCredit from "./provider-credit";
 
 type ComparisonTitle = { id: string; title: string; releaseYear?: number };
 type ContinuityFact = { animeId: string; title: string; relation: "PREQUEL" | "SEQUEL"; providers: string[] | null };
-type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean; episodeFacts?: { number: number; track: string; time: string; provider?: string }[]; continuityFacts?: ContinuityFact[] };
+type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean; episodeFacts?: { number: number; track: string; time: string; provider?: string }[]; continuityFacts?: ContinuityFact[]; staffCredits?: { name: string; role: string }[] };
 type Comparison = { field: "episodeCount" | "releaseYear"; difference: number; animeIds: [string, string] };
 type Analysis = { model?: string; comparisons?: Comparison[]; sharedEvidence?: { field: "genres" | "studios"; values: string[] }[]; topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
 
@@ -20,6 +20,7 @@ const labels: Record<string, string> = {
   nativeTitle: "Native title",
   season: "Release quarter",
   demographics: "Demographics",
+  staffCredits: "Reviewed staff credits",
   confirmedReleases: "Confirmed releases",
   upcomingSchedule: "Upcoming schedule (unconfirmed)",
   continuity: "Direct continuity",
@@ -212,6 +213,12 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
                                 {link.relation === "PREQUEL" ? "Prequel" : "Sequel"} · {link.title}
                                 {link.providers?.map(provider => <span key={provider}> · {provider === "tvmaze" ? <ProviderCredit provider="tvmaze" /> : "Source: " + provider}</span>)}
                               </li>
+                            ))}
+                          </ul>
+                        ) : fact.staffCredits?.length ? (
+                          <ul className="space-y-1">
+                            {fact.staffCredits.map(credit => (
+                              <li key={JSON.stringify([credit.name, credit.role])}>{credit.name} · {credit.role}</li>
                             ))}
                           </ul>
                         ) : fact.values.join(", ") || "Unknown"}
