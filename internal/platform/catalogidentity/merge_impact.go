@@ -23,10 +23,11 @@ type MergeImpactConflict struct {
 }
 
 type MergeImpact struct {
-	SourceID   pgtype.UUID           `json:"sourceId"`
-	TargetID   pgtype.UUID           `json:"targetId"`
-	References []MergeImpactCount    `json:"references"`
-	Conflicts  []MergeImpactConflict `json:"conflicts"`
+	PublicFacts []MergePublicFact     `json:"publicFacts"`
+	SourceID    pgtype.UUID           `json:"sourceId"`
+	TargetID    pgtype.UUID           `json:"targetId"`
+	References  []MergeImpactCount    `json:"references"`
+	Conflicts   []MergeImpactConflict `json:"conflicts"`
 }
 
 // InspectMergeImpact runs against an isolated review database using an operator
@@ -120,6 +121,11 @@ func InspectMergeImpact(ctx context.Context, conn *pgx.Conn, source, target pgty
 		}
 		result.Conflicts = append(result.Conflicts, count)
 	}
+	result.PublicFacts, err = inspectMergePublicFacts(ctx, tx, source, target)
+	if err != nil {
+		return MergeImpact{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return MergeImpact{}, err
 	}

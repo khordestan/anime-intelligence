@@ -87,6 +87,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Reviewed unused provider-link retraction with dependency checks, immutable audit and import resurrection fence
 - [x] Read-only canonical merge impact inventory for dependencies and aggregate collisions
 - [x] Reviewed canonical placeholder merge with exact identity transfer and public ID redirects
+- [x] Public field comparisons in canonical merge impact reviews
 - [ ] Canonical entity merges with dependent-data correction/retraction
 - [x] Reviewed offline observation ingestion with evidence/confidence and conservative non-spoiler series scope
 - [ ] Real evidence corpus and broader reviewed scope coverage

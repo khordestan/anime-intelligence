@@ -51,7 +51,7 @@ Run `catalog-merge-impact -source=<canonical-id> -target=<canonical-id>` against
 
 The JSON report counts direct foreign-key references for both titles. It includes known indirect references through release events, notifications, pending email and browser push jobs, provider archive records and catalog fetch jobs. It also reports aggregate conflicts for overlapping provider mappings, episodes and tracks, tracker ownership, follow scopes and edges that would become self-references. It contains no owner IDs, account content or raw source records.
 
-Counts describe the inspected snapshot. Before applying any canonical merge, separately review field authority, differing watch histories and ratings, release event handling and audit retention. The command has no apply option.
+The same read-only snapshot compares the public title, native title, format, status, release year, airing quarter, episode total and primary provider. The report distinguishes unknown, one-sided, equal and different values. Known zero episode totals remain literal values. It does not include synopsis text, archives or private records. Counts and field differences describe the inspected snapshot. Before applying any canonical merge, separately review field authority, differing watch histories and ratings, release event handling and audit retention. The command has no apply option.
 
 ## Merge a reviewed canonical placeholder
 

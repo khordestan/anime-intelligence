@@ -40,6 +40,9 @@ func TestCanonicalMergeImpactCountsRLSReferencesWithoutDisclosingOwners(t *testi
 	queueExec(t, owner, `INSERT INTO notifications(user_id,event_id,title,body)
 		VALUES($1,'30000000-0000-4000-8000-000000000010','Synthetic notice','Synthetic watch history')`, session.User.ID)
 
+	queueExec(t, owner, `UPDATE anime SET episode_count=0,release_year=NULL WHERE id=$1`, a)
+	queueExec(t, owner, `UPDATE anime SET episode_count=NULL,release_year=2026 WHERE id=$1`, b)
+
 	report, err := catalogidentity.InspectMergeImpact(ctx, owner, from, to)
 	if err != nil {
 		t.Fatal(err)
@@ -65,6 +68,19 @@ func TestCanonicalMergeImpactCountsRLSReferencesWithoutDisclosingOwners(t *testi
 		if conflicts[kind] != 1 {
 			t.Errorf("%s: got %d conflicts, want 1", kind, conflicts[kind])
 		}
+	}
+	facts := map[string]catalogidentity.MergePublicFact{}
+	for _, fact := range report.PublicFacts {
+		facts[fact.Field] = fact
+	}
+	if episode := facts["episodeCount"]; episode.Comparison != "SOURCE_ONLY" || episode.Source == nil || *episode.Source != "0" || episode.Target != nil {
+		t.Fatalf("known zero total lost in merge comparison: %+v", episode)
+	}
+	if year := facts["releaseYear"]; year.Comparison != "TARGET_ONLY" || year.Target == nil || *year.Target != "2026" {
+		t.Fatalf("one-sided year: %+v", year)
+	}
+	if facts["canonicalTitle"].Comparison != "DIFFERENT" || facts["mediaType"].Comparison != "EQUAL" || facts["primaryProvider"].Comparison != "UNKNOWN" {
+		t.Fatalf("merge fact comparisons: %+v", facts)
 	}
 	serialized, err := json.Marshal(report)
 	if err != nil {
