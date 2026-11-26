@@ -84,3 +84,9 @@ The example policy below is for a synthetic test. Choose field thresholds and mi
 ```
 
 Presence uses all candidate titles as its denominator. Accuracy counts correct, missing and mismatching values against exact reviewed source IDs. Unknown reference values produce no judgment. If fewer values are judged than the policy requires, that field fails even when every available judgment matches. The report includes each numerator, denominator, rate and decision. A valid report that misses a threshold is printed before the command exits with status 1. A presence-only policy needs no reference. These checks use files only and neither certify production catalog coverage nor activate an operational SLO.
+
+## Reviewed staff and character credits
+
+An approved offline primary snapshot can include `staffCredits` and `characterCredits`. Each list accepts up to 128 distinct name and role pairs. The importer keeps the supplied labels for the canonical title under its primary source attribution. The labels do not establish people or character identities across titles. A subsequent accepted primary observation replaces the prior lists for that title.
+
+Public title details include staff credits. To avoid revealing character appearances by default, title details return only whether character credits are available. The dashboard requests those names and roles from a separate endpoint when the viewer chooses **Show character credits**. Displayed credits use the selected primary source and its observation timestamp. The offline import requires the existing source approval and no network adapter is enabled by these fields.

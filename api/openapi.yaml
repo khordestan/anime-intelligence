@@ -257,6 +257,32 @@ paths:
       responses:
         "200": { description: Up to 20 schedule revisions newest first with their source and independent scheduledAt and releasedAt facts. Includes nextBeforeRevision when more history exists. An unavailable episode or track returns empty items. }
         "400": { description: Invalid title ID, episode number, release track or revision cursor }
+  /api/v1/anime/{id}/character-credits:
+    get:
+      summary: Read source-attributed character credits for a canonical title
+      description: Character names and roles may reveal spoilers.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Recorded character credits with primary source provenance when present
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 128
+                    items: { $ref: '#/components/schemas/CatalogCredit' }
+                  provider: { type: string }
+                  observedAt: { type: string, format: date-time }
+        "400": { description: Invalid UUID }
+        "404": { description: Anime not found }
   /api/v1/anime/{id}/details:
     get:
       summary: Public catalog enrichment, continuity relations and current episode schedules
@@ -1375,10 +1401,21 @@ components:
                 format: password
                 description: Registration requires 12–1024 UTF-8 bytes. Request body limit is 4096 bytes.
   schemas:
+    CatalogCredit:
+      type: object
+      required: [name, role]
+      properties:
+        name: { type: string, maxLength: 256 }
+        role: { type: string, maxLength: 256 }
     CatalogDetails:
       type: object
       required: [anime, externalIds, synonyms, genres, themes, demographics, tags, studios, relations, episodes]
       properties:
+        staffCredits:
+          type: array
+          maxItems: 128
+          items: { $ref: '#/components/schemas/CatalogCredit' }
+        hasCharacterCredits: { type: boolean, description: Whether character credits are available from their separate endpoint }
         anime: { $ref: '#/components/schemas/Anime' }
         externalIds:
           type: array
