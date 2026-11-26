@@ -42,6 +42,8 @@ type Entry = {
   watchCycle?: number;
   totalEpisodes?: number;
   rating?: number;
+  seasonRating?: number;
+  seasonRatingAvailable?: boolean;
 };
 type BulkStatusTarget = { id: string; expectedCycle: number; expectedEpisodesWatched: number; canAdvance: boolean; expectedTotalEpisodes?: number };
 const maxBulkStatusEntries = 25;
@@ -921,7 +923,7 @@ export default function Home() {
                   </select>
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-2">
-                  <label className="text-xs text-slate-400">Rating</label>
+                  <label className="text-xs text-slate-400">{e.seasonRatingAvailable ? "Series rating" : "Rating"}</label>
                   <select
                     disabled={busy}
                     aria-label={"Rating " + e.title}
@@ -949,6 +951,24 @@ export default function Home() {
                     +1 episode
                   </button>
                 </div>
+                {mode === "postgres" && e.seasonRatingAvailable && (
+                  <label className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-400">
+                    Season rating
+                    <select
+                      aria-label={"Season rating " + e.title}
+                      disabled={busy || !canEdit}
+                      value={e.seasonRating ?? ""}
+                      onChange={event => void mutate("/tracker/" + e.id + "/season-rating", "PUT", {
+                        score: event.target.value ? Number(event.target.value) : null,
+                        expectedCycle: e.watchCycle ?? 1,
+                      })}
+                      className="rounded-lg border border-white/10 bg-slate-900 p-2"
+                    >
+                      <option value="">Not rated</option>
+                      {[1, 2, 3, 4, 5].map(score => <option key={score} value={score}>{score} / 5</option>)}
+                    </select>
+                  </label>
+                )}
                 <CatalogDetails key={`catalog:${session?.user.id ?? "public"}:${e.animeId}`} client={client} id={e.animeId} title={e.title} onError={handleError} assistedAnalysis={assistedAnalysisAvailable && !!session?.user.emailVerified} />
                 {mode === "postgres" && session?.user.emailVerified && (
                   <EpisodeEditor key={`episodes:${session.user.id}:${e.id}`} client={client} id={e.id} title={e.title} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />

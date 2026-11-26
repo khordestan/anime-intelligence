@@ -1000,6 +1000,37 @@ paths:
         "409": { description: Viewing pass changed; no update applied }
         "401": { description: Missing or invalid session in PostgreSQL mode }
         "403": { description: email_verification_required in PostgreSQL mode; account controls remain accessible }
+  /api/v1/tracker/{id}/season-rating:
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Set or clear the independent rating for a tracked canonical season or split part
+      description: Setting a score in PostgreSQL requires an owned tracker entry with sourced season numbering or an existing canonical season rating. Clearing an absent score is harmless. The rating follows that canonical title across numbering changes.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [score, expectedCycle]
+              properties:
+                score:
+                  oneOf:
+                    - { type: integer, minimum: 1, maximum: 5 }
+                    - { type: "null" }
+                expectedCycle: { type: integer, minimum: 1, maximum: 1000 }
+      responses:
+        "200": { description: Updated entry with seasonRating when set and seasonRatingAvailable when eligible }
+        "400": { description: Invalid entry id or request }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Owned tracker entry not found }
+        "409": { description: Viewing pass changed or sourced season number unavailable }
   /api/v1/ratings/{id}:
     put:
       security: [{ bearerAuth: [] }]
