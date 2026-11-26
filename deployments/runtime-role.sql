@@ -64,3 +64,7 @@ REVOKE ALL ON FUNCTION review_continuity_retraction(uuid, uuid, uuid[], text, bo
 GRANT SELECT,INSERT,UPDATE,DELETE ON discovery_title_feedback TO anime_runtime;
 
 REVOKE ALL ON FUNCTION review_continuity_addition(uuid, uuid, text, text, boolean) FROM PUBLIC;
+
+GRANT SELECT(retired_id,anime_id) ON anime_redirects TO anime_runtime;
+REVOKE ALL ON FUNCTION review_catalog_placeholder_merge(uuid, uuid, uuid[], text, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION guard_retired_anime_identity() FROM PUBLIC;

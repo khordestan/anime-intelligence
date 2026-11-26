@@ -17,12 +17,14 @@ var _ store.Repository = (*Repository)(nil)
 
 const animeColumns = `id::text,canonical_title,COALESCE(native_title,''),media_type,COALESCE(release_year,0),status,COALESCE(episode_count,0),COALESCE(synopsis,''),COALESCE(season_name,''),COALESCE(cover_image_url,''),episode_count IS NOT NULL`
 
-func (r *Repository) Catalog(ctx context.Context,q string,limit,offset int)([]store.Anime,error){
- return r.FilterCatalog(ctx,store.CatalogFilter{Query:q},limit,offset)
+const canonicalAnimeID = `COALESCE((SELECT anime_id FROM anime_redirects WHERE retired_id=$1::uuid),$1::uuid)`
+
+func (r *Repository) Catalog(ctx context.Context, q string, limit, offset int) ([]store.Anime, error) {
+	return r.FilterCatalog(ctx, store.CatalogFilter{Query: q}, limit, offset)
 }
 func (r *Repository) GetAnime(ctx context.Context, id string) (store.Anime, bool, error) {
 	var a store.Anime
-	err := r.db.pool.QueryRow(ctx, `SELECT `+animeColumns+` FROM anime WHERE id=$1`, id).Scan(&a.ID, &a.Title, &a.NativeTitle, &a.MediaType, &a.ReleaseYear, &a.Status, &a.EpisodeCount, &a.Synopsis, &a.Season, &a.CoverImageURL, &a.EpisodeCountKnown)
+	err := r.db.pool.QueryRow(ctx, `SELECT `+animeColumns+` FROM anime WHERE id=`+canonicalAnimeID, id).Scan(&a.ID, &a.Title, &a.NativeTitle, &a.MediaType, &a.ReleaseYear, &a.Status, &a.EpisodeCount, &a.Synopsis, &a.Season, &a.CoverImageURL, &a.EpisodeCountKnown)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, false, nil
 	}
@@ -36,7 +38,7 @@ const entrySelect = `SELECT ua.id::text,ua.anime_id::text,a.canonical_title,ua.w
 
 func scanEntry(row pgx.Row) (store.Entry, error) {
 	var e store.Entry
-	err := row.Scan(&e.ID, &e.AnimeID, &e.Title, &e.WatchStatus, &e.EpisodesWatched, &e.TotalEpisodes, &e.Rating, &e.UpdatedAt, &e.ExactProgress,&e.WatchCycle)
+	err := row.Scan(&e.ID, &e.AnimeID, &e.Title, &e.WatchStatus, &e.EpisodesWatched, &e.TotalEpisodes, &e.Rating, &e.UpdatedAt, &e.ExactProgress, &e.WatchCycle)
 	return e, err
 }
 func (r *Repository) Library(ctx context.Context) ([]store.Entry, error) {
@@ -92,13 +94,15 @@ func (r *Repository) Add(ctx context.Context, animeID, status string, episodes i
 	return e, tx.Commit(ctx)
 }
 func (r *Repository) Update(ctx context.Context, id string, status *string, episodes *int) (store.Entry, bool, error) {
- return r.updateCycle(ctx,id,status,episodes,0)
+	return r.updateCycle(ctx, id, status, episodes, 0)
 }
-func (r *Repository) UpdateCycle(ctx context.Context,id string,status *string,episodes *int,expected int)(store.Entry,bool,error){
- if expected<1||expected>1000{return store.Entry{},false,store.ErrWatchCycleInvalid}
- return r.updateCycle(ctx,id,status,episodes,expected)
+func (r *Repository) UpdateCycle(ctx context.Context, id string, status *string, episodes *int, expected int) (store.Entry, bool, error) {
+	if expected < 1 || expected > 1000 {
+		return store.Entry{}, false, store.ErrWatchCycleInvalid
+	}
+	return r.updateCycle(ctx, id, status, episodes, expected)
 }
-func (r *Repository) updateCycle(ctx context.Context,id string,status *string,episodes *int,expected int)(store.Entry,bool,error){
+func (r *Repository) updateCycle(ctx context.Context, id string, status *string, episodes *int, expected int) (store.Entry, bool, error) {
 	tx, u, err := r.db.productTx(ctx, r.token)
 	if err != nil {
 		return store.Entry{}, false, err
@@ -115,10 +119,16 @@ func updateCycleEntry(ctx context.Context, tx pgx.Tx, ownerID, id string, status
 	var animeID string
 	var cycle int
 	var err error
- err=tx.QueryRow(ctx,`SELECT watch_cycle FROM user_anime WHERE id=$1 AND user_id=$2 FOR UPDATE`,id,ownerID).Scan(&cycle)
- if errors.Is(err,pgx.ErrNoRows){return store.Entry{},false,nil}
- if err!=nil{return store.Entry{},false,err}
- if expected!=0&&expected!=cycle{return store.Entry{},true,store.ErrWatchCycleConflict}
+	err = tx.QueryRow(ctx, `SELECT watch_cycle FROM user_anime WHERE id=$1 AND user_id=$2 FOR UPDATE`, id, ownerID).Scan(&cycle)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return store.Entry{}, false, nil
+	}
+	if err != nil {
+		return store.Entry{}, false, err
+	}
+	if expected != 0 && expected != cycle {
+		return store.Entry{}, true, store.ErrWatchCycleConflict
+	}
 	err = tx.QueryRow(ctx, `UPDATE user_anime SET watch_status=COALESCE($3,watch_status),updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING anime_id::text`, id, ownerID, status).Scan(&animeID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return store.Entry{}, false, nil

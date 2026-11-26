@@ -21,7 +21,7 @@ func(r *Repository)CatalogContinuity(ctx context.Context,id string)(store.Contin
  if err!=nil{return out,false,err};defer rollback(tx)
  if _,err=tx.Exec(ctx,"SET LOCAL statement_timeout='2s'");err!=nil{return out,false,err}
  var root string
- if err=tx.QueryRow(ctx,"SELECT id::text FROM anime WHERE id=$1",id).Scan(&root);errors.Is(err,pgx.ErrNoRows){return out,false,nil}else if err!=nil{return out,false,err}
+ if err=tx.QueryRow(ctx,"SELECT id::text FROM anime WHERE id="+canonicalAnimeID,id).Scan(&root);errors.Is(err,pgx.ErrNoRows){return out,false,nil}else if err!=nil{return out,false,err}
  out.RootID=root
  ids:=[]string{root};frontier:=[]string{root};distance:=map[string]int{root:0};depth:=0
  for len(frontier)>0{
