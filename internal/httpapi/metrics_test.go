@@ -28,8 +28,12 @@ func TestRequestMetricsBoundedRoutesAndConcurrency(t *testing.T) {
 	for range 10 {
 		requests.Go(func() { serve("POST", "/api/v1/auth/login?secret=private-query") })
 		requests.Go(func() { serve("GET", "/api/v1/tracker/private-path") })
+		requests.Go(func() { metrics.RecordPush(PushAccepted) })
 	}
 	requests.Wait()
+	metrics.RecordPush(PushFinishError)
+	metrics.RecordPush(PushEvent(100))
+	(*RequestMetrics)(nil).RecordPush(PushRetry)
 	serve("GET", "/private-unrecognized")
 	serve("OPTIONS", "/api/v1/auth/login")
 	metrics.observe("GET /readyz", 503, 250*time.Millisecond)
@@ -41,6 +45,9 @@ func TestRequestMetricsBoundedRoutesAndConcurrency(t *testing.T) {
 	}
 	text := response.Body.String()
 	for _, expected := range []string{
+		`anime_release_push_events_total{outcome="provider_accepted"} 10`,
+		`anime_release_push_events_total{outcome="provider_retry"} 0`,
+		`anime_release_push_events_total{outcome="finish_error"} 1`,
 		`anime_http_requests_total{group="identity",status_class="4xx"} 10`,
 		`anime_http_rate_limited_total{group="identity"} 10`,
 		`anime_http_requests_total{group="tracker",status_class="2xx"} 10`,

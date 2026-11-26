@@ -155,6 +155,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Aggregate release email queue diagnostics in JSON and Prometheus text
 - [x] Disabled release email scheduler freshness, overdue-scan and exhaustion alert rules with Prometheus tests
 - [x] Opt-in durable background browser release alerts with encrypted device subscriptions
+- [x] Loopback browser delivery outcome and worker error counters
 - [ ] Production release email and browser delivery activation
 - [x] Durable canonical release-event and owned notification duplicate suppression
 
