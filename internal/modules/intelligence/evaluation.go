@@ -9,47 +9,67 @@ import (
 )
 
 type EvaluationSuite struct {
-	CandidateLimit int `json:"candidateLimit,omitempty"`
-	Version int `json:"version"`
-	Cases []EvaluationCase `json:"cases"`
+	CandidateLimit int              `json:"candidateLimit,omitempty"`
+	Version        int              `json:"version"`
+	Cases          []EvaluationCase `json:"cases"`
 }
 
 type EvaluationCase struct {
-	ID string `json:"id"`
-	Rated []RatedAnime `json:"rated"`
-	Preferences map[string]Preference `json:"preferences"`
-	Candidates []Candidate `json:"candidates"`
-	Excluded []string `json:"excluded"`
-	Relevant []string `json:"relevant"`
+	ID          string                    `json:"id"`
+	Rated       []RatedAnime              `json:"rated"`
+	Preferences map[string]Preference     `json:"preferences"`
+	Candidates  []Candidate               `json:"candidates"`
+	Excluded    []string                  `json:"excluded"`
+	Relevant    []string                  `json:"relevant"`
+	Feedback    []EvaluationTitleFeedback `json:"feedback,omitempty"`
+}
+
+type EvaluationTitleFeedback struct {
+	AnimeID   string         `json:"animeId"`
+	Direction int            `json:"direction"`
+	Features  []FeatureValue `json:"features"`
 }
 
 type RankingMetrics struct {
-	NDCG float64 `json:"ndcg"`
-	FillRate float64 `json:"fillRate"`
-	Recall float64 `json:"recall"`
+	NDCG           float64 `json:"ndcg"`
+	FillRate       float64 `json:"fillRate"`
+	Recall         float64 `json:"recall"`
 	ReciprocalRank float64 `json:"reciprocalRank"`
 }
 
 type RetrievalMetrics struct {
-	CandidateCount int `json:"candidateCount"`
-	Recall float64 `json:"recall"`
+	CandidateCount int     `json:"candidateCount"`
+	Recall         float64 `json:"recall"`
 }
 
 type CaseEvaluation struct {
+	Retrieval     *RetrievalMetrics `json:"retrieval,omitempty"`
+	ID            string            `json:"id"`
+	PersonalMatch RankingMetrics    `json:"personalMatch"`
+	TitleBaseline RankingMetrics    `json:"titleBaseline"`
+	WithFeedback  *FeedbackRanking  `json:"withFeedback,omitempty"`
+}
+
+type FeedbackRanking struct {
+	Ranking   RankingMetrics    `json:"ranking"`
 	Retrieval *RetrievalMetrics `json:"retrieval,omitempty"`
-	ID string `json:"id"`
-	PersonalMatch RankingMetrics `json:"personalMatch"`
-	TitleBaseline RankingMetrics `json:"titleBaseline"`
+}
+
+type FeedbackComparison struct {
+	CaseCount       int            `json:"caseCount"`
+	WithoutFeedback RankingMetrics `json:"withoutFeedbackMean"`
+	WithFeedback    RankingMetrics `json:"withFeedbackMean"`
 }
 
 type EvaluationReport struct {
-	CandidateLimit int `json:"candidateLimit,omitempty"`
-	MeanRetrievalRecall *float64 `json:"meanRetrievalRecall,omitempty"`
-	AlgorithmVersion string `json:"algorithmVersion"`
-	K int `json:"k"`
-	Cases []CaseEvaluation `json:"cases"`
-	PersonalMatch RankingMetrics `json:"personalMatchMean"`
-	TitleBaseline RankingMetrics `json:"titleBaselineMean"`
+	CandidateLimit      int                 `json:"candidateLimit,omitempty"`
+	MeanRetrievalRecall *float64            `json:"meanRetrievalRecall,omitempty"`
+	AlgorithmVersion    string              `json:"algorithmVersion"`
+	K                   int                 `json:"k"`
+	Cases               []CaseEvaluation    `json:"cases"`
+	PersonalMatch       RankingMetrics      `json:"personalMatchMean"`
+	TitleBaseline       RankingMetrics      `json:"titleBaselineMean"`
+	FeedbackComparison  *FeedbackComparison `json:"feedbackComparison,omitempty"`
 }
 
 // EvaluatePersonalMatch evaluates explicit positive judgments at k. Both
@@ -68,6 +88,7 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 	}
 	report := EvaluationReport{AlgorithmVersion: PersonalMatchAlgorithmVersion, K: k, CandidateLimit: suite.CandidateLimit}
 	var retrievalRecall float64
+	var feedback FeedbackComparison
 	caseIDs := make(map[string]struct{}, len(suite.Cases))
 	for index, item := range suite.Cases {
 		_, duplicate := caseIDs[item.ID]
@@ -83,28 +104,27 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 		if result.Retrieval != nil {
 			retrievalRecall += result.Retrieval.Recall
 		}
-		report.PersonalMatch.NDCG += result.PersonalMatch.NDCG
-		report.PersonalMatch.FillRate += result.PersonalMatch.FillRate
-		report.TitleBaseline.NDCG += result.TitleBaseline.NDCG
-		report.TitleBaseline.FillRate += result.TitleBaseline.FillRate
-		report.PersonalMatch.Recall += result.PersonalMatch.Recall
-		report.PersonalMatch.ReciprocalRank += result.PersonalMatch.ReciprocalRank
-		report.TitleBaseline.Recall += result.TitleBaseline.Recall
-		report.TitleBaseline.ReciprocalRank += result.TitleBaseline.ReciprocalRank
+		report.PersonalMatch.add(result.PersonalMatch)
+		report.TitleBaseline.add(result.TitleBaseline)
+		if result.WithFeedback != nil {
+			feedback.CaseCount++
+			feedback.WithoutFeedback.add(result.PersonalMatch)
+			feedback.WithFeedback.add(result.WithFeedback.Ranking)
+		}
 	}
 	n := float64(len(report.Cases))
 	if suite.CandidateLimit > 0 {
 		mean := retrievalRecall / n
 		report.MeanRetrievalRecall = &mean
 	}
-	report.PersonalMatch.NDCG /= n
-	report.PersonalMatch.FillRate /= n
-	report.TitleBaseline.NDCG /= n
-	report.TitleBaseline.FillRate /= n
-	report.PersonalMatch.Recall /= n
-	report.PersonalMatch.ReciprocalRank /= n
-	report.TitleBaseline.Recall /= n
-	report.TitleBaseline.ReciprocalRank /= n
+	report.PersonalMatch.divide(n)
+	report.TitleBaseline.divide(n)
+	if feedback.CaseCount > 0 {
+		paired := float64(feedback.CaseCount)
+		feedback.WithoutFeedback.divide(paired)
+		feedback.WithFeedback.divide(paired)
+		report.FeedbackComparison = &feedback
+	}
 	return report, nil
 }
 
@@ -146,6 +166,60 @@ func evaluateCase(item EvaluationCase, k, candidateLimit int) (CaseEvaluation, e
 		return CaseEvaluation{}, errors.New("at least one relevant candidate is required")
 	}
 	profile := BuildTasteProfile(item.Rated, item.Preferences)
+	personal := evaluateProfile(profile, eligible, relevant, k, candidateLimit)
+	var withFeedback *FeedbackRanking
+	if len(item.Feedback) > 0 {
+		reactions, err := evaluationReactions(item.Feedback, seen)
+		if err != nil {
+			return CaseEvaluation{}, err
+		}
+		profile.ApplyTitleFeedback(reactions)
+		paired := evaluateProfile(profile, eligible, relevant, k, candidateLimit)
+		withFeedback = &paired
+	}
+	sort.Slice(eligible, func(i, j int) bool {
+		if eligible[i].Title == eligible[j].Title {
+			return eligible[i].AnimeID < eligible[j].AnimeID
+		}
+		return eligible[i].Title < eligible[j].Title
+	})
+	baselineIDs := make([]string, 0, min(k, len(eligible)))
+	for _, candidate := range eligible[:min(k, len(eligible))] {
+		baselineIDs = append(baselineIDs, candidate.AnimeID)
+	}
+	return CaseEvaluation{
+		ID:            item.ID,
+		Retrieval:     personal.Retrieval,
+		PersonalMatch: personal.Ranking,
+		WithFeedback:  withFeedback,
+		TitleBaseline: rankingMetrics(baselineIDs, relevant, k),
+	}, nil
+}
+
+func evaluationReactions(feedback []EvaluationTitleFeedback, candidates map[string]struct{}) ([]TitleFeedback, error) {
+	if len(feedback) > 100 {
+		return nil, errors.New("at most 100 training title reactions are allowed")
+	}
+	reactions := make([]TitleFeedback, 0, len(feedback))
+	seen := make(map[string]bool, len(feedback))
+	for _, item := range feedback {
+		_, candidate := candidates[item.AnimeID]
+		if item.AnimeID == "" || strings.TrimSpace(item.AnimeID) != item.AnimeID || seen[item.AnimeID] || candidate ||
+			(item.Direction != -1 && item.Direction != 1) || len(item.Features) > 256 {
+			return nil, errors.New("training reactions require unique titles outside the candidate set, bounded features and a direction of -1 or 1")
+		}
+		for _, feature := range item.Features {
+			if feature.Key == "" || !validUnit(feature.Value) || !validUnit(feature.Confidence) {
+				return nil, errors.New("invalid training reaction feature")
+			}
+		}
+		seen[item.AnimeID] = true
+		reactions = append(reactions, TitleFeedback{Direction: item.Direction, Features: item.Features})
+	}
+	return reactions, nil
+}
+
+func evaluateProfile(profile TasteProfile, eligible []Candidate, relevant map[string]struct{}, k, candidateLimit int) FeedbackRanking {
 	rankingCandidates := eligible
 	var retrieval *RetrievalMetrics
 	if candidateLimit > 0 {
@@ -163,22 +237,21 @@ func evaluateCase(item EvaluationCase, k, candidateLimit int) (CaseEvaluation, e
 	for _, match := range ranked {
 		personalIDs = append(personalIDs, match.AnimeID)
 	}
-	sort.Slice(eligible, func(i, j int) bool {
-		if eligible[i].Title == eligible[j].Title {
-			return eligible[i].AnimeID < eligible[j].AnimeID
-		}
-		return eligible[i].Title < eligible[j].Title
-	})
-	baselineIDs := make([]string, 0, min(k, len(eligible)))
-	for _, candidate := range eligible[:min(k, len(eligible))] {
-		baselineIDs = append(baselineIDs, candidate.AnimeID)
-	}
-	return CaseEvaluation{
-		ID: item.ID,
-		Retrieval: retrieval,
-		PersonalMatch: rankingMetrics(personalIDs, relevant, k),
-		TitleBaseline: rankingMetrics(baselineIDs, relevant, k),
-	}, nil
+	return FeedbackRanking{Ranking: rankingMetrics(personalIDs, relevant, k), Retrieval: retrieval}
+}
+
+func (m *RankingMetrics) add(other RankingMetrics) {
+	m.NDCG += other.NDCG
+	m.FillRate += other.FillRate
+	m.Recall += other.Recall
+	m.ReciprocalRank += other.ReciprocalRank
+}
+
+func (m *RankingMetrics) divide(by float64) {
+	m.NDCG /= by
+	m.FillRate /= by
+	m.Recall /= by
+	m.ReciprocalRank /= by
 }
 
 func rankingMetrics(ids []string, relevant map[string]struct{}, k int) RankingMetrics {
@@ -212,7 +285,7 @@ func retrieveEvaluationCandidates(profile TasteProfile, eligible []Candidate, li
 	}
 	type supportedCandidate struct {
 		candidate Candidate
-		overlap int
+		overlap   int
 	}
 	supported := make([]supportedCandidate, 0, len(eligible))
 	for _, candidate := range eligible {
