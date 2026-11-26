@@ -47,3 +47,10 @@ groups:
         for: 2m
         labels: {severity: warning}
         annotations: {summary: 'Catalog title observations have future timestamps'}
+      - alert: AnimeCatalogLatestFetchFailed
+        expr: >-
+          (anime_catalog_sources_by_last_fetch_outcome{anime_catalog_monitor="true",outcome=~"fetch_failed|import_failed"} > 0)
+          and on(job, instance) anime_catalog:snapshot_fresh_timestamp_seconds
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: 'Catalog sources still report an unsuccessful latest attempt'}
