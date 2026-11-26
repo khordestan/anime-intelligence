@@ -155,3 +155,45 @@ tests:
   - eval_time: 8m
     alertname: AnimeCatalogTitlesStale
     exp_alerts: []
+- name: fetch-failure-persistence-recovery-and-rate-limit-separation
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_catalog_snapshot_timestamp_seconds{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 0+60x20
+  - series: 'anime_catalog_sources_by_last_fetch_outcome{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true",outcome="import_failed"}'
+    values: 1+0x12 0+0x7
+  - series: 'anime_catalog_sources_by_last_fetch_outcome{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true",outcome="rate_limited"}'
+    values: 2+0x20
+  alert_rule_test:
+  - eval_time: 9m
+    alertname: AnimeCatalogLatestFetchFailed
+    exp_alerts: []
+  - eval_time: 11m
+    alertname: AnimeCatalogLatestFetchFailed
+    exp_alerts:
+    - exp_labels:
+        job: anime-catalog
+        instance: fixture:9100
+        anime_catalog_monitor: 'true'
+        outcome: import_failed
+        severity: warning
+      exp_annotations:
+        summary: Catalog sources still report an unsuccessful latest attempt
+  - eval_time: 14m
+    alertname: AnimeCatalogLatestFetchFailed
+    exp_alerts: []
+- name: stale-snapshot-suppresses-fetch-failure
+  interval: 1m
+  input_series:
+  - series: 'up{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 1+0x20
+  - series: 'anime_catalog_snapshot_timestamp_seconds{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true"}'
+    values: 0+0x20
+  - series: 'anime_catalog_sources_by_last_fetch_outcome{job="anime-catalog",instance="fixture:9100",anime_catalog_monitor="true",outcome="fetch_failed"}'
+    values: 1+0x20
+  alert_rule_test:
+  - eval_time: 12m
+    alertname: AnimeCatalogLatestFetchFailed
+    exp_alerts: []
