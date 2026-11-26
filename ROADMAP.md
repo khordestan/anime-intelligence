@@ -122,6 +122,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Atomic bulk series ratings API
 - [x] Dashboard bulk series ratings
 - [x] Atomic bulk one-episode progress for count-mode tracker entries
+- [x] Atomic bulk update to reviewed known episode totals for count-mode tracker entries
 - [ ] Further bulk editing actions
 - [x] Transitive linked-season follows with explicit per-title scope
 

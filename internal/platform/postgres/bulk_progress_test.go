@@ -40,12 +40,16 @@ func TestBulkProgressFencesRetriesAndRejectsExactAndFullEntries(t *testing.T) {
 	ordered := []store.Entry{a, b}
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].ID < ordered[j].ID })
 	handler := httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), db)
-	call := func(token string, firstCount, secondCount int, want int) {
+	call := func(token string, firstCount, secondCount int, want int, totals ...int) {
 		t.Helper()
-		body, err := json.Marshal(map[string]any{"entries": []store.BulkProgressTarget{
+		targets := []store.BulkProgressTarget{
 			{BulkStatusTarget: store.BulkStatusTarget{ID: ordered[0].ID, ExpectedCycle: 1}, ExpectedEpisodesWatched: &firstCount},
 			{BulkStatusTarget: store.BulkStatusTarget{ID: ordered[1].ID, ExpectedCycle: 1}, ExpectedEpisodesWatched: &secondCount},
-		}})
+		}
+		for i := range totals {
+			targets[i].ExpectedTotalEpisodes = &totals[i]
+		}
+		body, err := json.Marshal(map[string]any{"entries": targets})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,15 +78,33 @@ func TestBulkProgressFencesRetriesAndRejectsExactAndFullEntries(t *testing.T) {
 	call(first.Token, 0, 0, 409)
 	call(first.Token, 1, 0, 409)
 	check()
+	for _, entry := range ordered {
+		if _, err := admin.Exec(ctx, `UPDATE anime SET episode_count=5 WHERE id=$1`, entry.AnimeID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	call(first.Token, 1, 1, 409, 5, 6)
+	check()
+	call(first.Token, 1, 1, 200, 5, 5)
+	updated, err := repo.Library(ctx)
+	if err != nil || len(updated) != 2 {
+		t.Fatalf("library after known totals: %+v %v", updated, err)
+	}
+	for _, entry := range updated {
+		if entry.EpisodesWatched != 5 || entry.WatchStatus != "WATCHING" || entry.ExactProgress {
+			t.Fatalf("unexpected completed count: %+v", entry)
+		}
+	}
+	call(first.Token, 1, 1, 409, 5, 5)
+
 	if _, err := admin.Exec(ctx, `UPDATE anime SET episode_count=1 WHERE id=$1`, ordered[1].AnimeID); err != nil {
 		t.Fatal(err)
 	}
-	call(first.Token, 1, 1, 409)
+	call(first.Token, 5, 5, 409)
 	if _, _, err := repo.SetEpisodeProgress(ctx, ordered[1].ID, []int32{1}); err != nil {
 		t.Fatal(err)
 	}
-	call(first.Token, 1, 1, 409)
-	check()
+	call(first.Token, 5, 5, 409)
 	rows, err := repo.Library(ctx)
 	if err != nil {
 		t.Fatal(err)

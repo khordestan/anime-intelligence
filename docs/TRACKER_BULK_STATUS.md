@@ -23,3 +23,5 @@ In the dashboard, open **Edit multiple statuses** in My Library, select entries,
 In My Library, select up to 25 eligible entries and choose **Add one watched episode to selected**. The server advances all selected counts in one verified-owner transaction. Watch statuses and ratings stay unchanged. Exact episode selections remain available through each title's episode editor.
 
 `PATCH /api/v1/tracker/bulk-progress` takes `entries` with `id`, `expectedCycle` and `expectedEpisodesWatched`. A retry with the old counts receives a conflict. A stale viewing pass, stale count, exact selection, or exhausted known total rolls back the entire batch.
+
+For count-mode entries with a known episode total, **Set selected watched counts to known totals** sends each selected total as `expectedTotalEpisodes`. The whole batch fails if any current total differs from the displayed value. The update preserves watch status and ratings.
