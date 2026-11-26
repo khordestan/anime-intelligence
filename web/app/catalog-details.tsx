@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 import CatalogAnalysis from "./catalog-analysis";
 import CatalogContinuity from "./catalog-continuity";
+import CharacterCredits, { CreditList, type Credit } from "./catalog-credits";
 import ProviderCredit from "./provider-credit";
 import ScheduleHistory from "./schedule-history";
 
 type Details = {
   seasonNumber?: number;
   partNumber?: number;
+  staffCredits?: Credit[];
+  hasCharacterCredits?: boolean;
   fieldSources?: { field: string; mode: string; revision: number; provider: string; observedAt?: string }[];
   externalIds?: { provider: string; externalId: string }[];
   anime: { id: string; title: string; mediaType?: string; nativeTitle?: string; synopsis?: string; season?: string; releaseYear?: number; episodeCount?: number; episodeCountKnown: boolean };
@@ -70,6 +73,11 @@ export default function CatalogDetails({ client, id, title, onError, assistedAna
           {!!details.externalIds?.length && <p className="text-xs text-slate-400">Provider IDs: {details.externalIds.map(identity => identity.provider + ": " + identity.externalId).join(" · ")}</p>}
           <button onClick={() => setSpoilers(!spoilers)} className="text-xs text-amber-200 underline">{spoilers ? "Hide synopsis, themes and tags" : "Show synopsis, themes and tags (may contain spoilers)"}</button>
           {spoilers && <div><p className="text-xs text-slate-300">{details.anime.synopsis || "No synopsis available."}</p><p className="mt-2 text-xs text-slate-400">Themes: {details.themes?.join(", ") || "Not available"}</p><p className="mt-2 text-xs text-slate-400">Tags: {otherTags.join(", ") || "Not available"}</p></div>}
+          {!!details.staffCredits?.length && <section aria-label="Staff credits" className="pt-2">
+            <h5 className="text-xs font-semibold">Staff credits</h5>
+            <CreditList items={details.staffCredits} />
+          </section>}
+          {details.hasCharacterCredits && <CharacterCredits key={"characters:" + details.anime.id} client={client} animeId={details.anime.id} />}
           {!!details.relations.length && <div className="flex flex-wrap gap-3">
             {details.relations.map(relation => <button key={relation.type + relation.animeId} disabled={busy} onClick={() => void load(relation.animeId)} className="text-xs text-violet-200 underline">View {relation.type.toLowerCase().replaceAll("_", " ")}{relation.title ? `: ${relation.title}` : " details"}{relation.mediaType ? ` · ${relation.mediaType}` : ""}{relation.status ? ` · ${relation.status}` : ""}</button>)}
           </div>}

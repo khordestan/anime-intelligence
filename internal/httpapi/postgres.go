@@ -55,6 +55,7 @@ func NewPostgresRouterWithPush(logger *slog.Logger, db *postgres.DB, delivery *i
 	mux.HandleFunc("GET /api/v1/anime/facets", c.Facets)
 	mux.HandleFunc("GET /api/v1/anime/{id}", c.Get)
 	mux.HandleFunc("GET /api/v1/anime/{id}/details", c.Details)
+	mux.HandleFunc("GET /api/v1/anime/{id}/character-credits", c.CharacterCredits)
 	mux.HandleFunc("GET /api/v1/anime/{id}/episodes/{number}/schedule-history", c.ScheduleHistory)
 	mux.HandleFunc("GET /api/v1/anime/{id}/continuity", c.Continuity)
 	gate := newAuthGate()

@@ -4,6 +4,7 @@ test("catalog search reaches imported aliases and details hide spoilers until re
   const id = "10000000-0000-4000-8000-000000000099";
   const sequel = "10000000-0000-4000-8000-000000000098";
   let searched = false;
+  let characterRequests = 0;
   await page.route("http://localhost:8080/api/v1**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -21,9 +22,14 @@ test("catalog search reaches imported aliases and details hide spoilers until re
       searched = url.searchParams.get("q") === "Hidden Alias";
       return respond({ items: searched ? [{ id, title: "Beyond First Page", mediaType: "TV" }] : [] });
     }
+    if (path === "/anime/" + id + "/character-credits") {
+      characterRequests++;
+      return respond({ items: [{ name: "Synthetic Hidden Character", role: "Supporting" }], provider: "synthetic" });
+    }
     if (path === "/anime/" + id + "/details") return respond({
       anime: { id, title: "Beyond First Page", nativeTitle: "Synthetic Native Title", synopsis: "Synthetic spoiler synopsis", episodeCountKnown: false },
       seasonNumber: 2, partNumber: 1,
+      staffCredits: [{ name: "Synthetic Director", role: "Director" }], hasCharacterCredits: true,
       externalIds: [{ provider: "synthetic", externalId: "work-99" }, { provider: "synthetic-secondary", externalId: "linked-99" }], provider: "synthetic", observedAt: "2026-01-01T00:00:00Z", synonyms: ["Hidden Alias"], genres: ["Adventure"], studios: ["Synthetic Studio"], tags: ["Synthetic spoiler tag"], themes: ["Synthetic spoiler theme"], demographics: ["Synthetic audience"], relations: [{ animeId: sequel, type: "SEQUEL", title: "Synthetic Linked Season", mediaType: "TV", status: "ANNOUNCED" }],
       episodes: [
         { number: 1, track: "SUB", scheduledAt: "2030-01-01T00:00:00Z", revision: 1 },
@@ -46,6 +52,16 @@ test("catalog search reaches imported aliases and details hide spoilers until re
   await expect(panel.getByText("Genres: Adventure", { exact: true })).toBeVisible();
   await expect(panel.getByText("Demographics: Synthetic audience", { exact: true })).toBeVisible();
   await expect(panel.getByText("Studios: Synthetic Studio", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("region", { name: "Staff credits" }).getByText("Synthetic Director · Director")).toBeVisible();
+  expect(characterRequests).toBe(0);
+  await expect(panel.getByText("Synthetic Hidden Character", { exact: false })).toHaveCount(0);
+  await panel.getByRole("button", { name: "Show character credits (may contain spoilers)", exact: true }).click();
+  const characters = panel.getByRole("region", { name: "Character credits", exact: true });
+  await expect(characters.getByText("Synthetic Hidden Character · Supporting", { exact: true })).toBeVisible();
+  await expect(characters.getByText("Credits source: synthetic", { exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Hide character credits", exact: true }).click();
+  await expect(characters).toHaveCount(0);
+  expect(characterRequests).toBe(1);
   await expect(panel.getByText(/Episode total unknown/)).toBeVisible();
   await expect(panel.getByText(/Source: synthetic/)).toBeVisible();
   await expect(panel.getByText("Provider IDs: synthetic: work-99 · synthetic-secondary: linked-99", { exact: true })).toBeVisible();
