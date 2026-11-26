@@ -130,6 +130,14 @@ paths:
           description: Require a latest confirmed release on this track at or before the query time.
           schema: { type: string, enum: [RAW, SUB, DUB, UNKNOWN] }
         - in: query
+          name: seasonNumber
+          description: Exact sourced season number from primary title metadata.
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+        - in: query
+          name: partNumber
+          description: Exact sourced split-part number on a title with sourced season numbering.
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+        - in: query
           name: metadataProvider
           description: Exact provider key for the title's primary metadata.
           schema: { type: string, maxLength: 128 }

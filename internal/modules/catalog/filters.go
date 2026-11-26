@@ -14,7 +14,7 @@ func catalogFilter(r *http.Request) (store.CatalogFilter, error) {
 	if err != nil {
 		return store.CatalogFilter{}, store.ErrCatalogFilter
 	}
-	for _, key := range []string{"q", "mediaType", "status", "releaseYear", "season", "genre", "theme", "demographic", "studio", "minEpisodes", "maxEpisodes", "sort", "minYear", "maxYear", "confirmedRelease", "metadataProvider", "confirmedTrack"} {
+	for _, key := range []string{"q", "mediaType", "status", "releaseYear", "season", "genre", "theme", "demographic", "studio", "minEpisodes", "maxEpisodes", "sort", "minYear", "maxYear", "confirmedRelease", "metadataProvider", "confirmedTrack", "seasonNumber", "partNumber"} {
 		if values, ok := query[key]; ok && (len(values) != 1 || (key != "q" && strings.TrimSpace(values[0]) == "")) {
 			return store.CatalogFilter{}, store.ErrCatalogFilter
 		}
@@ -36,7 +36,7 @@ func catalogFilter(r *http.Request) (store.CatalogFilter, error) {
 	for _, bound := range []struct {
 		key    string
 		target **int
-	}{{"minEpisodes", &f.MinEpisodes}, {"maxEpisodes", &f.MaxEpisodes}, {"minYear", &f.MinYear}, {"maxYear", &f.MaxYear}} {
+	}{{"minEpisodes", &f.MinEpisodes}, {"maxEpisodes", &f.MaxEpisodes}, {"minYear", &f.MinYear}, {"maxYear", &f.MaxYear}, {"seasonNumber", &f.SeasonNumber}, {"partNumber", &f.PartNumber}} {
 		if values, ok := query[bound.key]; ok {
 			n, err := strconv.Atoi(values[0])
 			if err != nil {
