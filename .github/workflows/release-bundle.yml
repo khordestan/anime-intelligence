@@ -10,6 +10,7 @@ on:
       - 'scripts/check-bundle-ingress.sh'
       - 'deployments/ingress/bundle-loopback.conf'
       - 'scripts/package-release-images.sh'
+      - 'scripts/verify-release-images.sh'
       - 'scripts/check-bundle-migrations.sh'
       - '.github/workflows/release-bundle.yml'
   workflow_dispatch:
@@ -28,20 +29,12 @@ jobs:
       - name: Verify archive integrity, image identities and startup
         shell: bash
         run: |
-          cd "$RUNNER_TEMP/anime-release"
-          sha256sum --check SHA256SUMS
-          commit=$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
+          commit=$(git rev-parse HEAD)
           api="anime-intelligence/api:$commit"
           web="anime-intelligence/web:$commit"
           migrate="anime-intelligence/migrate:$commit"
           docker image rm "$api" "$web" "$migrate"
-          docker image load --input images.tar.gz
-          for image in "$api" "$web" "$migrate"; do
-            id=$(docker image inspect --format '{{.Id}}' "$image")
-            key=${image##*/}
-            grep -Fqx "${key%%:*}_image_id=$id" manifest.txt
-            test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$commit"
-          done
+          scripts/verify-release-images.sh "$RUNNER_TEMP/anime-release" "$commit"
           "$GITHUB_WORKSPACE/scripts/check-containers.sh" "$api" "$web"
           "$GITHUB_WORKSPACE/scripts/check-bundle-ingress.sh" "$api" "$web"
           "$GITHUB_WORKSPACE/scripts/check-bundle-migrations.sh" "$migrate" "$api"

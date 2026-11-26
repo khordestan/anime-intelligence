@@ -215,4 +215,5 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Commit-tagged application image bundle with checksums and isolated archive reload verification
 - [x] Explicit PostgreSQL requirement for hosted API startup
 - [x] Separate non-root migrator image with an isolated rehearsal of reapplication and restricted API readiness
+- [x] Reusable release archive verification against an explicitly approved commit
 - [ ] Production deployment automation and operational runbooks
