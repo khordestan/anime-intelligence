@@ -200,6 +200,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Real backup/key storage, post-snapshot deletion/security reconciliation, PITR and recovery objectives
 - [x] Synthetic PostgreSQL release backlog bursts, isolation and overlapping franchise-path performance test
 - [x] Concurrent synthetic HTTP catalog and private library workload with atomic progress retry checks
+- [x] Synthetic two-replica dashboard workload with route latency percentiles and a larger opt-in profile
 - [ ] Representative load and reliability tests
 - [x] Browser auth/account-switch/local-mode tests and transport race tests
 - [x] Full-stack browser tests against the real PostgreSQL API (dedicated disposable CI database and restricted runtime role)
