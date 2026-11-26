@@ -126,6 +126,10 @@ paths:
           description: Require a latest episode/track observation with a confirmed release timestamp at or before now. Local starter mode has no release observations.
           schema: { type: boolean, default: false }
         - in: query
+          name: confirmedTrack
+          description: Require a latest confirmed release on this track at or before the query time.
+          schema: { type: string, enum: [RAW, SUB, DUB, UNKNOWN] }
+        - in: query
           name: metadataProvider
           description: Exact provider key for the title's primary metadata.
           schema: { type: string, maxLength: 128 }

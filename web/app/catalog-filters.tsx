@@ -6,6 +6,7 @@ import CatalogLabels from "./catalog-labels";
 
 export type CatalogFilterValues = {
   confirmedRelease: string;
+  confirmedTrack: string;
   metadataProvider: string;
   minYear: string; maxYear: string;
   sort: string;
@@ -14,7 +15,7 @@ export type CatalogFilterValues = {
   genre: string; theme: string; demographic: string; studio: string;
 };
 export const emptyCatalogFilters: CatalogFilterValues = {
-  confirmedRelease:"", metadataProvider:"", minYear:"", maxYear:"", sort:"", minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
+  confirmedRelease:"", confirmedTrack:"", metadataProvider:"", minYear:"", maxYear:"", sort:"", minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "",
 };
 export default function CatalogFilters({ client, values, onApply }: {
   client: ApiClient; values: CatalogFilterValues; onApply: (values: CatalogFilterValues) => void;
@@ -58,6 +59,7 @@ export default function CatalogFilters({ client, values, onApply }: {
         {([["minYear","Earliest release year"],["maxYear","Latest release year"]] as const).map(([key,label])=><label key={key} className="text-xs text-slate-300">{label}<input aria-label={label} type="number" min={1900} max={9999} step={1} value={draft[key]} onChange={event=>setDraft(current=>({...current,[key]:event.target.value}))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>)}
         {([["minEpisodes","Minimum episodes"],["maxEpisodes","Maximum episodes"]] as const).map(([key,label])=><label key={key} className="text-xs text-slate-300">{label}<input aria-label={label} type="number" min={0} max={100000} step={1} value={draft[key]} onChange={event=>setDraft(current=>({...current,[key]:event.target.value}))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>)}
         {([
+          ["confirmedTrack", "Confirmed release track", ["SUB", "DUB", "RAW", "UNKNOWN"]],
           ["sort", "Catalog sort order", ["TITLE", "NEWEST", "OLDEST"]],
           ["mediaType", "Catalog format", ["TV", "MOVIE", "OVA", "ONA", "SPECIAL", "MUSIC", "UNKNOWN"]],
           ["status", "Catalog release status", ["UNKNOWN", "ANNOUNCED", "RELEASING", "FINISHED", "CANCELLED", "HIATUS"]],
