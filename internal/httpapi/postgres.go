@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/khordestan/anime-intelligence/internal/modules/catalog"
- "github.com/khordestan/anime-intelligence/internal/modules/intelligence"
+	"github.com/khordestan/anime-intelligence/internal/modules/intelligence"
 	"github.com/khordestan/anime-intelligence/internal/modules/tracker"
 	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/password"
@@ -47,7 +47,7 @@ func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery
 	mux.HandleFunc("GET /api/v1/anime", c.List)
 	mux.HandleFunc("POST /api/v1/analysis/catalog", c.Analyze)
 	mux.HandleFunc("GET /api/v1/anime/lookup", c.Lookup)
- mux.HandleFunc("GET /api/v1/anime/facets", c.Facets)
+	mux.HandleFunc("GET /api/v1/anime/facets", c.Facets)
 	mux.HandleFunc("GET /api/v1/anime/{id}", c.Get)
 	mux.HandleFunc("GET /api/v1/anime/{id}/details", c.Details)
 	mux.HandleFunc("GET /api/v1/anime/{id}/episodes/{number}/schedule-history", c.ScheduleHistory)
@@ -127,13 +127,13 @@ func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery
 		}))
 	}
 	registerIdentityRoutes(mux, db, delivery, gate, protect)
-	registerReleaseRoutes(mux,db,protect)
+	registerReleaseRoutes(mux, db, protect)
 	registerReleaseEmailRoutes(mux, db, protect)
-	registerEpisodeRoutes(mux,db,protect)
-	registerRewatchRoutes(mux,db,protect)
-	registerNotesRoutes(mux,db,protect)
-	registerCalendarRoutes(mux,db,protect)
-	registerRecommendationRoutes(mux,db,protect)
+	registerEpisodeRoutes(mux, db, protect)
+	registerRewatchRoutes(mux, db, protect)
+	registerNotesRoutes(mux, db, protect)
+	registerCalendarRoutes(mux, db, protect)
+	registerRecommendationRoutes(mux, db, protect)
 	mux.HandleFunc("GET /api/v1/auth/sessions", protect(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		items, more, err := db.Sessions(r.Context(), token)
 		if err != nil {
@@ -294,6 +294,9 @@ func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery
 	}))
 	mux.HandleFunc("DELETE /api/v1/tracker/{id}", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).Remove(w, r)
+	}))
+	mux.HandleFunc("PUT /api/v1/tracker/{id}/season-rating", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
+		tracker.NewHandler(db.Repository(token)).SetSeasonRating(w, r)
 	}))
 	mux.HandleFunc("PUT /api/v1/ratings/{id}", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		tracker.NewHandler(db.Repository(token)).Rate(w, r)

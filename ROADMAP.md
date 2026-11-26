@@ -18,7 +18,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 | Capability | Available | Remaining |
 | --- | --- | --- |
 | Catalog freshness and coverage | Reviewed imports, opt-in bounded jobs, exact mappings, review/retraction tools and metrics | Licensed comprehensive sources, broader people/character data, confirmed availability, active operations and quality objectives |
-| Season-level library | Canonical title-level progress, ratings, relations and viewing passes | Finer season and rating conventions, franchise corrections and more bulk editing |
+| Season-level library | Canonical title-level progress, separate series and sourced season-part ratings, relations and viewing passes | Franchise corrections and more bulk editing |
 | Alerts | Verified-owner in-app episode and season-announcement notices, follow pagination and an upcoming schedule calendar | Delay/movie alert rules, explicit corrections, background channels and operational delivery |
 | Recommendations | PostgreSQL Personal Match, offline evaluators, opt-in Global Essentials and paginated Discovery with evidence navigation and dismissals | Reviewed Essentials corpus, deliberate exploration beyond evidence coverage, representative judgments and feedback learning |
 | Production operations | Security tests, recovery drill, bounded diagnostics and monitoring examples | Independent review, ingress abuse controls, load testing, activated monitoring, real backup/recovery and deployment workflows |
@@ -116,7 +116,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Library title search, status/rating filters and explicit title/rating/episode ordering
 - [x] Sourced season and split-part numbering in catalog details
 - [x] Private tracker notes with conflict detection and dashboard editing
-- [ ] Finer season rating conventions
+- [x] Separate ratings for sourced canonical seasons and split parts
 - [x] Atomic, viewing-pass-guarded bulk status edit API
 - [x] Dashboard bulk status editing with stale-entry recovery
 - [x] Versioned current watch-list export and dashboard download

@@ -23,3 +23,9 @@ History is private, included in account export under watchCycles and removed by 
 Verified PostgreSQL library cards show the current pass and viewing history. Starting a rewatch requires a separate confirmation that explains the archive/reset and retained rating/follows. A pass change remounts the card, clearing prior episode drafts and confirmation state. Late responses are fenced by component/request/account revisions; history stays only in memory.
 
 Tracker PATCH and exact-episode PUT accept optional expectedCycle (1–1000). The current dashboard supplies it from the library/progress response. A mismatch returns 409 without changing the new pass; foreign IDs still return 404. Episode reads include watchCycle and lock the tracker before reading progress. Legacy clients that omit the field retain unconditional edit behavior; they must opt in to prevent stale edits across a rewatch transition. Series rating edits remain title-wide.
+
+## Season and split-part ratings
+
+My Library offers a separate season rating when the tracked canonical title has a sourced season number. A separately cataloged split part has its own rating. Each rating follows the canonical title through metadata renumbering and subsequent viewing passes. If the source withdraws the season number, an existing rating remains editable and clearable. Selecting **Not rated** clears the season rating.
+
+Series ratings continue to drive library rating filters, recommendations and viewing-pass archives. Season scores appear in the full account export. The portable version 1 watch list continues to carry series scores. Removing the tracker entry also removes its season score.
