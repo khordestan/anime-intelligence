@@ -21,3 +21,13 @@ Compare each loaded image ID and its `org.opencontainers.image.revision` label w
 The standalone migrator runs as a non-root user and requires an explicitly supplied `MIGRATION_DATABASE_URL`. The hosted rehearsal applies the same migrations twice in an isolated PostgreSQL container, provisions a synthetic restricted runtime role, and checks API readiness. A production rehearsal needs separately provisioned PostgreSQL, approved migration and runtime credentials, ingress and secrets. Keep the migration credential out of long-running API containers. Image readiness and checksum verification are useful inputs to deployment review.
 
 Set `REQUIRE_POSTGRES=true` on the hosted API so missing database configuration stops startup before the service binds a port. Provide the restricted runtime connection through `DATABASE_URL`.
+
+## Exercise the synthetic dashboard workload
+
+Set `TEST_DATABASE_URL` to a disposable PostgreSQL administration connection and run:
+
+```sh
+ANIME_LOAD_EXTENDED=1 go test -count=1 -v ./internal/platform/postgres -run '^TestConcurrentDashboardWorkload$'
+```
+
+The default workload uses eight verified synthetic owners and 1,000 titles. The extended workload uses 24 owners and 10,000 titles. Both run two API replicas with independent connection pools and check that each competing pair of progress updates commits exactly once. The report includes request counts and client-side p50 and p95 latency by route. Use a comparable environment and fixture when comparing runs. Production workload and capacity still require environment-specific measurements.
