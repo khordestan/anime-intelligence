@@ -19,6 +19,8 @@ type MetadataCoverage struct {
 	Demographics int `json:"demographics"`
 	Studios int `json:"studios"`
 	Relations int `json:"relations"`
+	StaffCredits int `json:"staffCredits"`
+	CharacterCredits int `json:"characterCredits"`
 }
 type SourceStatus struct {
 	StaleTitles int `json:"staleTitles"`
@@ -81,7 +83,9 @@ count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'tags')='array' THEN jsonb
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'studios')='array' THEN jsonb_array_length(payload->'studios')>0 ELSE false END) AS studios,
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'relations')='array' THEN jsonb_array_length(payload->'relations')>0 ELSE false END) AS relations,
 count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'themes')='array' THEN jsonb_array_length(payload->'themes')>0 ELSE false END) AS themes,
-count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'demographics')='array' THEN jsonb_array_length(payload->'demographics')>0 ELSE false END) AS demographics
+count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'demographics')='array' THEN jsonb_array_length(payload->'demographics')>0 ELSE false END) AS demographics,
+count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'staffCredits')='array' THEN jsonb_array_length(payload->'staffCredits')>0 ELSE false END) AS staff_credits,
+count(*) FILTER(WHERE CASE WHEN jsonb_typeof(payload->'characterCredits')='array' THEN jsonb_array_length(payload->'characterCredits')>0 ELSE false END) AS character_credits
 FROM (SELECT m.anime_id,m.source_id,m.observed_at,COALESCE(b.payload,m.payload) AS payload
  FROM catalog_metadata m LEFT JOIN catalog_base_metadata b ON b.anime_id=m.anime_id) primary_facts GROUP BY source_id
 )
@@ -89,7 +93,8 @@ SELECT s.provider_key,s.enabled,COALESCE(s.policy_url,'')<>'',st.observed_at,
 COALESCE(m.titles,0),f.last_attempt_at,f.next_attempt_at,f.outcome,f.attempts,
 COALESCE(m.stale,0),COALESCE(m.future,0),m.oldest,m.newest,
 COALESCE(m.totals,0),COALESCE(m.synopses,0),COALESCE(m.synonyms,0),
-COALESCE(m.genres,0),COALESCE(m.tags,0),COALESCE(m.studios,0),COALESCE(m.relations,0),COALESCE(m.themes,0),COALESCE(m.demographics,0)
+COALESCE(m.genres,0),COALESCE(m.tags,0),COALESCE(m.studios,0),COALESCE(m.relations,0),COALESCE(m.themes,0),COALESCE(m.demographics,0),
+COALESCE(m.staff_credits,0),COALESCE(m.character_credits,0)
 FROM data_sources s LEFT JOIN catalog_sync_state st ON st.source_id=s.id
 LEFT JOIN catalog_fetch_state f ON f.source_id=s.id LEFT JOIN metadata m ON m.source_id=s.id
 ORDER BY s.provider_key`,now,now.Add(-staleAfter))
@@ -99,7 +104,7 @@ ORDER BY s.provider_key`,now,now.Add(-staleAfter))
 		if err=rows.Scan(&source.Provider,&source.Enabled,&source.PolicyRecorded,&source.ObservedAt,&source.Titles,&source.LastAttemptAt,&source.NextAttemptAt,&source.Outcome,&source.Attempts,
 &source.StaleTitles,&source.FutureTitles,&source.OldestTitleObservation,&source.NewestTitleObservation,
 &source.Coverage.EpisodeTotals,&source.Coverage.Synopses,&source.Coverage.Synonyms,
-&source.Coverage.Genres,&source.Coverage.Tags,&source.Coverage.Studios,&source.Coverage.Relations,&source.Coverage.Themes,&source.Coverage.Demographics);err!=nil {rows.Close();return out,err}
+&source.Coverage.Genres,&source.Coverage.Tags,&source.Coverage.Studios,&source.Coverage.Relations,&source.Coverage.Themes,&source.Coverage.Demographics,&source.Coverage.StaffCredits,&source.Coverage.CharacterCredits);err!=nil {rows.Close();return out,err}
 		source.NeverSynced=source.ObservedAt==nil
 		if source.ObservedAt!=nil {
 			age:=now.Sub(*source.ObservedAt)
@@ -120,6 +125,8 @@ ORDER BY s.provider_key`,now,now.Add(-staleAfter))
 		out.Coverage.Tags+=source.Coverage.Tags
 		out.Coverage.Themes+=source.Coverage.Themes
 		out.Coverage.Demographics+=source.Coverage.Demographics
+		out.Coverage.StaffCredits+=source.Coverage.StaffCredits
+		out.Coverage.CharacterCredits+=source.Coverage.CharacterCredits
 		out.Coverage.Studios+=source.Coverage.Studios
 		out.Coverage.Relations+=source.Coverage.Relations
 		out.Sources=append(out.Sources,source)
