@@ -17,6 +17,7 @@ type AccountExport struct {
 	SchemaVersion     int                        `json:"schemaVersion"`
 	ExportedAt        time.Time                  `json:"exportedAt"`
 	User              User                       `json:"user"`
+	ReleasePushSince  *time.Time                 `json:"releasePushSince,omitempty"`
 	ReleaseEmailSince *time.Time                 `json:"releaseEmailSince,omitempty"`
 	Data              map[string]json.RawMessage `json:"data"`
 }
@@ -42,7 +43,7 @@ func (d *DB) exportAccountSnapshot(ctx context.Context, token string) (AccountEx
 	}
 	defer rollback(tx)
 	out := AccountExport{SchemaVersion: 1, User: u, Data: map[string]json.RawMessage{}}
-	if err = tx.QueryRow(ctx, `SELECT transaction_timestamp(), release_email_since FROM users WHERE id=$1`, u.ID).Scan(&out.ExportedAt, &out.ReleaseEmailSince); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT transaction_timestamp(), release_email_since, (SELECT created_at FROM release_push_subscriptions WHERE user_id=$1) FROM users WHERE id=$1`, u.ID).Scan(&out.ExportedAt, &out.ReleaseEmailSince, &out.ReleasePushSince); err != nil {
 		return AccountExport{}, err
 	}
 	for _, table := range []struct{ key, name string }{

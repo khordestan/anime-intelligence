@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiClient, ApiError } from "../lib/api";
 import ProviderCredit from "./provider-credit";
 import ReleaseEmailSettings from "./release-email-settings";
+import ReleasePushSettings from "./release-push-settings";
 
 type Follow = { animeId: string; title: string; track: string; scope?: "ANIME" | "FRANCHISE"; scheduleNotices?: boolean; createdAt: string };
 type FollowPage = { items: Follow[]; nextCursor?: string };
@@ -209,6 +210,7 @@ export default function ReleaseAlerts({ client, library, onError }: {
         <p role="status" className="mt-2 text-sm text-slate-400">{busy ? "Loading release alerts…" : message}</p>
         {!cursor && catchingUp && <p className="mt-2 text-sm text-amber-200">More release alerts are waiting. {oldestPendingAt && <>The oldest pending release is from {new Date(oldestPendingAt).toLocaleString()}. </>}Refresh alerts to check the next batch.</p>}
         <ReleaseEmailSettings client={client} />
+        <ReleasePushSettings client={client} />
         <h3 className="mt-5 font-medium">Followed releases</h3>
         {pagedFollows && library.length > 0 && (
           <label className="mt-2 block text-sm">

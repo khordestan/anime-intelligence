@@ -16,6 +16,7 @@ import (
 	"github.com/khordestan/anime-intelligence/internal/platform/identitymail"
 	"github.com/khordestan/anime-intelligence/internal/platform/password"
 	"github.com/khordestan/anime-intelligence/internal/platform/postgres"
+	"github.com/khordestan/anime-intelligence/internal/platform/releasepush"
 	"github.com/khordestan/anime-intelligence/internal/platform/store"
 )
 
@@ -34,6 +35,10 @@ func NewPostgresRouterWithEssentials(logger *slog.Logger, db *postgres.DB, deliv
 }
 
 func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service, essentials []intelligence.EssentialsMatch, selector catalog.CatalogFieldSelector) http.Handler {
+	return NewPostgresRouterWithPush(logger, db, delivery, essentials, selector, nil)
+}
+
+func NewPostgresRouterWithPush(logger *slog.Logger, db *postgres.DB, delivery *identitymail.Service, essentials []intelligence.EssentialsMatch, selector catalog.CatalogFieldSelector, push *releasepush.Sender) http.Handler {
 	mux := http.NewServeMux()
 	registerGlobalEssentials(mux, essentials)
 	mux.HandleFunc("GET /readyz", readinessHandler("postgresql", db.Ready))
@@ -252,6 +257,7 @@ func NewPostgresRouterWithAnalyst(logger *slog.Logger, db *postgres.DB, delivery
 			fn(w, r, token, user)
 		})
 	}
+	registerReleasePush(mux, db, product, push)
 	mux.HandleFunc("POST /api/v1/tracker/import/preview", product(func(w http.ResponseWriter, r *http.Request, token string, _ postgres.User) {
 		importWatchList(w, r, db.Repository(token), true)
 	}))

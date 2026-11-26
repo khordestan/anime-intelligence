@@ -136,6 +136,9 @@ var mergeIndirectQueries = []struct{ dependency, query string }{
 	{"public.release_email_jobs.event_id", `SELECT count(*) FILTER (WHERE e.aggregate_id=$1),
 		count(*) FILTER (WHERE e.aggregate_id=$2) FROM public.release_email_jobs j JOIN public.domain_events e ON e.id=j.event_id
 		WHERE e.aggregate_type='ANIME' AND e.aggregate_id IN ($1,$2)`},
+	{"public.release_push_subscriptions.event_id", `SELECT count(*) FILTER (WHERE e.aggregate_id=$1),
+		count(*) FILTER (WHERE e.aggregate_id=$2) FROM public.release_push_subscriptions p JOIN public.domain_events e ON e.id=p.event_id
+		WHERE e.aggregate_type='ANIME' AND e.aggregate_id IN ($1,$2)`},
 	{"public.catalog_fetch_jobs (provider identity)", `SELECT count(*) FILTER (WHERE i.anime_id=$1),
 		count(*) FILTER (WHERE i.anime_id=$2) FROM public.catalog_fetch_jobs j
 		JOIN public.data_sources s ON s.id=j.source_id

@@ -209,6 +209,7 @@ jobs:
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000029_discovery_title_feedback.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000030_continuity_additions.up.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000031_anime_redirects.up.sql
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000032_release_push.up.sql
       - name: Assert seeded data
         env:
           PGPASSWORD: anime_test_password
@@ -221,7 +222,7 @@ jobs:
         env:
           PGPASSWORD: anime_test_password
         run: |
-          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','personal_match_dismissals','auth_challenges','identity_outbox','identity_requests','watch_cycles','catalog_analysis_owner_budget','release_email_jobs','discovery_title_feedback') AND relrowsecurity AND relforcerowsecurity")" = "18"
+          test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_class WHERE relname IN ('users','auth_sessions','user_anime','user_ratings','watch_progress','user_preferences','recommendations','recommendation_feedback','user_follows','notifications','personal_match_dismissals','auth_challenges','identity_outbox','identity_requests','watch_cycles','catalog_analysis_owner_budget','release_email_jobs','release_push_subscriptions','discovery_title_feedback') AND relrowsecurity AND relforcerowsecurity")" = "19"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname LIKE '%_self_access'")" = "13"
           test "$(psql -h localhost -U anime -d anime_intelligence -Atc "SELECT count(*) FROM pg_policies WHERE policyname IN ('users_login_lookup','auth_sessions_token_lookup')")" = "2"
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 <<'SQL'
@@ -282,6 +283,7 @@ jobs:
         env:
           PGPASSWORD: anime_test_password
         run: |
+          psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000032_release_push.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000031_anime_redirects.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000030_continuity_additions.down.sql
           psql -h localhost -U anime -d anime_intelligence -v ON_ERROR_STOP=1 -f migrations/000029_discovery_title_feedback.down.sql

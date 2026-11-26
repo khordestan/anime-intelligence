@@ -78,21 +78,33 @@ func testDB(t *testing.T) (*postgres.DB, *pgx.Conn, string, string) {
 	if _, err = owner.Exec(ctx, `GRANT USAGE ON SCHEMA public TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON anime,catalog_metadata,anime_relations,airing_schedule TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON users,auth_sessions,auth_challenges,identity_outbox,identity_requests,user_anime,watch_progress,user_ratings TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON release_email_jobs TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,UPDATE ON catalog_analysis_owner_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,UPDATE ON catalog_analysis_global_budget TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON release_email_jobs,release_push_subscriptions TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT ON user_preferences,recommendations,recommendation_feedback,user_follows,notifications TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = owner.Exec(ctx, `GRANT SELECT (id,provider_key) ON data_sources TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
-	if _, err = owner.Exec(ctx, `GRANT INSERT,UPDATE,DELETE ON user_follows TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE ON notifications TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON domain_events TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
-	if _, err = owner.Exec(ctx, `GRANT SELECT ON anime_features,anime_feature_observations TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE,DELETE ON user_preferences TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
+	if _, err = owner.Exec(ctx, `GRANT SELECT (id,provider_key) ON data_sources TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Exec(ctx, `GRANT INSERT,UPDATE,DELETE ON user_follows TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE ON notifications TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT ON domain_events TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Exec(ctx, `GRANT SELECT ON anime_features,anime_feature_observations TO `+pgx.Identifier{role}.Sanitize()+`; GRANT INSERT,UPDATE,DELETE ON user_preferences TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT,DELETE ON personal_match_dismissals TO `+pgx.Identifier{role}.Sanitize()+`; GRANT SELECT,INSERT,UPDATE,DELETE ON discovery_title_feedback TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT ON watch_cycles TO `+pgx.Identifier{role}.Sanitize()); err != nil { t.Fatal(err) }
-	if _,err=owner.Exec(ctx,`GRANT SELECT(anime_id,provider,external_id) ON anime_external_ids TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
- if _,err=owner.Exec(ctx,`GRANT SELECT(anime_id,field,revision,mode,source_id,observed_at) ON catalog_field_choices TO `+pgx.Identifier{role}.Sanitize());err!=nil{t.Fatal(err)}
+	if _, err = owner.Exec(ctx, `GRANT SELECT,INSERT ON watch_cycles TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Exec(ctx, `GRANT SELECT(anime_id,provider,external_id) ON anime_external_ids TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Exec(ctx, `GRANT SELECT(anime_id,field,revision,mode,source_id,observed_at) ON catalog_field_choices TO `+pgx.Identifier{role}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = owner.Exec(ctx, `GRANT SELECT(retired_id,anime_id) ON anime_redirects TO `+pgx.Identifier{role}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
@@ -473,8 +485,8 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 		sql  string
 		args []any
 	}{
-		{`INSERT INTO watch_cycles(user_id,anime_id,cycle_number,episodes_watched,total_episodes) VALUES($1,$3,1,12,12),($2,$3,1,12,12)`, []any{one.User.ID,two.User.ID,anime}},
-		{`UPDATE user_anime SET watch_cycle=2 WHERE user_id=$1 OR user_id=$2`, []any{one.User.ID,two.User.ID}},
+		{`INSERT INTO watch_cycles(user_id,anime_id,cycle_number,episodes_watched,total_episodes) VALUES($1,$3,1,12,12),($2,$3,1,12,12)`, []any{one.User.ID, two.User.ID, anime}},
+		{`UPDATE user_anime SET watch_cycle=2 WHERE user_id=$1 OR user_id=$2`, []any{one.User.ID, two.User.ID}},
 		{`INSERT INTO user_preferences(user_id,feature_id,preference_weight,origin)
     SELECT accounts.uid,f.id,0.5,'DECLARED' FROM (VALUES($1::uuid),($2::uuid)) accounts(uid)
     CROSS JOIN (SELECT id FROM anime_features ORDER BY feature_key LIMIT 1) f`, []any{one.User.ID, two.User.ID}},
@@ -485,7 +497,7 @@ func TestAccountExportAndDeletionIsolation(t *testing.T) {
 		{`INSERT INTO discovery_title_feedback(user_id,anime_id,direction) VALUES($1,$3,1),($2,$3,-1)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO personal_match_dismissals(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
 		{`INSERT INTO user_follows(user_id,anime_id) VALUES($1,$3),($2,$3)`, []any{one.User.ID, two.User.ID, anime}},
-		{`INSERT INTO catalog_analysis_owner_budget(user_id,window_start,requests) VALUES($1,now(),1),($2,now(),1)`, []any{one.User.ID,two.User.ID}},
+		{`INSERT INTO catalog_analysis_owner_budget(user_id,window_start,requests) VALUES($1,now(),1),($2,now(),1)`, []any{one.User.ID, two.User.ID}},
 		{`INSERT INTO notifications(user_id,title,body) VALUES($1,'Synthetic notice','Synthetic content'),($2,'Synthetic notice','Synthetic content')`, []any{one.User.ID, two.User.ID}},
 	} {
 		if _, err = owner.Exec(ctx, seed.sql, seed.args...); err != nil {
