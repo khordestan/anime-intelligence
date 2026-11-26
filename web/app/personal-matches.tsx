@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 
 type Preference = { key: string; name: string; category: string; weight: number | null };
-type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number }; feedback?: { weight: number; confidence: number; feedbackCount?: number } };
+type RatingExample = { animeId: string; title: string; score: number };
+type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number; ratingExamples?: RatingExample[] }; feedback?: { weight: number; confidence: number; feedbackCount?: number } };
 type HiddenMatch = { animeId: string; title: string };
 type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[]; unfamiliarCount?: number; feedbackDirection?: number; featuredEvidence?: { key: string; name: string }[] };
 type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount"> & { featureKey?: string; unfamiliar?: boolean };
@@ -314,6 +315,16 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
           </label>
           <p className="mt-1 text-xs text-slate-500">{p.category}</p>
           {inferred.has(p.key) && <p className="mt-1 text-xs text-slate-400">Rating-derived signal: {inferred.get(p.key)!.weight > 0 ? "prefers" : inferred.get(p.key)!.weight < 0 ? "avoids" : "neutral toward"} this feature · strength {inferred.get(p.key)!.confidence.toFixed(2)}{inferred.get(p.key)!.ratingCount != null && <span> · {inferred.get(p.key)!.ratingCount} supporting ratings</span>}</p>}
+          {!!inferred.get(p.key)?.ratingExamples?.length && (
+            <details className="mt-2 text-xs text-slate-300">
+              <summary className="cursor-pointer">Recent ratings behind {p.name}</summary>
+              <ul className="mt-1 space-y-1">
+                {inferred.get(p.key)?.ratingExamples?.map(example => (
+                  <li key={example.animeId}>{example.title} · {example.score} / 5</li>
+                ))}
+              </ul>
+            </details>
+          )}
           <div className="mt-2 flex gap-3">
             <button disabled={busy} aria-label={"Save preference " + p.name} onClick={() => void save(p)} className="text-xs text-violet-200 underline disabled:opacity-50">Save preference</button>
             <button disabled={busy} aria-label={"Reset preference " + p.name} onClick={() => void save(p, true)} className="text-xs underline disabled:opacity-50">Reset preference</button>

@@ -764,7 +764,7 @@ paths:
   /api/v1/recommendations:
     get:
       summary: Evidence-backed Personal Match ranking for the verified owner
-      description: Uses declared preferences and up to 1000 own series ratings against at most 500 untracked candidates prioritized by eligible profile feature overlap. Only referenced curated non-spoiler series observations qualify. Empty evidence produces an empty list. A key-ordered profile of at most 256 active non-spoiler features separates declared and own-rating-derived weight/confidence signals. Raw references, rated-title lists and private record identifiers are not returned. Scores are algorithmic compatibility scores, not probabilities.
+      description: Uses declared preferences and up to 1000 own series ratings against at most 500 untracked candidates prioritized by eligible profile feature overlap. Only referenced curated non-spoiler series observations qualify. Empty evidence produces an empty list. A key-ordered profile of at most 256 active non-spoiler features separates declared and own-rating-derived weight/confidence signals. An inferred signal can include up to three recent contributing ratings belonging to the caller, with canonical title, animeId and score. Raw references and private record identifiers are omitted. Scores are algorithmic compatibility scores, not probabilities.
       security: [{ bearerAuth: [] }]
       parameters:
         - in: query

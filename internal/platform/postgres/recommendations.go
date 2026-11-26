@@ -14,117 +14,180 @@ import (
 )
 
 var ErrPreference = errors.New("invalid preference weight")
+
 type FeaturePreference struct {
-	Key string `json:"key"`
-	Name string `json:"name"`
-	Category string `json:"category"`
-	Weight *float64 `json:"weight"`
+	Key      string   `json:"key"`
+	Name     string   `json:"name"`
+	Category string   `json:"category"`
+	Weight   *float64 `json:"weight"`
+}
+type RatingExample struct {
+	AnimeID string `json:"animeId"`
+	Title   string `json:"title"`
+	Score   int    `json:"score"`
 }
 type PreferenceSignal struct {
-	Weight float64 `json:"weight"`
-	Confidence float64 `json:"confidence"`
-	RatingCount int `json:"ratingCount,omitempty"`
-	FeedbackCount int `json:"feedbackCount,omitempty"`
+	Weight         float64         `json:"weight"`
+	Confidence     float64         `json:"confidence"`
+	RatingCount    int             `json:"ratingCount,omitempty"`
+	RatingExamples []RatingExample `json:"ratingExamples,omitempty"`
+	FeedbackCount  int             `json:"feedbackCount,omitempty"`
 }
 type FeatureTaste struct {
-	Key string `json:"key"`
+	Key      string            `json:"key"`
 	Declared *PreferenceSignal `json:"declared,omitempty"`
 	Inferred *PreferenceSignal `json:"inferred,omitempty"`
 	Feedback *PreferenceSignal `json:"feedback,omitempty"`
 }
 type PersonalMatches struct {
-	Profile []FeatureTaste `json:"profile"`
-	Items []intelligence.Recommendation `json:"items"`
-	AlgorithmVersion string `json:"algorithmVersion"`
-	CandidateLimit int `json:"candidateLimit"`
-	RatingLimit int `json:"ratingLimit"`
+	Profile          []FeatureTaste                `json:"profile"`
+	Items            []intelligence.Recommendation `json:"items"`
+	AlgorithmVersion string                        `json:"algorithmVersion"`
+	CandidateLimit   int                           `json:"candidateLimit"`
+	RatingLimit      int                           `json:"ratingLimit"`
 }
+
 // verifiedSnapshotTx uses a consistent snapshot for public facts and the owner's inputs,
 // preserving account-before-session locking and transaction-local forced RLS.
-func(r *Repository) verifiedSnapshotTx(ctx context.Context)(pgx.Tx,User,error){
-	tx,u,err:=r.db.sessionTxOptions(ctx,r.token,pgx.TxOptions{IsoLevel:pgx.RepeatableRead})
-	if err!=nil{return nil,User{},err}
-	if !u.EmailVerified{rollback(tx);return nil,User{},store.ErrEmailUnverified}
-	return tx,u,nil
-}
-func retrySnapshotRead[T any](ctx context.Context,read func()(T,error))(T,error){
-	var out T;var err error
-	for range 3{
-		out,err=read()
-		var conflict *pgconn.PgError
-		if !errors.As(err,&conflict)||(conflict.Code!="40001"&&conflict.Code!="40P01")||ctx.Err()!=nil{return out,err}
+func (r *Repository) verifiedSnapshotTx(ctx context.Context) (pgx.Tx, User, error) {
+	tx, u, err := r.db.sessionTxOptions(ctx, r.token, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	if err != nil {
+		return nil, User{}, err
 	}
-	return out,err
+	if !u.EmailVerified {
+		rollback(tx)
+		return nil, User{}, store.ErrEmailUnverified
+	}
+	return tx, u, nil
 }
-func(r *Repository) FeaturePreferences(ctx context.Context)([]FeaturePreference,error){
-	return retrySnapshotRead(ctx,func()([]FeaturePreference,error){return r.featurePreferencesSnapshot(ctx)})
+func retrySnapshotRead[T any](ctx context.Context, read func() (T, error)) (T, error) {
+	var out T
+	var err error
+	for range 3 {
+		out, err = read()
+		var conflict *pgconn.PgError
+		if !errors.As(err, &conflict) || (conflict.Code != "40001" && conflict.Code != "40P01") || ctx.Err() != nil {
+			return out, err
+		}
+	}
+	return out, err
 }
-func(r *Repository) featurePreferencesSnapshot(ctx context.Context)([]FeaturePreference,error){
-	tx,u,err:=r.verifiedSnapshotTx(ctx)
-	if err!=nil{return nil,err}
+func (r *Repository) FeaturePreferences(ctx context.Context) ([]FeaturePreference, error) {
+	return retrySnapshotRead(ctx, func() ([]FeaturePreference, error) { return r.featurePreferencesSnapshot(ctx) })
+}
+func (r *Repository) featurePreferencesSnapshot(ctx context.Context) ([]FeaturePreference, error) {
+	tx, u, err := r.verifiedSnapshotTx(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer rollback(tx)
-	rows,err:=tx.Query(ctx,`SELECT f.feature_key,f.display_name,f.category,p.preference_weight::float8
+	rows, err := tx.Query(ctx, `SELECT f.feature_key,f.display_name,f.category,p.preference_weight::float8
 FROM anime_features f LEFT JOIN user_preferences p ON p.feature_id=f.id AND p.user_id=$1 AND p.origin='DECLARED'
-WHERE f.active AND NOT f.spoiler_sensitive ORDER BY f.feature_key LIMIT 256`,u.ID)
-	if err!=nil{return nil,err}
-	out:=[]FeaturePreference{}
-	for rows.Next(){
+WHERE f.active AND NOT f.spoiler_sensitive ORDER BY f.feature_key LIMIT 256`, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	out := []FeaturePreference{}
+	for rows.Next() {
 		var p FeaturePreference
-		if err=rows.Scan(&p.Key,&p.Name,&p.Category,&p.Weight);err!=nil{rows.Close();return nil,err}
-		out=append(out,p)
+		if err = rows.Scan(&p.Key, &p.Name, &p.Category, &p.Weight); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		out = append(out, p)
 	}
 	rows.Close()
-	if err=rows.Err();err!=nil{return nil,err}
-	return out,tx.Commit(ctx)
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, tx.Commit(ctx)
 }
-func(r *Repository) SetFeaturePreference(ctx context.Context,key string,weight *float64)(bool,error){
-	if weight!=nil && (math.IsNaN(*weight)||math.IsInf(*weight,0)||*weight < -1||*weight>1){return false,ErrPreference}
-	tx,u,err:=r.db.productTx(ctx,r.token)
-	if err!=nil{return false,err}
+func (r *Repository) SetFeaturePreference(ctx context.Context, key string, weight *float64) (bool, error) {
+	if weight != nil && (math.IsNaN(*weight) || math.IsInf(*weight, 0) || *weight < -1 || *weight > 1) {
+		return false, ErrPreference
+	}
+	tx, u, err := r.db.productTx(ctx, r.token)
+	if err != nil {
+		return false, err
+	}
 	defer rollback(tx)
 	var feature string
-	err=tx.QueryRow(ctx,`SELECT id::text FROM anime_features WHERE feature_key=$1 AND active AND NOT spoiler_sensitive`,key).Scan(&feature)
-	if errors.Is(err,pgx.ErrNoRows){return false,nil}
-	if err!=nil{return false,err}
-	if weight==nil{
-		_,err=tx.Exec(ctx,`DELETE FROM user_preferences WHERE user_id=$1 AND feature_id=$2 AND origin='DECLARED'`,u.ID,feature)
-	}else{
-		_,err=tx.Exec(ctx,`INSERT INTO user_preferences(user_id,feature_id,preference_weight,origin,confidence) VALUES($1,$2,$3,'DECLARED',1)
-ON CONFLICT(user_id,feature_id,origin) DO UPDATE SET preference_weight=excluded.preference_weight,confidence=1,updated_at=now()`,u.ID,feature,*weight)
+	err = tx.QueryRow(ctx, `SELECT id::text FROM anime_features WHERE feature_key=$1 AND active AND NOT spoiler_sensitive`, key).Scan(&feature)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
 	}
-	if err!=nil{return false,err}
-	return true,tx.Commit(ctx)
+	if err != nil {
+		return false, err
+	}
+	if weight == nil {
+		_, err = tx.Exec(ctx, `DELETE FROM user_preferences WHERE user_id=$1 AND feature_id=$2 AND origin='DECLARED'`, u.ID, feature)
+	} else {
+		_, err = tx.Exec(ctx, `INSERT INTO user_preferences(user_id,feature_id,preference_weight,origin,confidence) VALUES($1,$2,$3,'DECLARED',1)
+ON CONFLICT(user_id,feature_id,origin) DO UPDATE SET preference_weight=excluded.preference_weight,confidence=1,updated_at=now()`, u.ID, feature, *weight)
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, tx.Commit(ctx)
 }
-func(r *Repository) PersonalMatches(ctx context.Context,limit int)(PersonalMatches,error){
+func (r *Repository) PersonalMatches(ctx context.Context, limit int) (PersonalMatches, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	return retrySnapshotRead(ctx,func()(PersonalMatches,error){return r.personalMatchesSnapshot(ctx,limit)})
+	return retrySnapshotRead(ctx, func() (PersonalMatches, error) { return r.personalMatchesSnapshot(ctx, limit) })
 }
-func(r *Repository) personalMatchesSnapshot(ctx context.Context,limit int)(PersonalMatches,error){
-	if limit<1{limit=20};if limit>100{limit=100}
-	out:=PersonalMatches{Items:[]intelligence.Recommendation{},Profile:[]FeatureTaste{},AlgorithmVersion:intelligence.PersonalMatchAlgorithmVersion,CandidateLimit:500,RatingLimit:1000}
-	tx,u,err:=r.verifiedSnapshotTx(ctx)
-	if err!=nil{return out,err}
+func (r *Repository) personalMatchesSnapshot(ctx context.Context, limit int) (PersonalMatches, error) {
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	out := PersonalMatches{Items: []intelligence.Recommendation{}, Profile: []FeatureTaste{}, AlgorithmVersion: intelligence.PersonalMatchAlgorithmVersion, CandidateLimit: 500, RatingLimit: 1000}
+	tx, u, err := r.verifiedSnapshotTx(ctx)
+	if err != nil {
+		return out, err
+	}
 	defer rollback(tx)
-	rows,err:=tx.Query(ctx,`SELECT f.feature_key,p.preference_weight::float8,p.confidence::float8 FROM user_preferences p
-JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECLARED' AND f.active AND NOT f.spoiler_sensitive ORDER BY f.feature_key LIMIT 256`,u.ID)
-	if err!=nil{return out,err}
-	explicit:=map[string]intelligence.Preference{}
-	for rows.Next(){
-		var key string;var p intelligence.Preference
-		if err=rows.Scan(&key,&p.Weight,&p.Confidence);err!=nil{rows.Close();return out,err}
-		explicit[key]=p
+	rows, err := tx.Query(ctx, `SELECT f.feature_key,p.preference_weight::float8,p.confidence::float8 FROM user_preferences p
+JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECLARED' AND f.active AND NOT f.spoiler_sensitive ORDER BY f.feature_key LIMIT 256`, u.ID)
+	if err != nil {
+		return out, err
 	}
-	rows.Close();if err=rows.Err();err!=nil{return out,err}
-	rows,err=tx.Query(ctx,`SELECT anime_id::text,score FROM user_ratings WHERE user_id=$1 AND scope='SERIES' AND season_key IS NULL ORDER BY rated_at DESC,id LIMIT 1000`,u.ID)
-	if err!=nil{return out,err}
-	rated:=[]intelligence.RatedAnime{}
-	for rows.Next(){
+	explicit := map[string]intelligence.Preference{}
+	for rows.Next() {
+		var key string
+		var p intelligence.Preference
+		if err = rows.Scan(&key, &p.Weight, &p.Confidence); err != nil {
+			rows.Close()
+			return out, err
+		}
+		explicit[key] = p
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return out, err
+	}
+	rows, err = tx.Query(ctx, `SELECT r.anime_id::text,r.score,a.canonical_title FROM user_ratings r JOIN anime a ON a.id=r.anime_id
+WHERE r.user_id=$1 AND r.scope='SERIES' AND r.season_key IS NULL ORDER BY r.rated_at DESC,r.id LIMIT 1000`, u.ID)
+	if err != nil {
+		return out, err
+	}
+	rated := []intelligence.RatedAnime{}
+	ratingExamples := make(map[string]RatingExample)
+	for rows.Next() {
 		var a intelligence.RatedAnime
-		if err=rows.Scan(&a.AnimeID,&a.Score);err!=nil{rows.Close();return out,err}
-		rated=append(rated,a)
+		var title string
+		if err = rows.Scan(&a.AnimeID, &a.Score, &title); err != nil {
+			rows.Close()
+			return out, err
+		}
+		rated = append(rated, a)
+		ratingExamples[a.AnimeID] = RatingExample{AnimeID: a.AnimeID, Title: title, Score: a.Score}
 	}
-	rows.Close();if err=rows.Err();err!=nil{return out,err}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return out, err
+	}
 	ratedIDs := make([]string, 0, len(rated))
 	for _, anime := range rated {
 		ratedIDs = append(ratedIDs, anime.AnimeID)
@@ -143,20 +206,39 @@ JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECL
 	}
 	profile.ApplyTitleFeedback(feedback)
 	out.AlgorithmVersion = profile.AlgorithmVersion()
-	keys:=map[string]bool{}
-	for key:=range profile.Explicit{keys[key]=true}
-	for key:=range profile.Inferred{keys[key]=true}
-	for key := range profile.Feedback { keys[key] = true }
-	ordered:=make([]string,0,len(keys))
-	for key:=range keys{ordered=append(ordered,key)}
+	keys := map[string]bool{}
+	for key := range profile.Explicit {
+		keys[key] = true
+	}
+	for key := range profile.Inferred {
+		keys[key] = true
+	}
+	for key := range profile.Feedback {
+		keys[key] = true
+	}
+	ordered := make([]string, 0, len(keys))
+	for key := range keys {
+		ordered = append(ordered, key)
+	}
 	sort.Strings(ordered)
-	if len(ordered)>256{ordered=ordered[:256]}
-	for _,key:=range ordered{
-		signal:=FeatureTaste{Key:key}
-		if p,ok:=profile.Explicit[key];ok{signal.Declared=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence}}
-		if p,ok:=profile.Inferred[key];ok{signal.Inferred=&PreferenceSignal{Weight:p.Weight,Confidence:p.Confidence,RatingCount:profile.InferredRatingCounts[key]}}
-		if p, ok := profile.Feedback[key]; ok { signal.Feedback = &PreferenceSignal{Weight: p.Weight, Confidence:p.Confidence, FeedbackCount: profile.FeedbackCounts[key]} }
-		out.Profile=append(out.Profile,signal)
+	if len(ordered) > 256 {
+		ordered = ordered[:256]
+	}
+	for _, key := range ordered {
+		signal := FeatureTaste{Key: key}
+		if p, ok := profile.Explicit[key]; ok {
+			signal.Declared = &PreferenceSignal{Weight: p.Weight, Confidence: p.Confidence}
+		}
+		if p, ok := profile.Inferred[key]; ok {
+			signal.Inferred = &PreferenceSignal{Weight: p.Weight, Confidence: p.Confidence, RatingCount: profile.InferredRatingCounts[key]}
+			for _, id := range profile.InferredRatingExamples[key] {
+				signal.Inferred.RatingExamples = append(signal.Inferred.RatingExamples, ratingExamples[id])
+			}
+		}
+		if p, ok := profile.Feedback[key]; ok {
+			signal.Feedback = &PreferenceSignal{Weight: p.Weight, Confidence: p.Confidence, FeedbackCount: profile.FeedbackCounts[key]}
+		}
+		out.Profile = append(out.Profile, signal)
 	}
 	if scoringKeys := intelligence.PersonalMatchFeatureKeys(profile); len(scoringKeys) != 0 {
 		candidates, err := recommendationCandidates(ctx, tx, u.ID, scoringKeys, out.CandidateLimit)
@@ -165,7 +247,7 @@ JOIN anime_features f ON f.id=p.feature_id WHERE p.user_id=$1 AND p.origin='DECL
 		}
 		out.Items = intelligence.RankPersonalMatches(profile, candidates, nil, intelligence.Options{Limit: limit})
 	}
-	return out,tx.Commit(ctx)
+	return out, tx.Commit(ctx)
 }
 
 const eligibleRecommendationObservation = `f.active AND NOT f.spoiler_sensitive AND o.source_kind='CURATED'
@@ -228,7 +310,7 @@ func recommendationFeatures(ctx context.Context, tx pgx.Tx, ids []string) (map[s
 	for rows.Next() {
 		var id string
 		var feature intelligence.FeatureValue
-		if err := rows.Scan(&id,&feature.Key,&feature.Value,&feature.Confidence); err != nil {
+		if err := rows.Scan(&id, &feature.Key, &feature.Value, &feature.Confidence); err != nil {
 			return nil, err
 		}
 		features[id] = append(features[id], feature)
@@ -264,12 +346,12 @@ func (r *Repository) SetPersonalMatchDismissed(ctx context.Context, animeID stri
 
 type DismissedMatch struct {
 	AnimeID string `json:"animeId"`
-	Title string `json:"title"`
+	Title   string `json:"title"`
 }
 
 type DismissedMatchPage struct {
-	Items []DismissedMatch `json:"items"`
-	NextCursor string `json:"nextCursor,omitempty"`
+	Items      []DismissedMatch `json:"items"`
+	NextCursor string           `json:"nextCursor,omitempty"`
 }
 
 func (r *Repository) PersonalMatchDismissals(ctx context.Context, after string) (DismissedMatchPage, error) {
@@ -312,13 +394,13 @@ type DiscoveryFeature struct {
 }
 
 type DiscoveryTitle struct {
-	FeaturedEvidence []DiscoveryFeature `json:"featuredEvidence"`
-	SupportedFeatures []string `json:"supportedFeatures"`
-	AnimeID string `json:"animeId"`
-	Title string `json:"title"`
-	EvidenceCount int `json:"evidenceCount"`
-	UnfamiliarCount int `json:"unfamiliarCount,omitempty"`
-	FeedbackDirection int `json:"feedbackDirection,omitempty"`
+	FeaturedEvidence  []DiscoveryFeature `json:"featuredEvidence"`
+	SupportedFeatures []string           `json:"supportedFeatures"`
+	AnimeID           string             `json:"animeId"`
+	Title             string             `json:"title"`
+	EvidenceCount     int                `json:"evidenceCount"`
+	UnfamiliarCount   int                `json:"unfamiliarCount,omitempty"`
+	FeedbackDirection int                `json:"feedbackDirection,omitempty"`
 }
 
 // DiscoverTitles offers eligible catalog titles even before a taste profile exists.
@@ -328,14 +410,14 @@ func (r *Repository) DiscoverTitles(ctx context.Context, limit int) ([]Discovery
 }
 
 type DiscoveryCursor struct {
-	AnimeID string `json:"animeId"`
-	EvidenceCount int `json:"evidenceCount"`
-	FeatureKey string `json:"featureKey,omitempty"`
-	Unfamiliar bool `json:"unfamiliar,omitempty"`
+	AnimeID       string `json:"animeId"`
+	EvidenceCount int    `json:"evidenceCount"`
+	FeatureKey    string `json:"featureKey,omitempty"`
+	Unfamiliar    bool   `json:"unfamiliar,omitempty"`
 }
 
 type DiscoveryPage struct {
-	Items []DiscoveryTitle `json:"items"`
+	Items      []DiscoveryTitle `json:"items"`
 	NextCursor *DiscoveryCursor `json:"nextCursor,omitempty"`
 }
 
