@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClient } from "../lib/api";
 
 type Preference = { key: string; name: string; category: string; weight: number | null };
-type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number } };
+type Signal = { key: string; declared?: { weight: number; confidence: number }; inferred?: { weight: number; confidence: number; ratingCount?: number }; feedback?: { weight: number; confidence: number; feedbackCount?: number } };
 type HiddenMatch = { animeId: string; title: string };
-type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[]; unfamiliarCount?: number; featuredEvidence?: { key: string; name: string }[] };
+type DiscoveryTitle = HiddenMatch & { evidenceCount: number; supportedFeatures?: string[]; unfamiliarCount?: number; feedbackDirection?: number; featuredEvidence?: { key: string; name: string }[] };
 type DiscoveryCursor = Pick<DiscoveryTitle, "animeId" | "evidenceCount"> & { featureKey?: string; unfamiliar?: boolean };
+type SavedFeedbackPage = { items: (HiddenMatch & { direction: number })[]; nextCursor?: string };
 type DiscoveryPage = { items: DiscoveryTitle[]; nextCursor?: DiscoveryCursor };
 type HiddenMatches = { items: HiddenMatch[]; nextCursor?: string };
 type Match = { animeId: string; title: string; score: number; evidence: { featureKey: string; direction: string; strength: number; impact: number }[] };
@@ -25,6 +26,7 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [lastDismissed, setLastDismissed] = useState<HiddenMatch | null>(null);
   const [discovery, setDiscovery] = useState<DiscoveryPage | null>(null);
+  const [savedFeedback, setSavedFeedback] = useState<SavedFeedbackPage | null>(null);
   const [discoveryFeature, setDiscoveryFeature] = useState("");
   const [discoveryUnfamiliar, setDiscoveryUnfamiliar] = useState(false);
   const [hidden, setHidden] = useState<HiddenMatches | null>(null);
@@ -178,6 +180,75 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
     return "/recommendations/discovery" + (query.size ? "?" + query : "");
   }
 
+  async function setTitleFeedback(title: HiddenMatch, direction: -1 | 0 | 1) {
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    try {
+      await client.request("/recommendations/discovery/feedback/" + encodeURIComponent(title.animeId), {
+        method: direction ? "PUT" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: direction ? JSON.stringify({ direction }) : undefined,
+      });
+      if (!alive.current || current !== revision.current) return;
+      setDiscovery(page => page && { ...page, items: page.items.map(item => item.animeId === title.animeId
+        ? { ...item, feedbackDirection: direction } : item) });
+      setSavedFeedback(page => {
+        if (!page) return page;
+        const items = page.items.filter(item => item.animeId !== title.animeId);
+        if (direction) items.push({ ...title, direction });
+        items.sort((a, b) => a.animeId.localeCompare(b.animeId));
+        return { ...page, items };
+      });
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not save Discovery feedback. Try again.");
+        onError(error);
+        setBusy(false);
+      }
+      return;
+    }
+    try {
+      const result = await client.request<MatchResults>(matchResultsPath(matchLimit));
+      if (alive.current && current === revision.current) {
+        setMatches(result.items);
+        setProfile(result.profile ?? []);
+        setMessage("Discovery feedback updated.");
+      }
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Discovery feedback was saved. Refresh Personal Match to see its effect.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
+  }
+
+  async function loadSavedFeedback(after = "") {
+    const current = ++revision.current;
+    setBusy(true);
+    setMessage("");
+    try {
+      const page = await client.request<SavedFeedbackPage>("/recommendations/discovery/feedback" +
+        (after ? "?after=" + encodeURIComponent(after) : ""));
+      if (alive.current && current === revision.current) {
+        setSavedFeedback(existing => {
+          if (!after || !existing) return page;
+          const items = new Map([...existing.items, ...page.items].map(item => [item.animeId, item]));
+          return { ...page, items: [...items.values()].sort((a, b) => a.animeId.localeCompare(b.animeId)) };
+        });
+      }
+    } catch (error) {
+      if (alive.current && current === revision.current) {
+        setMessage("Could not load saved title feedback. Try again.");
+        onError(error);
+      }
+    } finally {
+      if (alive.current && current === revision.current) setBusy(false);
+    }
+  }
+
   async function filterDiscovery(featureKey: string, unfamiliar = discoveryUnfamiliar) {
     const current = ++revision.current;
     setBusy(true);
@@ -249,6 +320,20 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
           </div>
         </li>)}
       </ul>
+      {profile.some(signal => signal.feedback) && (
+        <details className="mt-4 text-sm text-slate-300">
+          <summary className="cursor-pointer">Signals from Discovery feedback</summary>
+          <ul className="mt-2 space-y-1">
+            {profile.map(signal => signal.feedback && (
+              <li key={signal.key}>
+                {preferences.find(item => item.key === signal.key)?.name ?? signal.key}
+                {" · "}{signal.feedback.weight > 0 ? "More" : signal.feedback.weight < 0 ? "Less" : "Balanced"}
+                {" · "}{signal.feedback.feedbackCount ?? 0} title {signal.feedback.feedbackCount === 1 ? "reaction" : "reactions"}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       <h3 className="mt-5 font-semibold">Personal matches</h3>
       <label className="mt-2 block text-sm">Personal Match results limit
         <select value={matchLimit} disabled={busy} onChange={event => void changeMatchLimit(Number(event.target.value))}
@@ -291,6 +376,27 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
         <button type="button" disabled={busy} aria-expanded={discovery !== null}
           onClick={() => { if (discovery !== null) setDiscovery(null); else void load(hidden !== null, true); }}
           className="mt-2 text-xs underline disabled:opacity-50">{discovery !== null ? "Close Discovery" : "Explore titles"}</button>
+        <button type="button" disabled={busy} aria-expanded={savedFeedback !== null}
+          onClick={() => savedFeedback ? setSavedFeedback(null) : void loadSavedFeedback()}
+          className="ml-3 mt-2 text-xs underline disabled:opacity-50">
+          {savedFeedback ? "Hide saved title feedback" : "Manage title feedback"}
+        </button>
+        {savedFeedback && (
+          <section aria-label="Saved Discovery title feedback" className="mt-3 text-sm">
+            {savedFeedback.items.length === 0 && <p>No saved title feedback.</p>}
+            <ul className="space-y-1">
+              {savedFeedback.items.map(item => <li key={item.animeId}>
+                {item.title} · {item.direction > 0 ? "More like this" : "Less like this"}
+                <button type="button" disabled={busy} aria-label={"Clear feedback for " + item.title}
+                  onClick={() => void setTitleFeedback(item, 0)} className="ml-2 text-xs underline">Clear</button>
+              </li>)}
+            </ul>
+            {savedFeedback.nextCursor && <button type="button" disabled={busy}
+              onClick={() => void loadSavedFeedback(savedFeedback.nextCursor)} className="mt-2 text-xs underline">
+              Load more saved feedback
+            </button>}
+          </section>
+        )}
         {discovery !== null && (
           <section aria-label="Discovery titles" className="mt-3">
             <label className="mt-2 flex items-center gap-2 text-sm">
@@ -345,6 +451,16 @@ export default function PersonalMatches({ client, onError, onLibraryChange }: { 
                 ) : null}
                 <button type="button" disabled={busy} aria-label={"Plan to watch " + title.title}
                   onClick={() => void planTitle(title)} className="mr-3 mt-2 text-xs underline disabled:opacity-50">Plan to watch</button>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  <button type="button" disabled={busy} aria-pressed={title.feedbackDirection === 1}
+                    onClick={() => void setTitleFeedback(title, title.feedbackDirection === 1 ? 0 : 1)} className="underline">
+                    More like this
+                  </button>
+                  <button type="button" disabled={busy} aria-pressed={title.feedbackDirection === -1}
+                    onClick={() => void setTitleFeedback(title, title.feedbackDirection === -1 ? 0 : -1)} className="underline">
+                    Less like this
+                  </button>
+                </div>
                 <button type="button" disabled={busy} aria-label={"Hide discovery title " + title.title} onClick={() => void setDismissed(title, true)}
                   className="mt-2 text-xs underline disabled:opacity-50">Hide title</button>
               </li>)}

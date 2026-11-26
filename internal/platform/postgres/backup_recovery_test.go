@@ -83,6 +83,8 @@ func TestBackupRestoreRecovery(t *testing.T) {
           FROM (VALUES($1::uuid),($2::uuid)) a(uid)`,
 		`INSERT INTO recommendation_feedback(recommendation_id,user_id,feedback)
           SELECT id,user_id,'INTERESTED' FROM recommendations WHERE user_id=$1 OR user_id=$2`,
+		`INSERT INTO discovery_title_feedback(user_id,anime_id,direction)
+          VALUES($1,'10000000-0000-4000-8000-000000000001',1),($2,'10000000-0000-4000-8000-000000000001',-1)`,
 		`INSERT INTO personal_match_dismissals(user_id,anime_id)
           SELECT a.uid,'10000000-0000-4000-8000-000000000001' FROM (VALUES($1::uuid),($2::uuid)) a(uid)`,
 		`INSERT INTO user_follows(user_id,anime_id)
@@ -103,7 +105,7 @@ func TestBackupRestoreRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(before.Data) != 11 {
+	if len(before.Data) != 12 {
 		t.Fatal("incomplete recovery export fixture")
 	}
 	for _, rows := range before.Data {
@@ -455,7 +457,7 @@ func assertRestoredIsolation(t *testing.T, ctx context.Context, db *postgres.DB,
 		t.Fatal("connect restored unscoped role")
 	}
 	defer raw.Close(ctx)
-	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "user_follows", "notifications", "catalog_analysis_owner_budget", "release_email_jobs"} {
+	for _, table := range []string{"users", "auth_sessions", "auth_challenges", "identity_requests", "identity_outbox", "user_anime", "watch_cycles", "user_ratings", "watch_progress", "user_preferences", "recommendations", "recommendation_feedback", "personal_match_dismissals", "discovery_title_feedback", "user_follows", "notifications", "catalog_analysis_owner_budget", "release_email_jobs"} {
 		var n int
 		if err = raw.QueryRow(ctx, `SELECT count(*) FROM `+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("restored unscoped RLS failed for %s", table)

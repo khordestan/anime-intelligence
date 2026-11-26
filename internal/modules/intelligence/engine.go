@@ -29,6 +29,8 @@ type TasteProfile struct {
 	Explicit map[string]Preference
 	Inferred map[string]Preference
 	InferredRatingCounts map[string]int
+	Feedback map[string]Preference
+	FeedbackCounts map[string]int
 }
 
 type Candidate struct {
@@ -177,7 +179,7 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 		}
 		result = append(result, Recommendation{
 			AnimeID: id, Title: candidate.Title, Score: math.Round(score*100) / 100,
-			AlgorithmVersion: PersonalMatchAlgorithmVersion, Evidence: evidence,
+			AlgorithmVersion: profile.AlgorithmVersion(), Evidence: evidence,
 		})
 	}
 	sort.SliceStable(result, func(i, j int) bool {
@@ -193,6 +195,13 @@ func RankPersonalMatches(profile TasteProfile, candidates []Candidate, excluded 
 	return result
 }
 
+func (p TasteProfile) AlgorithmVersion() string {
+	if len(p.Feedback) > 0 {
+		return "personal-match-v1-title-feedback"
+	}
+	return PersonalMatchAlgorithmVersion
+}
+
 // PersonalMatchFeatureKeys returns features that can contribute to ranking with the default weights.
 func PersonalMatchFeatureKeys(profile TasteProfile) []string {
 	options := preferenceWeights(profile, Options{})
@@ -205,6 +214,13 @@ func PersonalMatchFeatureKeys(profile TasteProfile) []string {
 	}
 	for key, preference := range profile.Inferred {
 		if _, declared := profile.Explicit[key]; !declared && preference.Weight != 0 && preference.Confidence > 0 {
+			keys = append(keys, key)
+		}
+	}
+	for key, preference := range profile.Feedback {
+		_, declared := profile.Explicit[key]
+		_, inferred := profile.Inferred[key]
+		if !declared && !inferred && preference.Weight != 0 && preference.Confidence > 0 {
 			keys = append(keys, key)
 		}
 	}
@@ -229,7 +245,8 @@ func combinedPreference(profile TasteProfile, key string, options Options) (Pref
 	explicit, hasExplicit := profile.Explicit[key]
 	inferred, hasInferred := profile.Inferred[key]
 	if !hasExplicit && !hasInferred {
-		return Preference{}, false
+		feedback, ok := profile.Feedback[key]
+		return feedback, ok
 	}
 	if hasExplicit && !hasInferred {
 		return explicit, true

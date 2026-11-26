@@ -62,3 +62,5 @@ A cursor in this mode carries `unfamiliar: true` and its `evidenceCount` refers 
 Choose a feature in Discovery to prefer, avoid or clear it for Personal Match. Prefer and Avoid set the declared weight to +1 or −1. Clear removes the declared weight. The preference editor still accepts intermediate weights. The same verified-owner preference record drives Personal Match and appears in account exports.
 
 The **Personal Match results limit** selector requests up to 10, 20, 50 or 100 matches. The current result stays visible after a failed change. The selection is retained while the account dashboard is mounted.
+
+Discovery’s **More like this** and **Less like this** save a private reaction to a title. Select an active reaction again to clear it. **Manage title feedback** includes reactions to titles you later tracked or hid. Personal Match uses the 100 most recent reactions to build fallback signals from eligible positive features. Declared preferences and rating-derived signals take precedence for each feature. The dashboard shows the number of reactions contributing to a fallback signal. Reactions are included in account export and deleted with the account.

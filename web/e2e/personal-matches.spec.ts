@@ -3,6 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 async function mockMatches(page: Page, hold = false) {
   let issued = 0;
   const planned = new Set<string>();
+  const feedback = new Map<string, number>();
   const dismissed = new Set<string>();
   const preferences = new Map<string, number | null>();
   const calls: { path: string; query: string; token: string; body: unknown }[] = [];
@@ -42,6 +43,14 @@ async function mockMatches(page: Page, hold = false) {
       planned.add(token);
       return respond({ added: 1, skipped: 0 });
     }
+    if (path === "/recommendations/discovery/feedback") {
+      return respond({ items: feedback.has(token) ? [{ animeId: "synthetic-match", title: "Synthetic account match", direction: feedback.get(token) }] : [] });
+    }
+    if (path === "/recommendations/discovery/feedback/synthetic-match") {
+      if (request.method() === "DELETE") feedback.delete(token);
+      else feedback.set(token, request.postDataJSON().direction);
+      return route.fulfill({ status: 204, headers });
+    }
     if (path === "/recommendations/discovery") {
       const featureKey = url.searchParams.get("featureKey");
       const after = url.searchParams.get("after");
@@ -66,7 +75,7 @@ async function mockMatches(page: Page, hold = false) {
         return respond({ items: [{ animeId: "synthetic-next", title: "Synthetic mystery sequel", evidenceCount: 1 }] });
       }
       return respond({
-        items: [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 1, supportedFeatures: ["Synthetic mystery"], featuredEvidence: [{ key: "synthetic.mystery", name: "Synthetic mystery" }] }],
+        items: [{ animeId: "synthetic-match", title: "Synthetic account match", evidenceCount: 1, supportedFeatures: ["Synthetic mystery"], featuredEvidence: [{ key: "synthetic.mystery", name: "Synthetic mystery" }], feedbackDirection: feedback.get(token) }],
         nextCursor: featureKey ? { animeId: "synthetic-match", evidenceCount: 1, featureKey } : undefined,
       });
     }
@@ -77,7 +86,7 @@ async function mockMatches(page: Page, hold = false) {
       }
       const items = preferences.get(token) === null || dismissed.has(token) ? [] : [{ animeId: "synthetic-match", title: "Synthetic account match", score: 90, evidence: [{ featureKey: "synthetic.mystery", direction: "match", strength: 1, impact: 1 }] }];
       if (hold && token.endsWith("1")) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
-      try { return await respond({ items, profile: items.length ? [{ key: "synthetic.mystery", declared: { weight: preferences.get(token), confidence: 1 }, inferred: { weight: 0.5, confidence: 0.25 } }] : [] }); } catch { return; }
+      try { return await respond({ items, profile: feedback.has(token) ? [{ key: "synthetic.mystery", feedback: { weight: feedback.get(token), confidence: 0.2, feedbackCount: 1 } }] : items.length ? [{ key: "synthetic.mystery", declared: { weight: preferences.get(token), confidence: 1 }, inferred: { weight: 0.5, confidence: 0.25 } }] : [] }); } catch { return; }
     }
     return respond({}, 404);
   });
@@ -230,4 +239,26 @@ test("Personal Match result limits preserve the current result on failure and pe
   await panel.getByRole("button", { name: "Refresh Personal Match" }).click();
   await expect(limit).toBeEnabled();
   expect(api.calls.filter(call => call.path === "/recommendations" && call.query === "?limit=50")).toHaveLength(3);
+});
+
+test("Discovery title reactions can be managed after a title leaves Discovery", async ({ page }) => {
+  await mockMatches(page);
+  await page.goto("/");
+  await login(page, "title-feedback@example.test");
+  const panel = page.getByRole("region", { name: "Personal Match", exact: true });
+  await panel.getByRole("button", { name: "Personal Match settings" }).click();
+  await panel.getByRole("button", { name: "Explore titles" }).click();
+  const more = panel.getByRole("button", { name: "More like this", exact: true });
+  await more.click();
+  await expect(more).toHaveAttribute("aria-pressed", "true");
+  await expect(panel.getByText("Discovery feedback updated.")).toBeVisible();
+  await panel.getByText("Signals from Discovery feedback").click();
+  await expect(panel.getByText("Synthetic mystery · More · 1 title reaction")).toBeVisible();
+  await panel.getByRole("button", { name: "Hide discovery title Synthetic account match" }).click();
+  await expect(more).toHaveCount(0);
+  await panel.getByRole("button", { name: "Manage title feedback" }).click();
+  const saved = panel.getByRole("region", { name: "Saved Discovery title feedback" });
+  await saved.getByRole("button", { name: "Clear feedback for Synthetic account match" }).click();
+  await expect(saved.getByText("No saved title feedback.")).toBeVisible();
+  await expect(panel.getByText("Signals from Discovery feedback")).toHaveCount(0);
 });
