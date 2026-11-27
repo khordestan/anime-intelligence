@@ -40,6 +40,19 @@ func TestCanonicalMergeImpactCountsRLSReferencesWithoutDisclosingOwners(t *testi
 	queueExec(t, owner, `INSERT INTO notifications(user_id,event_id,title,body)
 		VALUES($1,'30000000-0000-4000-8000-000000000010','Synthetic notice','Synthetic watch history')`, session.User.ID)
 
+	queueExec(t, owner, `INSERT INTO data_sources(provider_key,display_name)
+		VALUES ('synthetic-merge-provider','Synthetic merge provider'), ('synthetic-other-provider','Synthetic other provider')`)
+	queueExec(t, owner, `INSERT INTO anime_external_ids(anime_id,provider,external_id)
+		VALUES ($1,'synthetic-merge-provider','synthetic-source'), ($2,'synthetic-merge-provider','synthetic-target')`, a, b)
+	queueExec(t, owner, `INSERT INTO catalog_base_metadata(anime_id,source_id,observed_at,payload)
+		SELECT entries.anime_id::uuid, s.id, now(), entries.payload::jsonb
+		FROM (VALUES
+		  ('10000000-0000-4000-8000-000000000003','synthetic-merge-provider',
+		   '{"relations":[{"externalId":"synthetic-source","type":"SIDE_STORY"},{"externalId":"synthetic-source","type":"SUMMARY"},{"externalId":"synthetic-target","type":"SEQUEL"}]}'),
+		  ('10000000-0000-4000-8000-000000000004','synthetic-other-provider',
+		   '{"relations":[{"externalId":"synthetic-source","type":"SIDE_STORY"}]}')
+		) AS entries(anime_id,provider,payload)
+		JOIN data_sources s ON s.provider_key=entries.provider`)
 	queueExec(t, owner, `UPDATE anime SET episode_count=0,release_year=NULL WHERE id=$1`, a)
 	queueExec(t, owner, `UPDATE anime SET episode_count=NULL,release_year=2026 WHERE id=$1`, b)
 
@@ -55,6 +68,7 @@ func TestCanonicalMergeImpactCountsRLSReferencesWithoutDisclosingOwners(t *testi
 		"public.user_anime.anime_id": {1, 1}, "public.user_follows.anime_id": {1, 1},
 		"public.anime_relations.source_anime_id": {1, 0}, "public.anime_relations.target_anime_id": {0, 1},
 		"public.domain_events.aggregate_id (ANIME)": {1, 0}, "public.notifications.event_id": {1, 0},
+		"public.catalog_base_metadata (provider relation claim)": {2, 1},
 	} {
 		if got, ok := counts[dependency]; !ok || got != expected {
 			t.Errorf("%s: got %v, want %v", dependency, got, expected)
