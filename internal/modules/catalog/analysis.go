@@ -17,15 +17,16 @@ import (
 )
 
 type catalogAnalysisFact struct {
-	Field           string                   `json:"field"`
-	Values          []string                 `json:"values"`
-	Provider        string                   `json:"provider,omitempty"`
-	ObservedAt      *time.Time               `json:"observedAt,omitempty"`
-	Truncated       bool                     `json:"truncated,omitempty"`
-	EpisodeFacts    []analysisEpisodeFact    `json:"episodeFacts,omitempty"`
-	ContinuityFacts []analysisContinuityFact `json:"continuityFacts,omitempty"`
-	StaffCredits    []store.CatalogCredit    `json:"staffCredits,omitempty"`
-	Installment     *analysisInstallment     `json:"installment,omitempty"`
+	Field           string                        `json:"field"`
+	Values          []string                      `json:"values"`
+	Provider        string                        `json:"provider,omitempty"`
+	ObservedAt      *time.Time                    `json:"observedAt,omitempty"`
+	Truncated       bool                          `json:"truncated,omitempty"`
+	EpisodeFacts    []analysisEpisodeFact         `json:"episodeFacts,omitempty"`
+	ContinuityFacts []analysisContinuityFact      `json:"continuityFacts,omitempty"`
+	StaffCredits    []store.CatalogCredit         `json:"staffCredits,omitempty"`
+	Installment     *analysisInstallment          `json:"installment,omitempty"`
+	CuratedFeatures []store.CuratedCatalogFeature `json:"curatedFeatures,omitempty"`
 }
 
 type analysisInstallment struct {
@@ -79,6 +80,7 @@ var analysisFields = []struct {
 	{"installment", []string{"installment", "installments", "season", "split", "part", "parts"}},
 	{"demographics", []string{"demographic", "demographics"}},
 	{"staffCredits", []string{"staff", "director", "directors", "directed", "writer", "writers"}},
+	{"curatedFeatures", []string{"feature", "features", "trait", "traits", "taxonomy"}},
 	{"confirmedReleases", []string{"confirmed", "released", "premiered"}},
 	{"upcomingSchedule", []string{"schedule", "scheduled", "airdate", "airdates", "upcoming"}},
 	{"continuity", []string{"continuity", "prequel", "prequels", "sequel", "sequels"}},
@@ -222,15 +224,16 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 	}
 	asOf := time.Now().UTC()
 	continuity, hasContinuity := h.data.(store.ContinuityCatalog)
-	continuityCtx, cancelContinuity := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancelContinuity()
+	curated, hasCurated := h.data.(store.CuratedFeatureCatalog)
+	evidenceCtx, cancelEvidence := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancelEvidence()
 	items := make([]catalogAnalysisTitle, 0, len(detailsList))
 	for _, details := range detailsList {
 		item := catalogAnalysisTitle{AnimeID: details.Anime.ID, Title: details.Anime.Title}
 		for _, field := range fields {
 			fact := projectAnalysisFact(details, field, asOf, scope)
 			if field == "continuity" && hasContinuity {
-				graph, found, err := continuity.CatalogContinuity(continuityCtx, details.Anime.ID)
+				graph, found, err := continuity.CatalogContinuity(evidenceCtx, details.Anime.ID)
 				if err != nil {
 					writeError(w, http.StatusInternalServerError, "catalog_read_failed", "Could not read catalog continuity")
 					return
@@ -238,6 +241,14 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 				if found {
 					fact.ContinuityFacts, fact.Truncated = directAnalysisContinuity(graph)
 				}
+			}
+			if field == "curatedFeatures" && hasCurated {
+				features, truncated, err := curated.CuratedCatalogFeatures(evidenceCtx, details.Anime.ID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "catalog_read_failed", "Could not read curated catalog evidence")
+					return
+				}
+				fact.CuratedFeatures, fact.Truncated = features, truncated
 			}
 			item.Evidence = append(item.Evidence, fact)
 		}

@@ -73,7 +73,7 @@ paths:
                   uniqueItems: true
                   items:
                     type: string
-                    enum: [mediaType, releaseYear, episodeCount, status, genres, studios, nativeTitle, season, installment, demographics, staffCredits, confirmedReleases, upcomingSchedule, continuity]
+                    enum: [mediaType, releaseYear, episodeCount, status, genres, studios, nativeTitle, season, installment, demographics, staffCredits, curatedFeatures, confirmedReleases, upcomingSchedule, continuity]
                 releaseScope:
                   description: Restrict the eligible topics to confirmed releases and upcoming schedules, filtered before the evidence limit.
                   type: object
@@ -1533,7 +1533,7 @@ components:
       properties:
         field:
           type: string
-          enum: [mediaType, releaseYear, episodeCount, status, genres, studios, nativeTitle, season, installment, demographics, staffCredits, confirmedReleases, upcomingSchedule, continuity]
+          enum: [mediaType, releaseYear, episodeCount, status, genres, studios, nativeTitle, season, installment, demographics, staffCredits, curatedFeatures, confirmedReleases, upcomingSchedule, continuity]
         values:
           type: array
           maxItems: 20
@@ -1545,6 +1545,17 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/CatalogCredit' }
+        curatedFeatures:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [key, name, confidence, observedAt]
+            properties:
+              key: { type: string }
+              name: { type: string }
+              confidence: { type: number, exclusiveMinimum: 0, maximum: 1 }
+              observedAt: { type: string, format: date-time }
         installment:
           type: object
           required: [seasonNumber]

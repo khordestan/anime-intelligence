@@ -62,6 +62,14 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
           { field: "upcomingSchedule", values: [], episodeFacts: [{ number: 2, track: "DUB", time: "2027-01-01T00:00:00Z", provider: "synthetic-scoped" }] },
         ] }] });
       }
+      if (payload.question === "Which traits are reviewed?") {
+        expect(payload).toEqual({ question: "Which traits are reviewed?", animeIds: [id] });
+        return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
+          { field: "curatedFeatures", values: [], truncated: true, curatedFeatures: [
+            { key: "synthetic.reviewed", name: "Synthetic reviewed trait", confidence: 0.8, observedAt: "2026-01-01T00:00:00Z" },
+          ] },
+        ] }] });
+      }
       if (payload.question === "Which season is this?") {
         expect(payload).toEqual({ question: "Which season is this?", animeIds: [id] });
         return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
@@ -128,6 +136,10 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
   await expect(evidence.getByText("Season 3 · Part 2", { exact: true })).toBeVisible();
   await expect(evidence.getByText("Source: synthetic-installments")).toBeVisible();
   await expect(evidence.getByText("FALL", { exact: true })).toBeVisible();
+  await page.getByLabel("Question about this title").fill("Which traits are reviewed?");
+  await page.getByRole("button", { name: "Show evidence" }).click();
+  await expect(evidence.getByText(/Synthetic reviewed trait · 80% curator confidence/)).toBeVisible();
+  await expect(evidence.getByText("Curated evidence is limited", { exact: false })).toBeVisible();
   if (!assisted) {
     await page.getByLabel("Question about this title").fill("What has been confirmed and what is scheduled?");
     await page.getByRole("button", { name: "Show evidence" }).click();
