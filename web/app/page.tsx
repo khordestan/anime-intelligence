@@ -1070,10 +1070,14 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 type RatingSummary = { counts: number[]; rated: number; total: number };
 
+function isRating(score: number | undefined): score is number {
+  return score != null && Number.isInteger(score) && score >= 1 && score <= 5;
+}
+
 function summarizeRatings(scores: (number | undefined)[]): RatingSummary {
   const summary = { counts: [0, 0, 0, 0, 0], rated: 0, total: 0 };
   for (const score of scores) {
-    if (score == null || !Number.isInteger(score) || score < 1 || score > 5) continue;
+    if (!isRating(score)) continue;
     summary.counts[score - 1]++;
     summary.rated++;
     summary.total += score;
@@ -1117,13 +1121,23 @@ function LibrarySummary({ entries }: { entries: Entry[] }) {
         remaining += Math.max(entry.totalEpisodes - entry.episodesWatched, 0);
       }
     }
+    const pairedRatings = { same: 0, seasonHigher: 0, seriesHigher: 0 };
+    for (const entry of seasonEntries) {
+      if (!isRating(entry.rating) || !isRating(entry.seasonRating)) continue;
+      if (entry.rating === entry.seasonRating) pairedRatings.same++;
+      else if (entry.seasonRating > entry.rating) pairedRatings.seasonHigher++;
+      else pairedRatings.seriesHigher++;
+    }
     return {
-      byStatus, active, withTotal, remaining, exact,
+      byStatus, active, withTotal, remaining, exact, pairedRatings,
       series: summarizeRatings(entries.map(entry => entry.rating)),
       season: summarizeRatings(seasonEntries.map(entry => entry.seasonRating)),
       seasonEntries: seasonEntries.length,
     };
   }, [entries]);
+
+  const { same, seasonHigher, seriesHigher } = summary.pairedRatings;
+  const paired = same + seasonHigher + seriesHigher;
 
   return (
     <details className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-4">
@@ -1161,6 +1175,17 @@ function LibrarySummary({ entries }: { entries: Entry[] }) {
             <h3 id="season-rating-summary" className="font-medium">Season and split-part ratings</h3>
             <p className="mt-2 text-slate-300">{summary.season.rated} of {summary.seasonEntries} eligible seasons or parts rated</p>
             <RatingDistribution summary={summary.season} label="Season rating distribution" />
+            {paired > 0 && (
+              <section aria-labelledby="paired-rating-summary" className="mt-3 text-slate-300">
+                <h4 id="paired-rating-summary" className="font-medium">Rating comparison</h4>
+                <p>{paired} {paired === 1 ? "title has" : "titles have"} both ratings</p>
+                <dl className="mt-1 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                  <dt>Series rating higher</dt><dd className="text-right tabular-nums">{seriesHigher}</dd>
+                  <dt>Season or part rating higher</dt><dd className="text-right tabular-nums">{seasonHigher}</dd>
+                  <dt>Same rating</dt><dd className="text-right tabular-nums">{same}</dd>
+                </dl>
+              </section>
+            )}
           </section>
         )}
       </section>

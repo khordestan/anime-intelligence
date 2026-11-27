@@ -50,6 +50,10 @@ test("private library browsing combines status, title and rating without changin
   await expect(summary.getByText("8 episodes left across 2 titles with recorded totals (3 watching or on hold)", { exact: true })).toBeVisible();
   await expect(summary.getByText("1 of 2 eligible seasons or parts rated", { exact: true })).toBeVisible();
   await expect(summary.getByRole("list", { name: "Season rating distribution" }).getByRole("listitem").nth(3)).toHaveText(/4 \/ 5.*1 title/);
+  const comparison = summary.getByRole("region", { name: "Rating comparison" });
+  await expect(comparison.getByText("1 title has both ratings")).toBeVisible();
+  await expect(comparison.locator("dt")).toHaveText(["Series rating higher", "Season or part rating higher", "Same rating"]);
+  await expect(comparison.locator("dd")).toHaveText(["1", "0", "0"]);
 
   await page.getByLabel("Library rating filter",{exact:true}).selectOption("UNRATED");
   await expect(titles).toHaveCount(0);
