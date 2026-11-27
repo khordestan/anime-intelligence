@@ -59,9 +59,21 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [question, animeIds]
+              required: [animeIds]
+              oneOf:
+                - required: [question]
+                - required: [topics]
               properties:
                 question: { type: string, minLength: 1, maxLength: 400, description: UTF-8 input capped at 400 bytes. }
+                topics:
+                  description: Choose fixed evidence topics directly. With releaseScope, only confirmedReleases and upcomingSchedule are allowed.
+                  type: array
+                  minItems: 1
+                  maxItems: 4
+                  uniqueItems: true
+                  items:
+                    type: string
+                    enum: [mediaType, releaseYear, episodeCount, status, genres, studios, nativeTitle, season, installment, demographics, staffCredits, confirmedReleases, upcomingSchedule, continuity]
                 releaseScope:
                   description: Restrict the eligible topics to confirmed releases and upcoming schedules, filtered before the evidence limit.
                   type: object

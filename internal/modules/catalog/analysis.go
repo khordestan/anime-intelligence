@@ -122,14 +122,14 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 	decoder.DisallowUnknownFields()
 	var request struct {
-		Question     string                `json:"question"`
+		Question     *string               `json:"question"`
+		Topics       []string              `json:"topics,omitempty"`
 		AnimeIDs     []string              `json:"animeIds"`
 		ReleaseScope *analysisReleaseScope `json:"releaseScope,omitempty"`
 	}
 	if decoder.Decode(&request) != nil || decoder.Decode(new(any)) != io.EOF ||
-		strings.TrimSpace(request.Question) == "" || len(request.Question) > 400 ||
 		len(request.AnimeIDs) < 1 || len(request.AnimeIDs) > 2 {
-		writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Enter a question and select one or two anime")
+		writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Select one or two anime and provide a question or topics")
 		return
 	}
 	var scope analysisReleaseScope
@@ -138,6 +138,33 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 		if !scope.valid() || !scope.active() {
 			writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Choose a valid episode number or release track")
 			return
+		}
+	}
+	allowed := allAnalysisFields()
+	if scope.active() {
+		allowed = []string{"confirmedReleases", "upcomingSchedule"}
+	}
+	var fields []string
+	var matched bool
+	if request.Topics != nil {
+		var valid bool
+		fields, matched, valid = validateSelectedFields(allowed, request.Topics)
+		if selector != nil || request.Question != nil || !matched || !valid || len(fields) > 4 {
+			writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Choose one to four different supported topics for direct evidence")
+			return
+		}
+	} else {
+		if request.Question == nil || len(*request.Question) > 400 || strings.TrimSpace(*request.Question) == "" {
+			writeError(w, http.StatusBadRequest, "invalid_catalog_question", "Enter a question or choose topics")
+			return
+		}
+		fields, matched = selectAnalysisFields(*request.Question)
+		if scope.active() {
+			fields = slices.DeleteFunc(fields, func(field string) bool { return !slices.Contains(allowed, field) })
+			if len(fields) == 0 {
+				fields = allowed
+			}
+			matched = true
 		}
 	}
 	for i, id := range request.AnimeIDs {
@@ -178,19 +205,9 @@ func (h *Handler) AnalyzeWithSelector(w http.ResponseWriter, r *http.Request, se
 	cancel()
 
 	engine := "catalog-facts-v1"
-	fields, matched := selectAnalysisFields(request.Question)
-	allowed := allAnalysisFields()
-	if scope.active() {
-		allowed = []string{"confirmedReleases", "upcomingSchedule"}
-		fields = slices.DeleteFunc(fields, func(field string) bool { return !slices.Contains(allowed, field) })
-		if len(fields) == 0 {
-			fields = allowed
-		}
-		matched = true
-	}
 	var model string
 	if selector != nil {
-		selected, selectedModel, err := selector(r.Context(), request.Question, slices.Clone(allowed))
+		selected, selectedModel, err := selector(r.Context(), *request.Question, slices.Clone(allowed))
 		if errors.Is(err, ErrAnalysisCapacity) {
 			w.Header().Set("Retry-After", "60")
 			writeError(w, http.StatusTooManyRequests, "analysis_capacity", "Model-assisted analysis is busy")

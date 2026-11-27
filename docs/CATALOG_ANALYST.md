@@ -29,3 +29,5 @@ Open **Narrow to release evidence** to choose an episode or a release track for 
 Staff evidence shows up to 20 reviewed name and role pairs from the selected title's retained primary observation, with the source and observation time where recorded. A director or writer question selects the staff topic. The response displays stored roles and leaves missing credits unknown. Character credits use the separate spoiler disclosure in catalog details.
 
 Installment evidence shows the primary source's season number and optional split-part number. A question about the season can show both the installment number and the separately sourced airing quarter. A missing season number leaves installment evidence unknown.
+
+Choose an **Evidence topic** in the dashboard to retrieve those facts directly without writing a question. API clients can instead send one to four distinct `topics` in a deterministic request with `animeIds`. The release scope is available for the confirmed-release and upcoming-schedule topics. Model-assisted topic selection uses a question.
