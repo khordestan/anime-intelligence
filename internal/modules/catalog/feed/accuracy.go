@@ -60,8 +60,46 @@ func CompareReviewedFields(candidate, reference Snapshot, now time.Time) (FieldA
 			}
 			result.Fields[key] = count
 		}
+		compareEpisodeJudgments(result.Fields, actual.Episodes, title.Episodes)
 	}
 	return result, nil
+}
+
+// Schedule judgments match the exact provider title, episode number and track.
+// The reference may judge a prediction, a confirmation, or both independently.
+func compareEpisodeJudgments(fields map[string]JudgedField, candidate, reference []Episode) {
+	if len(reference) == 0 {
+		return
+	}
+	type episodeIdentity struct {
+		number int
+		track  string
+	}
+	byEpisode := make(map[episodeIdentity]Episode, len(candidate))
+	for _, episode := range candidate {
+		byEpisode[episodeIdentity{episode.Number, episode.Track}] = episode
+	}
+	for _, expected := range reference {
+		actual := byEpisode[episodeIdentity{expected.Number, expected.Track}]
+		compareTimestamp(fields, "scheduledAt."+expected.Track, actual.ScheduledAt, expected.ScheduledAt)
+		compareTimestamp(fields, "releasedAt."+expected.Track, actual.ReleasedAt, expected.ReleasedAt)
+	}
+}
+
+func compareTimestamp(fields map[string]JudgedField, key string, candidate, reference *time.Time) {
+	if reference == nil {
+		return
+	}
+	count := fields[key]
+	switch {
+	case candidate == nil:
+		count.Missing++
+	case candidate.Equal(*reference):
+		count.Correct++
+	default:
+		count.Mismatch++
+	}
+	fields[key] = count
 }
 
 func judgmentFields(title Title) map[string][]string {
