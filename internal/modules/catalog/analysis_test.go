@@ -346,3 +346,53 @@ func TestAnalysisInstallmentUsesPrimaryNumberingIndependentlyOfQuarter(t *testin
 		t.Fatalf("unanchored part or attribution returned: %+v", unknown)
 	}
 }
+
+func TestAnalyzeDirectTopicsValidateBeforeProviderSelection(t *testing.T) {
+	handler := NewHandler(analysisCatalog{})
+	const id = "10000000-0000-4000-8000-000000000001"
+	for _, fixture := range []struct {
+		body     string
+		status   int
+		assisted bool
+	}{
+		{`"topics":["season","episodeCount"]`, 200, false},
+		{`"topics":["confirmedReleases"],"releaseScope":{"episodeNumber":2}`, 200, false},
+		{`"topics":["episodeCount"],"releaseScope":{"episodeNumber":2}`, 400, false},
+		{`"topics":["episodeCount"],"question":"How many?"`, 400, false},
+		{`"topics":["episodeCount","episodeCount"]`, 400, false},
+		{`"topics":["mediaType","releaseYear","episodeCount","status","genres"]`, 400, false},
+		{`"topics":[]`, 400, false},
+		{`"topics":["characterCredits"]`, 400, false},
+		{`"topics":["episodeCount"]`, 400, true},
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog",
+			strings.NewReader(`{"animeIds":["`+id+`"],`+fixture.body+`}`))
+		response := httptest.NewRecorder()
+		if fixture.assisted {
+			handler.AnalyzeWithSelector(response, req, func(context.Context, string, []string) ([]string, string, error) {
+				t.Fatal("direct topics called the model")
+				return nil, "", nil
+			})
+		} else {
+			handler.Analyze(response, req)
+		}
+		if response.Code != fixture.status {
+			t.Fatalf("%s: %d %s", fixture.body, response.Code, response.Body)
+		}
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog",
+		strings.NewReader(`{"animeIds":["`+id+`"],"topics":["season","episodeCount"]}`))
+	response := httptest.NewRecorder()
+	handler.Analyze(response, req)
+	var payload struct {
+		TopicMatched bool
+		Items        []catalogAnalysisTitle
+	}
+	if json.Unmarshal(response.Body.Bytes(), &payload) != nil || !payload.TopicMatched || len(payload.Items) != 1 {
+		t.Fatalf("unexpected direct response: %s", response.Body)
+	}
+	facts := payload.Items[0].Evidence
+	if len(facts) != 2 || facts[0].Field != "episodeCount" || facts[1].Field != "season" {
+		t.Fatalf("unexpected direct evidence: %+v", facts)
+	}
+}

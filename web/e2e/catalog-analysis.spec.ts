@@ -33,6 +33,12 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
         genres: [], studios: [], tags: [], synonyms: [], relations: [], episodes: [],
       });
     }
+    if (path === "/analysis/catalog" && request.postDataJSON().topics) {
+      expect(request.postDataJSON()).toEqual({ topics: ["episodeCount"], animeIds: [id] });
+      return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [
+        { animeId: id, title, evidence: [{ field: "episodeCount", values: ["0"], provider: "synthetic-direct" }] },
+      ] });
+    }
     if (path === (assisted ? "/analysis/catalog/assisted" : "/analysis/catalog")) {
       if (assisted) expect(request.headers().authorization).toBe("Bearer " + "a".repeat(43));
       const payload = request.postDataJSON();
@@ -162,5 +168,10 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
     await page.getByRole("button", { name: "Remove comparison" }).click();
     await expect(evidence).toHaveCount(0);
   }
+  await page.getByRole("combobox", { name: "Evidence topic", exact: true }).selectOption("episodeCount");
+  await expect(page.getByLabel("Question about this title")).toHaveCount(0);
+  await expect(mode).toHaveCount(0);
+  await page.getByRole("button", { name: "Show evidence" }).click();
+  await expect(evidence.getByText("Source: synthetic-direct")).toBeVisible();
 });
 }
