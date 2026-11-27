@@ -33,3 +33,5 @@ Installment evidence shows the primary source's season number and optional split
 Choose an **Evidence topic** in the dashboard to retrieve those facts directly without writing a question. API clients can instead send one to four distinct `topics` in a deterministic request with `animeIds`. The release scope is available for the confirmed-release and upcoming-schedule topics. Model-assisted topic selection uses a question.
 
 The OpenAPI contract describes the same typed evidence response on both analysis routes, including staff credits, installment numbering, episode timestamps and continuity links. [OpenAPI](../api/openapi.yaml)
+
+Choose **Curated features** or ask about a title’s features to see up to 20 current, positive reviewed series observations. Each result shows its feature label, curator confidence and observation date. The application uses the same eligibility rules as Personal Match and Discovery. The tool reads catalog observations without reading library data or returning evidence prose or reference URLs.

@@ -90,7 +90,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog/assisted",
 			strings.NewReader(`{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
 		handler.AnalyzeWithSelector(response, request, func(_ context.Context, question string, allowed []string) ([]string, string, error) {
-			if question != "How long?" || len(allowed) != 14 {
+			if question != "How long?" || len(allowed) != 15 {
 				t.Fatalf("unexpected provider input: %q %v", question, allowed)
 			}
 			return tc.fields, "synthetic-1", nil
