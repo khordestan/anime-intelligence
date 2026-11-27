@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -56,17 +57,36 @@ var pushEventNames = [...]string{
 	PushSubscriptionError: "subscription_error", PushFinishError: "finish_error",
 }
 
+type requestMetricsContextKey struct{}
+
+const (
+	analysisLocalLimit = iota
+	analysisOwnerLimit
+	analysisDeploymentLimit
+	analysisBudgetError
+	analysisProviderError
+	analysisProviderReturned
+)
+
+var analysisOutcomeNames = [...]string{
+	analysisLocalLimit: "local_limit", analysisOwnerLimit: "owner_budget_limit",
+	analysisDeploymentLimit: "deployment_budget_limit", analysisBudgetError: "budget_error",
+	analysisProviderError: "provider_error", analysisProviderReturned: "provider_returned",
+}
+
 type RequestMetrics struct {
-	pushEvents     [len(pushEventNames)]uint64
-	pushConfigured int
-	mu             sync.Mutex
-	totals         [len(requestGroups)]requestTotals
+	pushEvents       [len(pushEventNames)]uint64
+	analysisOutcomes [len(analysisOutcomeNames)]uint64
+	pushConfigured   int
+	mu               sync.Mutex
+	totals           [len(requestGroups)]requestTotals
 }
 
 func (m *RequestMetrics) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		response := &statusWriter{ResponseWriter: w}
+		r = r.WithContext(context.WithValue(r.Context(), requestMetricsContextKey{}, m))
 		next.ServeHTTP(response, r)
 		status := response.status
 		if status == 0 {
@@ -142,12 +162,21 @@ func (m *RequestMetrics) MarkPushWorkerConfigured() {
 	m.mu.Unlock()
 }
 
+func (m *RequestMetrics) recordAnalysis(outcome int) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	m.analysisOutcomes[outcome]++
+	m.mu.Unlock()
+}
+
 func (m *RequestMetrics) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) {
 		var output bytes.Buffer
 		m.mu.Lock()
-		totals, pushEvents, pushConfigured := m.totals, m.pushEvents, m.pushConfigured
+		totals, pushEvents, pushConfigured, analysisOutcomes := m.totals, m.pushEvents, m.pushConfigured, m.analysisOutcomes
 		m.mu.Unlock()
 
 		fmt.Fprintln(&output, "# HELP anime_http_requests_total Completed API requests by route group and response class.")
@@ -182,6 +211,12 @@ func (m *RequestMetrics) Handler() http.Handler {
 		fmt.Fprintln(&output, "# TYPE anime_release_push_events_total counter")
 		for i, name := range pushEventNames {
 			fmt.Fprintf(&output, "anime_release_push_events_total{outcome=%q} %d\n", name, pushEvents[i])
+		}
+
+		fmt.Fprintln(&output, "# HELP anime_assisted_analysis_outcomes_total Assisted catalog selector outcomes by fixed stage.")
+		fmt.Fprintln(&output, "# TYPE anime_assisted_analysis_outcomes_total counter")
+		for i, name := range analysisOutcomeNames {
+			fmt.Fprintf(&output, "anime_assisted_analysis_outcomes_total{outcome=%q} %d\n", name, analysisOutcomes[i])
 		}
 
 		w.Header().Set("Cache-Control", "no-store")
