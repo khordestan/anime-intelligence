@@ -175,6 +175,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Grounded comparison of shared genre and studio labels in catalog analysis
 - [x] Explain inferred feature signals with recent contributing title ratings
 - [x] Private comparison of paired series and season or split-part ratings
+- [x] Private library summary of prior completed passes and active rewatches
 - [ ] Broader explainable analytics
 - [x] Deterministic Personal Match ranking core (pure Go, explainable, unit-tested)
 - [x] Verified-owner PostgreSQL Personal Match API with conservative curated non-spoiler evidence
