@@ -19,12 +19,24 @@ import (
 var ErrConfig = errors.New("invalid SMTP configuration")
 var ErrDelivery = errors.New("SMTP delivery failed")
 
+type Outcome uint8
+
+const (
+	Accepted Outcome = iota
+	ConnectionError
+	GreetingError
+	AuthenticationError
+	EnvelopeError
+	DataError
+)
+
 type Config struct {
 	Address  string
 	Username string
 	Password string
 	From     string
 	CAFile   string
+	Observe  func(Outcome)
 }
 
 type Client struct {
@@ -67,6 +79,10 @@ func (s *Client) Send(ctx context.Context, recipient string, data []byte) error 
 	if !ValidMailbox(recipient) {
 		return ErrDelivery
 	}
+	outcome := ConnectionError
+	if s.config.Observe != nil {
+		defer func() { s.config.Observe(outcome) }()
+	}
 	dialer := tls.Dialer{
 		NetDialer: &net.Dialer{Timeout: 5 * time.Second},
 		Config:    &tls.Config{MinVersion: tls.VersionTLS12, ServerName: s.host, RootCAs: s.roots},
@@ -83,20 +99,24 @@ func (s *Client) Send(ctx context.Context, recipient string, data []byte) error 
 		deadline = incoming
 	}
 	_ = conn.SetDeadline(deadline)
+	outcome = GreetingError
 	client, err := smtp.NewClient(conn, s.host)
 	if err != nil {
 		return ErrDelivery
 	}
 	defer client.Close()
+	outcome = AuthenticationError
 	if err = client.Auth(smtp.PlainAuth("", s.config.Username, s.config.Password, s.host)); err != nil {
 		return ErrDelivery
 	}
+	outcome = EnvelopeError
 	if err = client.Mail(s.config.From); err != nil {
 		return ErrDelivery
 	}
 	if err = client.Rcpt(recipient); err != nil {
 		return ErrDelivery
 	}
+	outcome = DataError
 	writer, err := client.Data()
 	if err != nil {
 		return ErrDelivery
@@ -109,6 +129,7 @@ func (s *Client) Send(ctx context.Context, recipient string, data []byte) error 
 		return ErrDelivery
 	}
 	// DATA acceptance marks delivery even if the server later rejects QUIT.
+	outcome = Accepted
 	_ = client.Quit()
 	return nil
 }
