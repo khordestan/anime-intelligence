@@ -150,6 +150,15 @@ var mergeIndirectQueries = []struct{ dependency, query string }{
 		JOIN public.data_sources s ON s.id=j.source_id
 		JOIN public.anime_external_ids i ON i.provider=s.provider_key AND i.external_id=j.external_id
 		WHERE i.anime_id IN ($1,$2)`},
+	{"public.catalog_base_metadata (provider relation claim)", `SELECT count(*) FILTER (WHERE i.anime_id=$1),
+		count(*) FILTER (WHERE i.anime_id=$2)
+		FROM public.anime_external_ids i
+		JOIN public.data_sources s ON s.provider_key=i.provider
+		JOIN public.catalog_base_metadata m ON m.source_id=s.id
+		CROSS JOIN LATERAL jsonb_array_elements(
+			CASE WHEN jsonb_typeof(m.payload->'relations')='array' THEN m.payload->'relations' ELSE '[]'::jsonb END
+		) AS claim(value)
+		WHERE i.anime_id IN ($1,$2) AND claim.value->>'externalId'=i.external_id`},
 	{"public.source_records (provider identity)", `SELECT count(*) FILTER (WHERE i.anime_id=$1),
 		count(*) FILTER (WHERE i.anime_id=$2) FROM public.source_records r
 		JOIN public.data_sources s ON s.id=r.source_id
