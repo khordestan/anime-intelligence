@@ -430,6 +430,33 @@ paths:
                         averageRating: { type: [number, 'null'], minimum: 1, maximum: 5 }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
+  /api/v1/tracker/{id}/relink-planning:
+    post:
+      summary: Replace the verified owner's empty Planning entry with the intended canonical title
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [targetAnimeId, expectedUpdatedAt]
+              properties:
+                targetAnimeId: { type: string, format: uuid }
+                expectedUpdatedAt: { type: string, format: date-time }
+      responses:
+        "200": { description: Fresh Planning entry at the verified destination }
+        "400": { description: Invalid entry or review parameters }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
+        "404": { description: Owned source entry or canonical destination absent }
+        "409": { description: Stale or ineligible source or destination already tracked }
   /api/v1/tracker/{id}/rewatches:
     parameters:
       - in: path
