@@ -7,12 +7,14 @@ import (
 )
 
 func TestCatalogPrometheusAggregatesOnly(t *testing.T) {
-	s := Status{AsOf: time.Unix(2000, 0), StaleAfterSeconds: 86400, Titles: 8, ObservedTitles: 3, UnobservedTitles: 5, StaleTitles: 2, FutureTitles: 1, EpisodeSchedules: 4, ConfirmedEpisodes: 1, Sources: []SourceStatus{{Provider: "Synthetic hidden provider"}}, Coverage: MetadataCoverage{Genres: 2}}
+	s := Status{AsOf: time.Unix(2000, 0), StaleAfterSeconds: 86400, Titles: 8, ObservedTitles: 3, UnobservedTitles: 5, StaleTitles: 2, FutureTitles: 1, EpisodeSchedules: 4, ConfirmedEpisodes: 1, Sources: []SourceStatus{{Provider: "Synthetic hidden provider"}}, Coverage: MetadataCoverage{Genres: 2, StaffCredits: 1, CharacterCredits: 2}}
 	text, err := Prometheus(s)
-	if err != nil || !strings.Contains(text, "anime_catalog_metadata_genres 2\n") || !strings.Contains(text, "anime_catalog_unobserved_titles 5\n") || strings.Contains(text, "Synthetic") {
+	if err != nil || !strings.Contains(text, "anime_catalog_metadata_genres 2\n") || !strings.Contains(text, "anime_catalog_unobserved_titles 5\n") ||
+		!strings.Contains(text, "anime_catalog_metadata_staff_credits 1\n") ||
+		!strings.Contains(text, "anime_catalog_missing_metadata_character_credits 6\n") || strings.Contains(text, "Synthetic") {
 		t.Fatal("aggregate export", err)
 	}
-	if strings.Count(text, "# TYPE ") != 29 {
+	if strings.Count(text, "# TYPE ") != 33 {
 		t.Fatal("metric contract changed")
 	}
 	for _, line := range strings.Split(text, "\n") {

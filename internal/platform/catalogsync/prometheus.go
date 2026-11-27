@@ -34,6 +34,8 @@ func Prometheus(status Status) (string, error) {
 		{"metadata_demographics", "Selected observations with demographics.", int64(status.Coverage.Demographics)},
 		{"metadata_studios", "Selected observations with studios.", int64(status.Coverage.Studios)},
 		{"metadata_relations", "Selected observations with relation claims.", int64(status.Coverage.Relations)},
+		{"metadata_staff_credits", "Selected observations with staff credits.", int64(status.Coverage.StaffCredits)},
+		{"metadata_character_credits", "Selected observations with character credits.", int64(status.Coverage.CharacterCredits)},
 	}
 	for _, g := range gauges {
 		if g.value < 0 {

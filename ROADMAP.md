@@ -93,6 +93,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [ ] Real evidence corpus and broader reviewed scope coverage
 - [x] Read-only source/attempt/per-title freshness and metadata-presence diagnostics
 - [x] Aggregate catalog freshness/metadata-presence Prometheus diagnostics with parser CI
+- [x] Read-only catalog credit presence and missing-field counts in diagnostics and metrics
 - [x] Offline catalog field accuracy scoring against independent reviewed snapshots
 - [x] Atomic catalog metrics snapshots and inactive collector service examples
 - [x] Aggregate catalog fetch-outcome metrics and inactive failure alert
