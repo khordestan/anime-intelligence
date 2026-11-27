@@ -28,10 +28,11 @@ var ErrConfiguration = errors.New("invalid browser push configuration")
 var ErrSubscription = errors.New("invalid browser push subscription")
 
 type Config struct {
-	PublicKey  string
-	PrivateKey string
-	Contact    string
-	StorageKey string
+	PublicKey           string
+	PrivateKey          string
+	Contact             string
+	StorageKey          string
+	AlternateStorageKey string
 }
 
 func (Config) String() string     { return "browser push configuration (redacted)" }
@@ -54,6 +55,7 @@ type Sender struct {
 	publicKey string
 	templates webpush.Options
 	aead      cipher.AEAD
+	alternate cipher.AEAD
 }
 
 func (*Sender) String() string     { return "browser push sender (redacted)" }
@@ -77,17 +79,19 @@ func New(config Config) (*Sender, error) {
 		contact.RawQuery != "" || contact.ForceQuery || contact.Fragment != "" || len(config.Contact) > 254 {
 		return nil, ErrConfiguration
 	}
-	storage, err := base64.StdEncoding.Strict().DecodeString(config.StorageKey)
-	if err != nil || len(storage) != 32 || base64.StdEncoding.EncodeToString(storage) != config.StorageKey || bytes.Equal(storage, private) {
-		return nil, ErrConfiguration
-	}
-	block, err := aes.NewCipher(storage)
+	aead, err := storageCipher(config.StorageKey, private)
 	if err != nil {
-		return nil, ErrConfiguration
+		return nil, err
 	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, ErrConfiguration
+	var alternate cipher.AEAD
+	if config.AlternateStorageKey != "" {
+		if config.AlternateStorageKey == config.StorageKey {
+			return nil, ErrConfiguration
+		}
+		alternate, err = storageCipher(config.AlternateStorageKey, private)
+		if err != nil {
+			return nil, err
+		}
 	}
 	transport := &http.Transport{
 		DialContext:           dialProvider,
@@ -111,8 +115,24 @@ func New(config Config) (*Sender, error) {
 			HTTPClient: client, Subscriber: config.Contact, VAPIDPublicKey: config.PublicKey,
 			VAPIDPrivateKey: config.PrivateKey, TTL: 3600, Urgency: webpush.UrgencyNormal, Topic: "anime-release",
 		},
-		aead: aead,
+		aead: aead, alternate: alternate,
 	}, nil
+}
+
+func storageCipher(encoded string, vapidPrivate []byte) (cipher.AEAD, error) {
+	key, err := base64.StdEncoding.Strict().DecodeString(encoded)
+	if err != nil || len(key) != 32 || base64.StdEncoding.EncodeToString(key) != encoded || bytes.Equal(key, vapidPrivate) {
+		return nil, ErrConfiguration
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, ErrConfiguration
+	}
+	envelope, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, ErrConfiguration
+	}
+	return envelope, nil
 }
 
 func (s *Sender) PublicKey() string { return s.publicKey }
@@ -206,7 +226,11 @@ func (s *Sender) Open(owner string, encrypted []byte) (Subscription, error) {
 	if owner == "" || len(encrypted) < size+s.aead.Overhead() || len(encrypted) > 4096 {
 		return subscription, ErrSubscription
 	}
-	body, err := s.aead.Open(nil, encrypted[:size], encrypted[size:], []byte("anime-browser-push:v1:"+owner))
+	aad := []byte("anime-browser-push:v1:" + owner)
+	body, err := s.aead.Open(nil, encrypted[:size], encrypted[size:], aad)
+	if err != nil && s.alternate != nil {
+		body, err = s.alternate.Open(nil, encrypted[:size], encrypted[size:], aad)
+	}
 	if err != nil || json.Unmarshal(body, &subscription) != nil || !subscription.valid() {
 		return Subscription{}, ErrSubscription
 	}
