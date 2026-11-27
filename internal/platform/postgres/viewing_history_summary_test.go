@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/khordestan/anime-intelligence/internal/httpapi"
@@ -79,4 +80,53 @@ func TestViewingHistorySummaryBoundsUTCAndOwner(t *testing.T) {
 	if first := get(two.Token, 200)[0]; first.Archived != 1 || first.Rated != 1 || first.AverageRating == nil || *first.AverageRating != 2 {
 		t.Fatalf("an owner's summary included another owner: %+v", first)
 	}
+
+	type analysisAnswer struct {
+		Engine                  string
+		TopicMatched            bool
+		FromMonth, ThroughMonth string
+		ArchivedPasses          *int
+		ArchiveRatings          *struct {
+			Rated   int
+			Average *float64
+		}
+	}
+	ask := func(token, body string, status int) analysisAnswer {
+		t.Helper()
+		request := httptest.NewRequest("POST", "/api/v1/analysis/library", strings.NewReader(body))
+		if token != "" {
+			request.Header.Set("Authorization", "Bearer "+token)
+		}
+		recorder := httptest.NewRecorder()
+		h.ServeHTTP(recorder, request)
+		var answer analysisAnswer
+		if recorder.Code != status || recorder.Header().Get("Cache-Control") != "no-store" ||
+			(status == 200 && json.Unmarshal(recorder.Body.Bytes(), &answer) != nil) ||
+			strings.Contains(recorder.Body.String(), title) || strings.Contains(recorder.Body.String(), "question") && status == 200 {
+			t.Fatalf("private analysis status=%d, want=%d, body=%s", recorder.Code, status, recorder.Body)
+		}
+		return answer
+	}
+	const question = `{"question":"How many passes and what are my ratings?"}`
+	ask("", question, 401)
+	ask(unverified.Token, question, 403)
+	ask(one.Token, `{"question":"    "}`, 400)
+	ask(one.Token, `{"question":"My ratings?","userId":"different"}`, 400)
+	answer := ask(one.Token, question, 200)
+	if answer.Engine != "library-history-v1" || !answer.TopicMatched || answer.FromMonth != months[11].Month ||
+		answer.ThroughMonth != months[0].Month || answer.ArchivedPasses == nil || *answer.ArchivedPasses != 4 ||
+		answer.ArchiveRatings == nil || answer.ArchiveRatings.Rated != 3 || answer.ArchiveRatings.Average == nil ||
+		*answer.ArchiveRatings.Average != 10.0/3 {
+		t.Fatalf("unexpected combined private answer: %+v", answer)
+	}
+	otherAnswer := ask(two.Token, `{"question":"What are my archived ratings?"}`, 200)
+	if !otherAnswer.TopicMatched || otherAnswer.ArchivedPasses != nil || otherAnswer.ArchiveRatings == nil ||
+		otherAnswer.ArchiveRatings.Rated != 1 || otherAnswer.ArchiveRatings.Average == nil || *otherAnswer.ArchiveRatings.Average != 2 {
+		t.Fatalf("private ratings scope failed: %+v", otherAnswer)
+	}
+	unsupported := ask(one.Token, `{"question":"Where can I stream television?"}`, 200)
+	if unsupported.TopicMatched || unsupported.ArchivedPasses != nil || unsupported.ArchiveRatings != nil || unsupported.FromMonth != "" {
+		t.Fatalf("unsupported question returned private evidence: %+v", unsupported)
+	}
+
 }

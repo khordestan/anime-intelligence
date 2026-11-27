@@ -20,6 +20,15 @@ async function mockRewatches(page: Page, hold = false) {
     }
     if (path === "/auth/logout") return route.fulfill({ status: 204, headers });
     if (path === "/tracker") return respond({ items: token.endsWith("1") ? [{ id: "synthetic-entry", animeId: "synthetic-title", title: "Synthetic Rewatch", watchStatus: cycle === 1 ? "COMPLETED" : "WATCHING", episodesWatched: cycle === 1 ? 3 : 0, exactProgress: cycle === 1, totalEpisodes: 12, rating: 5, watchCycle: cycle }] : [] });
+    if (path === "/analysis/library") {
+      expect(token.endsWith("1")).toBe(true);
+      const body = request.postDataJSON();
+      if (body.question === "How many passes and what were my ratings?") {
+        return respond({ topicMatched: true, fromMonth: "2025-02", throughMonth: "2026-01",
+          archivedPasses: 4, archiveRatings: { rated: 2, average: 4.5 } });
+      }
+      return respond({ topicMatched: false });
+    }
     if (path === "/tracker/viewing-history-summary") {
       monthlyRequests++;
       expect(token.endsWith("1")).toBe(true);
@@ -104,6 +113,15 @@ test("monthly viewing history loads explicitly, retries, and renders archive tot
   await summary.getByRole("button", { name: "Load monthly viewing history" }).click();
   await expect(summary.getByRole("table").getByRole("row").nth(1).getByRole("cell")).toHaveText(["3", "2", "4.5 / 5"]);
   await expect(summary.getByRole("table").getByRole("row").nth(2).getByRole("cell")).toHaveText(["1", "0", "—"]);
+  const question = summary.getByLabel("Ask about archived passes or series ratings");
+  await question.fill("How many passes and what were my ratings?");
+  await summary.getByRole("button", { name: "Show archive facts" }).click();
+  await expect(summary.getByText("4 previous completed passes archived", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Average series rating 4.5 / 5 across 2 rated passes", { exact: true })).toBeVisible();
+  await question.fill("Where can I stream anime?");
+  await summary.getByRole("button", { name: "Show archive facts" }).click();
+  await expect(summary.getByText("Ask about previous viewing passes or their archived series ratings.", { exact: true })).toBeVisible();
+  await expect(summary.getByText("4 previous completed passes archived", { exact: true })).toHaveCount(0);
 });
 
 test("late monthly viewing history cannot cross accounts", async ({ page }) => {

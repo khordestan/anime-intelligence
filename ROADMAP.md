@@ -208,7 +208,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Deterministic and model-selected catalog topics for native title, release quarter and demographics with source attribution
 - [x] Analyst scope for exact episode and release-track evidence
 - [x] Choose a supported evidence topic directly with a bounded deterministic request
-- [ ] Tool-constrained analyst for broader queries
+- [x] Tool-constrained analyst for public catalog questions and private viewing history and archive ratings
 - [x] Two-title catalog comparison with sourced numeric explanations
 - [x] Shared OpenAPI response schemas for deterministic and assisted catalog evidence
 - [x] Analyst evidence for confirmed release observations and upcoming predictions with per-track attribution
