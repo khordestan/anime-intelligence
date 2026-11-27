@@ -10,10 +10,20 @@ groups:
       - alert: AnimeReleasePushMetricsMissing
         expr: >-
           (up{anime_release_push_monitor="true"} == 1)
-          unless on(job, instance) anime_release_push_events_total{anime_release_push_monitor="true",outcome="provider_accepted"}
+          unless on(job, instance) (
+            anime_release_push_events_total{anime_release_push_monitor="true",outcome="provider_accepted"}
+            and on(job, instance) anime_release_push_worker_configured{anime_release_push_monitor="true"}
+          )
         for: 2m
         labels: {severity: warning}
         annotations: {summary: 'Browser release delivery metrics are missing on a reachable target'}
+      - alert: AnimeReleasePushWorkerDisabled
+        expr: >-
+          (anime_release_push_worker_configured{anime_release_push_monitor="true"} == 0)
+          and on(job, instance) (up{anime_release_push_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'A marked API target has browser release delivery disabled'}
       - alert: AnimeReleasePushWorkerErrors
         expr: >-
           (

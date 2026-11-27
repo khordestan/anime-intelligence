@@ -36,6 +36,8 @@ tests:
         values: 1+0x8
       - series: 'up{job="release-push",instance="healthy",anime_release_push_monitor="true"}'
         values: 1+0x8
+      - series: 'anime_release_push_worker_configured{job="release-push",instance="healthy",anime_release_push_monitor="true"}'
+        values: 1+0x8
       - series: 'anime_release_push_events_total{job="release-push",instance="healthy",anime_release_push_monitor="true",outcome="provider_accepted"}'
         values: 0+0x8
     alert_rule_test:
@@ -49,3 +51,26 @@ tests:
         exp_alerts:
           - exp_labels: {job: release-push, instance: missing, anime_release_push_monitor: 'true', severity: warning}
             exp_annotations: {summary: 'Browser release delivery metrics are missing on a reachable target'}
+  - name: browser-delivery-configuration-alert-persistence-and-recovery
+    interval: 1m
+    input_series:
+      - series: 'up{job="release-push",instance="worker",anime_release_push_monitor="true"}'
+        values: 1+0x8
+      - series: 'anime_release_push_worker_configured{job="release-push",instance="worker",anime_release_push_monitor="true"}'
+        values: 0+0x4 1+0x3
+      - series: 'up{job="release-push",instance="unmarked"}'
+        values: 1+0x8
+      - series: 'anime_release_push_worker_configured{job="release-push",instance="unmarked"}'
+        values: 0+0x8
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: AnimeReleasePushWorkerDisabled
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: AnimeReleasePushWorkerDisabled
+        exp_alerts:
+          - exp_labels: {job: release-push, instance: worker, anime_release_push_monitor: 'true', severity: warning}
+            exp_annotations: {summary: 'A marked API target has browser release delivery disabled'}
+      - eval_time: 6m
+        alertname: AnimeReleasePushWorkerDisabled
+        exp_alerts: []

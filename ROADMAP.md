@@ -161,6 +161,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Opt-in durable background browser release alerts with encrypted device subscriptions
 - [x] Loopback browser delivery outcome and worker error counters
 - [x] Inactive browser delivery target and worker error alert rules with Prometheus tests
+- [x] Browser delivery configuration gauge and inactive alert for disabled marked workers
 - [ ] Production release email and browser delivery activation
 - [x] Durable canonical release-event and owned notification duplicate suppression
 
