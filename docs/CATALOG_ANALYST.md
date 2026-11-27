@@ -31,3 +31,5 @@ Staff evidence shows up to 20 reviewed name and role pairs from the selected tit
 Installment evidence shows the primary source's season number and optional split-part number. A question about the season can show both the installment number and the separately sourced airing quarter. A missing season number leaves installment evidence unknown.
 
 Choose an **Evidence topic** in the dashboard to retrieve those facts directly without writing a question. API clients can instead send one to four distinct `topics` in a deterministic request with `animeIds`. The release scope is available for the confirmed-release and upcoming-schedule topics. Model-assisted topic selection uses a question.
+
+The OpenAPI contract describes the same typed evidence response on both analysis routes, including staff credits, installment numbering, episode timestamps and continuity links. [OpenAPI](../api/openapi.yaml)

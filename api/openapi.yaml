@@ -91,7 +91,11 @@ paths:
                   uniqueItems: true
                   items: { type: string, format: uuid }
       responses:
-        "200": { description: Engine version and topicMatched flag plus title evidence with field, values and available provider and observation time. Episode evidence uses episodeFacts with number, track, time and optional provider. Direct prequel and sequel evidence uses continuityFacts with animeId, title, relation and recorded providers. A fact with no evidence entries is unknown. Long value lists are capped at 20 and marked truncated. Two titles may include comparisons for known numeric fields, with difference equal to the first value minus the second. Optional sharedEvidence lists genre or studio values supported by both returned evidence lists. }
+        "200":
+          description: Bounded catalog evidence and optional comparisons grounded in the selected titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogAnalysis' }
         "400": { description: Invalid question or selection }
         "404": { description: One or more selected anime are missing }
   /api/v1/analysis/catalog/assisted:
@@ -126,7 +130,11 @@ paths:
                   uniqueItems: true
                   items: { type: string, format: uuid }
       responses:
-        "200": { description: Sourced catalog evidence including installment numbering and bounded reviewed staff credits, supported numeric comparisons, optional shared genre or studio evidence and model selection provenance }
+        "200":
+          description: Bounded catalog evidence and optional comparisons grounded in the selected titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogAnalysis' }
         "400": { description: Invalid question or selection }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
@@ -1467,6 +1475,101 @@ components:
                 format: password
                 description: Registration requires 12–1024 UTF-8 bytes. Request body limit is 4096 bytes.
   schemas:
+    CatalogAnalysis:
+      type: object
+      required: [engine, topicMatched, items]
+      properties:
+        engine: { type: string, enum: [catalog-facts-v1, model-selected-catalog-facts-v1] }
+        model: { type: string, maxLength: 128 }
+        topicMatched: { type: boolean }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            type: object
+            required: [animeId, title, evidence]
+            properties:
+              animeId: { type: string, format: uuid }
+              title: { type: string }
+              evidence:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogAnalysisFact' }
+        comparisons:
+          type: array
+          maxItems: 2
+          items:
+            type: object
+            required: [field, difference, animeIds]
+            properties:
+              field: { type: string, enum: [episodeCount, releaseYear] }
+              difference: { type: integer, description: First title's value minus the second title's value. }
+              animeIds:
+                type: array
+                minItems: 2
+                maxItems: 2
+                items: { type: string, format: uuid }
+        sharedEvidence:
+          type: array
+          maxItems: 2
+          items:
+            type: object
+            required: [field, values]
+            properties:
+              field: { type: string, enum: [genres, studios] }
+              values:
+                type: array
+                maxItems: 20
+                items: { type: string }
+    CatalogAnalysisFact:
+      type: object
+      description: A fact may provide scalar values or typed evidence. A fact with no entries represents an unknown value.
+      required: [field, values]
+      properties:
+        field:
+          type: string
+          enum: [mediaType, releaseYear, episodeCount, status, genres, studios, nativeTitle, season, installment, demographics, staffCredits, confirmedReleases, upcomingSchedule, continuity]
+        values:
+          type: array
+          maxItems: 20
+          items: { type: string }
+        provider: { type: string }
+        observedAt: { type: string, format: date-time }
+        truncated: { type: boolean }
+        staffCredits:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/CatalogCredit' }
+        installment:
+          type: object
+          required: [seasonNumber]
+          properties:
+            seasonNumber: { type: integer, minimum: 1, maximum: 2147483647 }
+            partNumber: { type: integer, minimum: 1, maximum: 2147483647 }
+        episodeFacts:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [number, track, time]
+            properties:
+              number: { type: integer, minimum: 1, maximum: 100000 }
+              track: { type: string, enum: [RAW, SUB, DUB, UNKNOWN] }
+              time: { type: string, format: date-time }
+              provider: { type: string }
+        continuityFacts:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [animeId, title, relation, providers]
+            properties:
+              animeId: { type: string, format: uuid }
+              title: { type: string }
+              relation: { type: string, enum: [PREQUEL, SEQUEL] }
+              providers:
+                type: [array, 'null']
+                items: { type: string }
     CatalogCredit:
       type: object
       required: [name, role]

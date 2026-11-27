@@ -207,6 +207,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Choose a supported evidence topic directly with a bounded deterministic request
 - [ ] Tool-constrained analyst for broader queries
 - [x] Two-title catalog comparison with sourced numeric explanations
+- [x] Shared OpenAPI response schemas for deterministic and assisted catalog evidence
 - [x] Analyst evidence for confirmed release observations and upcoming predictions with per-track attribution
 - [x] Analyst evidence for direct attributed prequel and sequel links
 - [x] Analyst evidence for reviewed staff names and roles with primary source attribution
