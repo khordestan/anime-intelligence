@@ -19,6 +19,8 @@ func run() error {
 	survivor := flag.String("survivor", "", "canonical survivor UUID")
 	reference := flag.String("reference", "", "public review reference")
 	apply := flag.Bool("apply", false, "apply the reviewed merge")
+	metadata := flag.Bool("retain-metadata", false, "review transfer of one matching approved observation")
+	expectedDigest := flag.String("expected-metadata-digest", "", "observation digest from metadata preview")
 	var ids []pgtype.UUID
 	flag.Func("expected-mapping-id", "mapping UUID from preview, repeat for each ID", func(value string) error {
 		var id pgtype.UUID
@@ -30,7 +32,7 @@ func run() error {
 	})
 	flag.Parse()
 	dsn := os.Getenv("CATALOG_PLACEHOLDER_MERGE_DATABASE_URL")
-	if flag.NArg() != 0 || dsn == "" {
+	if flag.NArg() != 0 || dsn == "" || (!*metadata && *expectedDigest != "") || (*metadata && *apply && *expectedDigest == "") {
 		return errors.New("missing command inputs")
 	}
 	var first, second pgtype.UUID
@@ -49,16 +51,23 @@ func run() error {
 		ids = []pgtype.UUID{}
 	}
 	var found []pgtype.UUID
-	if err := conn.QueryRow(ctx, `SELECT public.review_catalog_placeholder_merge($1,$2,$3,$4,$5)`,
+	var observationDigest string
+	if *metadata {
+		if err := conn.QueryRow(ctx, `SELECT mapping_ids,observation_digest FROM public.review_catalog_metadata_merge($1,$2,$3,$4,$5,$6)`,
+			first, second, ids, *expectedDigest, *reference, *apply).Scan(&found, &observationDigest); err != nil {
+			return err
+		}
+	} else if err := conn.QueryRow(ctx, `SELECT public.review_catalog_placeholder_merge($1,$2,$3,$4,$5)`,
 		first, second, ids, *reference, *apply).Scan(&found); err != nil {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(struct {
-		Retired    string        `json:"retiredId"`
-		Survivor   string        `json:"survivorId"`
-		MappingIDs []pgtype.UUID `json:"mappingIds"`
-		Applied    bool          `json:"applied"`
-	}{*retired, *survivor, found, *apply})
+		Retired           string        `json:"retiredId"`
+		Survivor          string        `json:"survivorId"`
+		MappingIDs        []pgtype.UUID `json:"mappingIds"`
+		Applied           bool          `json:"applied"`
+		ObservationDigest string        `json:"observationDigest,omitempty"`
+	}{*retired, *survivor, found, *apply, observationDigest})
 }
 
 func main() {

@@ -61,4 +61,12 @@ The operation transfers only exact provider identity rows that fit unoccupied pr
 
 Use a maintenance window for apply because the operation briefly takes an exclusive catalog-title lock to fence new dependencies. Run the impact inventory separately for a placeholder that fails these checks. The merge reviewer only receives mapping IDs on success and a generic dependency refusal on failure.
 
+### Transfer a reviewed primary metadata observation
+
+Migration 000033 adds an operator mode for two active titles with identical public display fields and an otherwise unused destination authority. The retired title must have one approved primary observation that matches its retained base, with an exact provider identity and no schedule, relation or reviewed field claims.
+
+Use the same command with `-retain-metadata` to preview the mapping IDs and observation digest. Run the separate impact inventory before apply to review private, release, archive and other dependencies. Add `-apply`, the repeated preview mapping IDs and `-expected-metadata-digest=<digest>` to apply the matching review. The transaction moves both copies of the observation and exact mappings, records the redirect and digest, and rolls back when the existing merge checks find any remaining retired-title dependencies. Reapply the dedicated merge reviewer grants after migrating.
+
+## Correct an empty Planning entry
+
 A verified account can correct its own empty first-pass Planning entry by selecting the intended canonical title and reviewing the replacement. The operation uses the current entry version and creates a fresh entry ID, so stale controls for the original title cannot change the destination. It applies only to entries without notes, current scores, episode selections, progress or archived passes. The workflow changes a private Planning entry, while provider mappings and canonical merge reviews use the operator tools above.
