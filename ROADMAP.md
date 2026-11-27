@@ -17,10 +17,11 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 
 | Capability | Available | Remaining |
 | --- | --- | --- |
-| Catalog freshness and coverage | Reviewed imports, opt-in bounded jobs, exact mappings, review/retraction tools and metrics | Licensed comprehensive sources, broader people/character data, confirmed availability, active operations and quality objectives |
+| Catalog freshness and coverage | Reviewed imports and credits, exact mappings, sourced browse filters, review/retraction tools and quality gates | Licensed comprehensive sources, confirmed regional availability, active operations and quality objectives |
 | Season-level library | Canonical title-level progress, separate series and sourced season-part ratings, viewing passes and reviewed bulk edits | Franchise corrections |
-| Alerts | Verified-owner release, announcement, delay, schedule-change and cancellation/correction notices, plus opt-in background email and an upcoming schedule calendar | Production email activation and additional background channels |
-| Recommendations | PostgreSQL Personal Match with bounded reaction feedback, offline evaluators, opt-in Global Essentials and paginated Discovery with evidence and unfamiliar-feature exploration | Reviewed Essentials corpus, representative judgments and feedback evaluation |
+| Alerts | Verified-owner release, announcement, delay, schedule-change and cancellation/correction notices, plus opt-in background email and browser delivery and an upcoming schedule calendar | Production email and browser delivery activation |
+| Recommendations | PostgreSQL Personal Match with bounded reaction feedback, paired feedback evaluation, opt-in Global Essentials and paginated Discovery with evidence and unfamiliar-feature exploration | Reviewed Essentials corpus and representative retrieval, ranking and feedback judgments |
+| Catalog analyst | Deterministic questions or direct topic selection, two-title comparisons, scoped release evidence and optional model topic selection | Broader application tools and representative model evaluation |
 | Production operations | Security tests, synthetic recovery and two-replica rehearsals, loopback API metrics, inactive monitoring examples and verified release artifacts | Independent review, distributed ingress controls, representative load testing, live monitoring, real backup/recovery and deployment automation |
 
 ## Milestone 0 — Runnable foundation
