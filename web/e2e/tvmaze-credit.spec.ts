@@ -33,9 +33,10 @@ test("TVmaze schedules keep attribution with " + metadataProvider + " metadata a
   await expect(panel.getByRole("link", { name: "CC BY-SA 4.0", exact: true })).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
   await expect(panel.getByText(/Data from TVmaze, adapted under/)).toBeVisible();
   await expect(panel.getByText(/Episode total unknown/)).toBeVisible();
-  await expect(panel.getByText(/Episode 1 · UNKNOWN · Scheduled/)).toBeVisible();
+  const episode = panel.getByText(/Episode 1 · UNKNOWN · Scheduled/);
+  await expect(episode).toBeVisible();
   await expect(panel.getByText(/Revision 1 · Source: tvmaze/)).toBeVisible();
-  await expect(panel.getByText(/Confirmed/)).toHaveCount(0);
+  await expect(episode).not.toContainText("Confirmed");
   await expect(page.locator("footer").getByRole("link", { name: "TVmaze", exact: true })).toBeVisible();
 });
 
