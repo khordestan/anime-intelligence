@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func TestPlaceholderMergeRechecksMappingsAndPreservesPublicIdentity(t *testing.T) {
-	db, owner, _, runtimeDSN := testDB(t)
+func connectMergeReviewer(t *testing.T, owner *pgx.Conn, runtimeDSN string) *pgx.Conn {
+	t.Helper()
 	ctx := context.Background()
 	u, err := url.Parse(runtimeDSN)
 	if err != nil {
@@ -35,7 +35,14 @@ func TestPlaceholderMergeRechecksMappingsAndPreservesPublicIdentity(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reviewer.Close(ctx)
+	t.Cleanup(func() { _ = reviewer.Close(ctx) })
+	return reviewer
+}
+
+func TestPlaceholderMergeRechecksMappingsAndPreservesPublicIdentity(t *testing.T) {
+	db, owner, _, runtimeDSN := testDB(t)
+	ctx := context.Background()
+	reviewer := connectMergeReviewer(t, owner, runtimeDSN)
 	runtime, err := pgx.Connect(ctx, runtimeDSN)
 	if err != nil {
 		t.Fatal(err)
