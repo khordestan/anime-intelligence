@@ -99,6 +99,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Aggregate catalog fetch-outcome metrics and inactive failure alert
 - [x] Offline catalog quality gates for reviewed accuracy and field presence
 - [x] Offline presence and reviewed accuracy gates for staff and character credits
+- [x] Offline reviewed schedule and confirmed release accuracy gates by exact episode and track
 - [ ] Catalog SLOs/alert activation, field accuracy and completeness evaluation
 - [x] Validated canonical prequel/sequel graph and named bidirectional direct continuity navigation
 - [x] Bounded public transitive prequel/sequel API and dashboard browsing with source labels and cap warnings

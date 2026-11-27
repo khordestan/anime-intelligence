@@ -68,7 +68,7 @@ func EvaluateQuality(policy QualityPolicy, coverage SnapshotCoverage, reference 
 		out.Accuracy = make(map[string]QualityResult, len(policy.Accuracy))
 	}
 	for field, threshold := range policy.Accuracy {
-		if !slices.Contains(judgedQualityFields[:], field) || threshold.MinJudgments < 1 || threshold.MinJudgments > 10000 ||
+		if !validJudgedQualityField(field) || threshold.MinJudgments < 1 || threshold.MinJudgments > 10000 ||
 			threshold.MinCorrectRate == nil || !validQualityRate(*threshold.MinCorrectRate) {
 			return QualityReport{}, ErrInvalid
 		}
@@ -83,6 +83,18 @@ func EvaluateQuality(policy QualityPolicy, coverage SnapshotCoverage, reference 
 var judgedQualityFields = [...]string{
 	"title", "nativeTitle", "mediaType", "status", "season", "seasonNumber", "partNumber",
 	"releaseYear", "episodeCount", "genres", "studios", "themes", "demographics", "staffCredits", "characterCredits",
+}
+
+func validJudgedQualityField(field string) bool {
+	if slices.Contains(judgedQualityFields[:], field) {
+		return true
+	}
+	for _, track := range []string{"RAW", "SUB", "DUB", "UNKNOWN"} {
+		if field == "scheduledAt."+track || field == "releasedAt."+track {
+			return true
+		}
+	}
+	return false
 }
 
 func qualityRate(numerator, denominator, minSamples int, threshold float64) QualityResult {

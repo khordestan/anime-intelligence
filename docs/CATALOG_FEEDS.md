@@ -85,6 +85,8 @@ The example policy below is for a synthetic test. Choose field thresholds and mi
 
 Staff and character credits can be checked independently for presence or reviewed accuracy. Credit agreement compares complete name and role pairs regardless of order or case. The reports emit aggregate counts.
 
+Schedule timestamps are judged separately by exact provider title, episode number and track. Use keys such as `scheduledAt.SUB` and `releasedAt.DUB` in an accuracy policy. The track suffix may be `RAW`, `SUB`, `DUB` or `UNKNOWN`. A known reference timestamp contributes one judgment. Equality compares the exact instant even when offsets differ. A missing row or candidate timestamp contributes a missing judgment. Extra candidate rows contribute no judgments. These observations describe predictions and confirmations under the recorded source, with no claim about streaming rights or availability elsewhere.
+
 Presence uses all candidate titles as its denominator. Accuracy counts correct, missing and mismatching values against exact reviewed source IDs. Unknown reference values produce no judgment. If fewer values are judged than the policy requires, that field fails even when every available judgment matches. The report includes each numerator, denominator, rate and decision. A valid report that misses a threshold is printed before the command exits with status 1. A presence-only policy needs no reference. These checks use files only and neither certify production catalog coverage nor activate an operational SLO.
 
 ## Reviewed staff and character credits
