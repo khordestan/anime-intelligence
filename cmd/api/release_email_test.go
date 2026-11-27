@@ -25,20 +25,20 @@ func TestReleaseEmailRequiresSeparateOptInAndVerifiedTLS(t *testing.T) {
 		"RELEASE_EMAIL_SMTP_PASSWORD": "synthetic", "RELEASE_EMAIL_SMTP_FROM": "sender@example.test",
 	}
 	get := func(key string) string { return config[key] }
-	if sender, err := releaseEmailSenderFromEnv(get, true); err != nil || sender != nil {
+	if sender, err := releaseEmailSenderFromEnv(get, true, nil); err != nil || sender != nil {
 		t.Fatalf("SMTP configuration enabled delivery by itself: %v", err)
 	}
 	config["RELEASE_EMAIL_ENABLED"] = "1"
-	if _, err := releaseEmailSenderFromEnv(get, false); err == nil {
+	if _, err := releaseEmailSenderFromEnv(get, false, nil); err == nil {
 		t.Fatal("JSON mode accepted release email")
 	}
 	const recipient = "recipient@example.test"
-	untrusted, err := releaseEmailSenderFromEnv(get, true)
+	untrusted, err := releaseEmailSenderFromEnv(get, true, nil)
 	if err != nil || untrusted.send(context.Background(), recipient) == nil {
 		t.Fatal("untrusted SMTP peer was not rejected")
 	}
 	config["RELEASE_EMAIL_SMTP_CA_FILE"] = ca
-	sender, err := releaseEmailSenderFromEnv(get, true)
+	sender, err := releaseEmailSenderFromEnv(get, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

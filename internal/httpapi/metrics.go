@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/khordestan/anime-intelligence/internal/platform/smtptransport"
 )
 
 const (
@@ -74,7 +76,22 @@ var analysisOutcomeNames = [...]string{
 	analysisProviderError: "provider_error", analysisProviderReturned: "provider_returned",
 }
 
+type SMTPChannel uint8
+
+const (
+	SMTPIdentity SMTPChannel = iota
+	SMTPRelease
+)
+
+var smtpChannelNames = [...]string{"identity", "release"}
+var smtpOutcomeNames = [...]string{
+	smtptransport.Accepted: "accepted", smtptransport.ConnectionError: "connection_error",
+	smtptransport.GreetingError: "greeting_error", smtptransport.AuthenticationError: "authentication_error",
+	smtptransport.EnvelopeError: "envelope_error", smtptransport.DataError: "data_error",
+}
+
 type RequestMetrics struct {
+	smtpOutcomes     [len(smtpChannelNames)][len(smtpOutcomeNames)]uint64
 	pushEvents       [len(pushEventNames)]uint64
 	analysisOutcomes [len(analysisOutcomeNames)]uint64
 	pushConfigured   int
@@ -171,12 +188,27 @@ func (m *RequestMetrics) recordAnalysis(outcome int) {
 	m.mu.Unlock()
 }
 
+// SMTPObserver accepts only a fixed channel and one transport stage per send.
+func (m *RequestMetrics) SMTPObserver(channel SMTPChannel) func(smtptransport.Outcome) {
+	if m == nil || int(channel) >= len(smtpChannelNames) {
+		return nil
+	}
+	return func(outcome smtptransport.Outcome) {
+		if int(outcome) < len(smtpOutcomeNames) {
+			m.mu.Lock()
+			m.smtpOutcomes[channel][outcome]++
+			m.mu.Unlock()
+		}
+	}
+}
+
 func (m *RequestMetrics) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) {
 		var output bytes.Buffer
 		m.mu.Lock()
 		totals, pushEvents, pushConfigured, analysisOutcomes := m.totals, m.pushEvents, m.pushConfigured, m.analysisOutcomes
+		smtpOutcomes := m.smtpOutcomes
 		m.mu.Unlock()
 
 		fmt.Fprintln(&output, "# HELP anime_http_requests_total Completed API requests by route group and response class.")
@@ -217,6 +249,14 @@ func (m *RequestMetrics) Handler() http.Handler {
 		fmt.Fprintln(&output, "# TYPE anime_assisted_analysis_outcomes_total counter")
 		for i, name := range analysisOutcomeNames {
 			fmt.Fprintf(&output, "anime_assisted_analysis_outcomes_total{outcome=%q} %d\n", name, analysisOutcomes[i])
+		}
+
+		fmt.Fprintln(&output, "# HELP anime_smtp_transport_outcomes_total SMTP send attempts by channel and fixed transport outcome.")
+		fmt.Fprintln(&output, "# TYPE anime_smtp_transport_outcomes_total counter")
+		for i, channel := range smtpChannelNames {
+			for j, outcome := range smtpOutcomeNames {
+				fmt.Fprintf(&output, "anime_smtp_transport_outcomes_total{channel=%q,outcome=%q} %d\n", channel, outcome, smtpOutcomes[i][j])
+			}
 		}
 
 		w.Header().Set("Cache-Control", "no-store")

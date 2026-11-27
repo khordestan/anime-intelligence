@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/khordestan/anime-intelligence/internal/platform/smtptransport"
 	"github.com/khordestan/anime-intelligence/internal/testutil/mailbox"
 )
 
@@ -23,7 +25,8 @@ func TestSMTPVerifiedTLSAndPrivateFragment(t *testing.T) {
 	if err = os.WriteFile(ca, server.CAPEM, 0600); err != nil {
 		t.Fatal(err)
 	}
-	config := SMTPConfig{Address: server.SMTPAddress(), Username: "synthetic-user", Password: "synthetic-password", From: "sender@example.test", AppOrigin: "https://app.example.test", CAFile: ca}
+	var outcomes []smtptransport.Outcome
+	config := SMTPConfig{Observe: func(outcome smtptransport.Outcome) { outcomes = append(outcomes, outcome) }, Address: server.SMTPAddress(), Username: "synthetic-user", Password: "synthetic-password", From: "sender@example.test", AppOrigin: "https://app.example.test", CAFile: ca}
 	sender, err := NewSMTP(config)
 	if err != nil {
 		t.Fatal(err)
@@ -68,6 +71,9 @@ func TestSMTPVerifiedTLSAndPrivateFragment(t *testing.T) {
 	}
 	if len(server.Messages()) != 1 {
 		t.Fatal("failed attempts delivered mail")
+	}
+	if !slices.Equal(outcomes, []smtptransport.Outcome{smtptransport.Accepted, smtptransport.ConnectionError, smtptransport.AuthenticationError}) {
+		t.Fatalf("unexpected redacted SMTP outcomes: %v", outcomes)
 	}
 }
 func TestSMTPRejectsUnsafeConfigurationAndEnvelopes(t *testing.T) {

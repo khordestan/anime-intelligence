@@ -28,12 +28,12 @@ func main() {
 		logger.Error("PostgreSQL configuration rejected", "error", configErr)
 		os.Exit(1)
 	}
-	sender, configErr := identitySenderFromEnv(os.Getenv, dsn != "")
+	sender, configErr := identitySenderFromEnv(os.Getenv, dsn != "", metrics.SMTPObserver(httpapi.SMTPIdentity))
 	if configErr != nil {
 		logger.Error("identity mail requires PostgreSQL and complete valid delivery configuration")
 		os.Exit(1)
 	}
-	releaseSender, configErr := releaseEmailSenderFromEnv(os.Getenv, dsn != "")
+	releaseSender, configErr := releaseEmailSenderFromEnv(os.Getenv, dsn != "", metrics.SMTPObserver(httpapi.SMTPRelease))
 	if configErr != nil {
 		logger.Error("release email requires PostgreSQL and complete valid delivery configuration")
 		os.Exit(1)

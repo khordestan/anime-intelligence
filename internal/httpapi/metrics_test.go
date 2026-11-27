@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/khordestan/anime-intelligence/internal/platform/smtptransport"
 )
 
 func TestRequestMetricsBoundedRoutesAndConcurrency(t *testing.T) {
@@ -91,4 +93,33 @@ func TestPushWorkerConfigurationMetric(t *testing.T) {
 	(*RequestMetrics)(nil).MarkPushWorkerConfigured()
 	metrics.MarkPushWorkerConfigured()
 	scrape("1")
+}
+
+func TestSMTPTransportMetricsUseFixedChannelAndStage(t *testing.T) {
+	metrics := &RequestMetrics{}
+	identity := metrics.SMTPObserver(SMTPIdentity)
+	release := metrics.SMTPObserver(SMTPRelease)
+	identity(smtptransport.Accepted)
+	identity(smtptransport.AuthenticationError)
+	release(smtptransport.ConnectionError)
+	release(smtptransport.Outcome(200))
+	if metrics.SMTPObserver(SMTPChannel(200)) != nil || (*RequestMetrics)(nil).SMTPObserver(SMTPIdentity) != nil {
+		t.Fatal("unexpected observer on inactive or unsupported channel")
+	}
+	response := httptest.NewRecorder()
+	metrics.Handler().ServeHTTP(response, httptest.NewRequest("GET", "/metrics", nil))
+	output := response.Body.String()
+	for _, expected := range []string{
+		`anime_smtp_transport_outcomes_total{channel="identity",outcome="accepted"} 1`,
+		`anime_smtp_transport_outcomes_total{channel="identity",outcome="authentication_error"} 1`,
+		`anime_smtp_transport_outcomes_total{channel="release",outcome="connection_error"} 1`,
+		`anime_smtp_transport_outcomes_total{channel="release",outcome="accepted"} 0`,
+	} {
+		if !strings.Contains(output, expected+"\n") {
+			t.Errorf("SMTP scrape is missing %s", expected)
+		}
+	}
+	if strings.Count(output, "anime_smtp_transport_outcomes_total{") != 12 {
+		t.Fatal("SMTP label cardinality changed")
+	}
 }

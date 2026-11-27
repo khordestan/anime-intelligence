@@ -16,7 +16,7 @@ type releaseEmailSender struct {
 	from      string
 }
 
-func releaseEmailSenderFromEnv(getenv func(string) string, postgresql bool) (*releaseEmailSender, error) {
+func releaseEmailSenderFromEnv(getenv func(string) string, postgresql bool, observe func(smtptransport.Outcome)) (*releaseEmailSender, error) {
 	switch getenv("RELEASE_EMAIL_ENABLED") {
 	case "", "0":
 		return nil, nil
@@ -25,7 +25,7 @@ func releaseEmailSenderFromEnv(getenv func(string) string, postgresql bool) (*re
 			config := smtptransport.Config{
 				Address: getenv("RELEASE_EMAIL_SMTP_ADDR"), Username: getenv("RELEASE_EMAIL_SMTP_USERNAME"),
 				Password: getenv("RELEASE_EMAIL_SMTP_PASSWORD"), From: getenv("RELEASE_EMAIL_SMTP_FROM"),
-				CAFile: getenv("RELEASE_EMAIL_SMTP_CA_FILE"),
+				CAFile: getenv("RELEASE_EMAIL_SMTP_CA_FILE"), Observe: observe,
 			}
 			transport, err := smtptransport.New(config)
 			if err != nil {

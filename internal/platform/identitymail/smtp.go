@@ -18,7 +18,10 @@ import (
 var ErrDelivery = errors.New("identity mail delivery failed")
 var ErrConfig = errors.New("invalid identity mail configuration")
 
-type SMTPConfig struct{ Address, Username, Password, From, AppOrigin, CAFile string }
+type SMTPConfig struct {
+	Address, Username, Password, From, AppOrigin, CAFile string
+	Observe                                              func(smtptransport.Outcome)
+}
 type SMTP struct {
 	from      string
 	origin    *url.URL
@@ -37,7 +40,7 @@ func NewSMTP(config SMTPConfig) (*SMTP, error) {
 	}
 	transport, err := smtptransport.New(smtptransport.Config{
 		Address: config.Address, Username: config.Username, Password: config.Password,
-		From: config.From, CAFile: config.CAFile,
+		From: config.From, CAFile: config.CAFile, Observe: config.Observe,
 	})
 	if err != nil {
 		return nil, ErrConfig
