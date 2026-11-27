@@ -170,6 +170,10 @@ paths:
           description: Require a latest confirmed release on this track at or before the query time.
           schema: { type: string, enum: [RAW, SUB, DUB, UNKNOWN] }
         - in: query
+          name: character
+          description: Exact case-insensitive character name from retained primary credits. The requested name can contain spoilers.
+          schema: { type: string, minLength: 1, maxLength: 256 }
+        - in: query
           name: staff
           description: Exact case-insensitive staff name from the retained primary title metadata.
           schema: { type: string, minLength: 1, maxLength: 256 }
@@ -232,9 +236,10 @@ paths:
         - in: query
           name: field
           required: true
-          schema: { type: string, enum: [genres, themes, demographics, studios, providers, staff] }
+          schema: { type: string, enum: [genres, themes, demographics, studios, providers, staff, characters] }
         - in: query
           name: prefix
+          description: Required and nonblank for character suggestions. Returned character names may contain spoilers.
           schema: { type: string, maxLength: 128 }
         - in: query
           name: limit

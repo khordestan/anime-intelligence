@@ -60,4 +60,6 @@ Use `confirmedTrack=SUB`, `DUB`, `RAW` or `UNKNOWN` to require a confirmed relea
 
 **Sourced season number** and **Sourced split-part number** match exact labels on the primary catalog observation. You can combine either with the airing quarter or with other filters. The split-part filter requires a sourced season number on the matching title. The filters do not group canonical titles by number.
 
-**Source staff name** matches a whole reviewed name from the primary title metadata and combines with the other filters. Use `GET /api/v1/anime/facets?field=staff&prefix=...` for case-insensitive prefix suggestions. These matches do not establish that identically named people are the same person. Character credits remain outside these filters and suggestions.
+**Source staff name** matches a whole reviewed name from the primary title metadata and combines with the other filters. Use `GET /api/v1/anime/facets?field=staff&prefix=...` for case-insensitive prefix suggestions. These matches do not establish that identically named people are the same person.
+
+**Source character name** matches an exact name from the same retained observation. Character names can contain spoilers. The catalog only requests suggestions after the user supplies a prefix and chooses **Find character names (may contain spoilers)**. API clients can use `GET /api/v1/anime/facets?field=characters&prefix=...` with a nonblank prefix. Catalog search results keep the existing public title shape.

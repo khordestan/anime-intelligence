@@ -8,6 +8,7 @@ export default function CatalogLabels({client,field,value,onSelect}:{client:ApiC
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;revision.current++;};},[]);
  useEffect(()=>{revision.current++;setItems([]);setLoaded(false);setBusy(false);setError("");setMore(false);},[value]);
  async function load(){
+  if(field==="characters"&&!value.trim()){setError("Enter a character-name prefix first.");return;}
   if(new TextEncoder().encode(value.trim()).length>128){revision.current++;setBusy(false);setItems([]);setLoaded(false);setMore(false);setError("Enter a shorter label prefix (at most 128 UTF-8 bytes).");return;}
   const current=++revision.current;setBusy(true);setError("");
   try{
@@ -18,7 +19,7 @@ export default function CatalogLabels({client,field,value,onSelect}:{client:ApiC
   finally{if(alive.current&&current===revision.current)setBusy(false);}
  }
  return <div className="mt-1 text-xs">
-  <button type="button" disabled={busy} onClick={()=>void load()} className="text-violet-200 underline">{busy?"Loading labels…":field==="themes"?"Find theme labels (may contain spoilers)":field==="providers"?"Find metadata providers":field==="staff"?"Find staff names":"Find "+field+" labels"}</button>
+  <button type="button" disabled={busy} onClick={()=>void load()} className="text-violet-200 underline">{busy?"Loading labels…":field==="themes"?"Find theme labels (may contain spoilers)":field==="providers"?"Find metadata providers":field==="staff"?"Find staff names":field==="characters"?"Find character names (may contain spoilers)":"Find "+field+" labels"}</button>
   {error&&<p role="alert">{error}</p>}
   {loaded&&!items.length&&<p>No stored labels match this prefix.</p>}
   {more&&<p>More labels are available. Enter a narrower prefix and search again.</p>}
