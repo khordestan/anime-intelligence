@@ -80,6 +80,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		{[]string{"episodeCount"}, 200},
 		{[]string{"continuity"}, 200},
 		{[]string{"staffCredits"}, 200},
+		{[]string{"installment"}, 200},
 		{[]string{"characterCredits"}, 502},
 		{[]string{"nativeTitle", "season", "demographics"}, 200},
 		{[]string{"episodeCount", "episodeCount"}, 502},
@@ -89,7 +90,7 @@ func TestAnalyzeAssistedRejectsUnknownKeys(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/analysis/catalog/assisted",
 			strings.NewReader(`{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`))
 		handler.AnalyzeWithSelector(response, request, func(_ context.Context, question string, allowed []string) ([]string, string, error) {
-			if question != "How long?" || len(allowed) != 13 {
+			if question != "How long?" || len(allowed) != 14 {
 				t.Fatalf("unexpected provider input: %q %v", question, allowed)
 			}
 			return tc.fields, "synthetic-1", nil
@@ -316,5 +317,32 @@ func TestAnalyzeStaffEvidenceIsAttributedAndBounded(t *testing.T) {
 	}, "staffCredits", now, analysisReleaseScope{})
 	if len(fact.StaffCredits) != 20 || !fact.Truncated || fact.ObservedAt == nil || !fact.ObservedAt.Equal(now) {
 		t.Fatalf("credit limit or attribution missing: %+v", fact)
+	}
+}
+
+func TestAnalysisInstallmentUsesPrimaryNumberingIndependentlyOfQuarter(t *testing.T) {
+	fields, matched := selectAnalysisFields("Which season is this?")
+	if !matched || strings.Join(fields, ",") != "season,installment" {
+		t.Fatalf("ambiguous season topic lost available meanings: %v", fields)
+	}
+	now := time.Now().UTC()
+	details := store.CatalogDetails{
+		Anime: store.Anime{Season: "FALL"}, SeasonNumber: 3, PartNumber: 2,
+		Provider: "primary", ObservedAt: &now,
+		FieldSources: []store.CatalogFieldSource{{Field: "season", Provider: "reviewed-quarter"}},
+	}
+	quarter := projectAnalysisFact(details, "season", now, analysisReleaseScope{})
+	installment := projectAnalysisFact(details, "installment", now, analysisReleaseScope{})
+	if len(quarter.Values) != 1 || quarter.Values[0] != "FALL" || quarter.Provider != "reviewed-quarter" {
+		t.Fatalf("unexpected airing quarter: %+v", quarter)
+	}
+	if installment.Installment == nil || *installment.Installment != (analysisInstallment{SeasonNumber: 3, PartNumber: 2}) ||
+		installment.Provider != "primary" || installment.ObservedAt == nil || !installment.ObservedAt.Equal(now) {
+		t.Fatalf("unexpected installment evidence: %+v", installment)
+	}
+	details.SeasonNumber = 0
+	unknown := projectAnalysisFact(details, "installment", now, analysisReleaseScope{})
+	if unknown.Installment != nil || unknown.Provider != "" || len(unknown.Values) != 0 {
+		t.Fatalf("unanchored part or attribution returned: %+v", unknown)
 	}
 }

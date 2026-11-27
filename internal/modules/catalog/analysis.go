@@ -25,6 +25,12 @@ type catalogAnalysisFact struct {
 	EpisodeFacts    []analysisEpisodeFact    `json:"episodeFacts,omitempty"`
 	ContinuityFacts []analysisContinuityFact `json:"continuityFacts,omitempty"`
 	StaffCredits    []store.CatalogCredit    `json:"staffCredits,omitempty"`
+	Installment     *analysisInstallment     `json:"installment,omitempty"`
+}
+
+type analysisInstallment struct {
+	SeasonNumber int32 `json:"seasonNumber"`
+	PartNumber   int32 `json:"partNumber,omitempty"`
 }
 
 type analysisEpisodeFact struct {
@@ -69,7 +75,8 @@ var analysisFields = []struct {
 	{"genres", []string{"genre", "genres", "category", "categories"}},
 	{"studios", []string{"studio", "studios", "animated", "production"}},
 	{"nativeTitle", []string{"native", "japanese"}},
-	{"season", []string{"quarter", "winter", "spring", "summer", "fall", "autumn"}},
+	{"season", []string{"quarter", "season", "winter", "spring", "summer", "fall", "autumn"}},
+	{"installment", []string{"installment", "installments", "season", "split", "part", "parts"}},
 	{"demographics", []string{"demographic", "demographics"}},
 	{"staffCredits", []string{"staff", "director", "directors", "directed", "writer", "writers"}},
 	{"confirmedReleases", []string{"confirmed", "released", "premiered"}},
@@ -374,6 +381,12 @@ func projectAnalysisFact(details store.CatalogDetails, field string, asOf time.T
 		}
 	case "demographics":
 		fact.Values = append(fact.Values, details.Demographics...)
+	case "installment":
+		if details.SeasonNumber > 0 {
+			fact.Installment = &analysisInstallment{SeasonNumber: details.SeasonNumber, PartNumber: details.PartNumber}
+			fact.Provider, fact.ObservedAt = details.Provider, details.ObservedAt
+		}
+		return fact
 	case "staffCredits":
 		if len(details.StaffCredits) > 0 {
 			const maxCredits = 20

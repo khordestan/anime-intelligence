@@ -6,7 +6,7 @@ import ProviderCredit from "./provider-credit";
 
 type ComparisonTitle = { id: string; title: string; releaseYear?: number };
 type ContinuityFact = { animeId: string; title: string; relation: "PREQUEL" | "SEQUEL"; providers: string[] | null };
-type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean; episodeFacts?: { number: number; track: string; time: string; provider?: string }[]; continuityFacts?: ContinuityFact[]; staffCredits?: { name: string; role: string }[] };
+type Fact = { field: string; values: string[]; provider?: string; observedAt?: string; truncated?: boolean; episodeFacts?: { number: number; track: string; time: string; provider?: string }[]; continuityFacts?: ContinuityFact[]; staffCredits?: { name: string; role: string }[]; installment?: { seasonNumber: number; partNumber?: number } };
 type Comparison = { field: "episodeCount" | "releaseYear"; difference: number; animeIds: [string, string] };
 type Analysis = { model?: string; comparisons?: Comparison[]; sharedEvidence?: { field: "genres" | "studios"; values: string[] }[]; topicMatched: boolean; items: { animeId: string; title: string; evidence: Fact[] }[] };
 
@@ -21,6 +21,7 @@ const labels: Record<string, string> = {
   season: "Release quarter",
   demographics: "Demographics",
   staffCredits: "Reviewed staff credits",
+  installment: "Sourced installment",
   confirmedReleases: "Confirmed releases",
   upcomingSchedule: "Upcoming schedule (unconfirmed)",
   continuity: "Direct continuity",
@@ -215,6 +216,8 @@ export default function CatalogAnalysis({ client, animeID, assistedAvailable }: 
                               </li>
                             ))}
                           </ul>
+                        ) : fact.installment ? (
+                          <>Season {fact.installment.seasonNumber}{fact.installment.partNumber != null && <> · Part {fact.installment.partNumber}</>}</>
                         ) : fact.staffCredits?.length ? (
                           <ul className="space-y-1">
                             {fact.staffCredits.map(credit => (

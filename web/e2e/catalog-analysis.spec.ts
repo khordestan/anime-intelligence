@@ -56,6 +56,13 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
           { field: "upcomingSchedule", values: [], episodeFacts: [{ number: 2, track: "DUB", time: "2027-01-01T00:00:00Z", provider: "synthetic-scoped" }] },
         ] }] });
       }
+      if (payload.question === "Which season is this?") {
+        expect(payload).toEqual({ question: "Which season is this?", animeIds: [id] });
+        return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
+          { field: "season", values: ["FALL"], provider: "synthetic-quarter" },
+          { field: "installment", values: [], provider: "synthetic-installments", installment: { seasonNumber: 3, partNumber: 2 } },
+        ] }] });
+      }
       if (payload.question === "Who directed this?") {
         expect(payload).toEqual({ question: "Who directed this?", animeIds: [id] });
         return reply({ engine: "catalog-facts-v1", topicMatched: true, items: [{ animeId: id, title, evidence: [
@@ -109,6 +116,12 @@ test(`${assisted ? "model-assisted" : "deterministic"} catalog questions show re
   await expect(evidence.getByText("Reviewed staff credits", { exact: true })).toBeVisible();
   await expect(evidence.getByText("Synthetic Person · Director", { exact: true })).toBeVisible();
   await expect(evidence.getByText("Source: synthetic-credits")).toBeVisible();
+  await page.getByLabel("Question about this title").fill("Which season is this?");
+  await page.getByRole("button", { name: "Show evidence" }).click();
+  await expect(evidence.getByText("Sourced installment", { exact: true })).toBeVisible();
+  await expect(evidence.getByText("Season 3 · Part 2", { exact: true })).toBeVisible();
+  await expect(evidence.getByText("Source: synthetic-installments")).toBeVisible();
+  await expect(evidence.getByText("FALL", { exact: true })).toBeVisible();
   if (!assisted) {
     await page.getByLabel("Question about this title").fill("What has been confirmed and what is scheduled?");
     await page.getByRole("button", { name: "Show evidence" }).click();

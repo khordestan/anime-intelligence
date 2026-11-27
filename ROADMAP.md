@@ -204,6 +204,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Analyst evidence for confirmed release observations and upcoming predictions with per-track attribution
 - [x] Analyst evidence for direct attributed prequel and sequel links
 - [x] Analyst evidence for reviewed staff names and roles with primary source attribution
+- [x] Analyst evidence for sourced season and split-part numbers, distinct from airing quarter
 - [ ] Evidence-grounded explanations across broader analyst tools
 - [x] Owner-scoped Personal Match dismissals and dashboard undo
 - [x] Discovery hide/restore and add-to-Planning feedback

@@ -114,7 +114,7 @@ paths:
                   uniqueItems: true
                   items: { type: string, format: uuid }
       responses:
-        "200": { description: Sourced catalog evidence including bounded reviewed staff credits, supported numeric comparisons, optional shared genre or studio evidence and model selection provenance }
+        "200": { description: Sourced catalog evidence including installment numbering and bounded reviewed staff credits, supported numeric comparisons, optional shared genre or studio evidence and model selection provenance }
         "400": { description: Invalid question or selection }
         "401": { description: Missing or invalid session }
         "403": { description: Verified email required }
