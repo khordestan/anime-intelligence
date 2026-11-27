@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
 async function mockRewatches(page: Page, hold = false) {
-  let issued = 0, attempts = 0;
+  let issued = 0, attempts = 0, monthlyRequests = 0;
   let cycle = 1, blocked = false;
   let release = () => {};
   const posts: unknown[] = [];
@@ -20,6 +20,18 @@ async function mockRewatches(page: Page, hold = false) {
     }
     if (path === "/auth/logout") return route.fulfill({ status: 204, headers });
     if (path === "/tracker") return respond({ items: token.endsWith("1") ? [{ id: "synthetic-entry", animeId: "synthetic-title", title: "Synthetic Rewatch", watchStatus: cycle === 1 ? "COMPLETED" : "WATCHING", episodesWatched: cycle === 1 ? 3 : 0, exactProgress: cycle === 1, totalEpisodes: 12, rating: 5, watchCycle: cycle }] : [] });
+    if (path === "/tracker/viewing-history-summary") {
+      monthlyRequests++;
+      expect(token.endsWith("1")).toBe(true);
+      if (hold) { blocked = true; await new Promise<void>(resolve => { release = resolve; }); }
+      else if (monthlyRequests === 1) return respond({ error: "synthetic_failure" }, 500);
+      try {
+        return await respond({ months: [
+          { month: "2026-01", archived: 3, rated: 2, averageRating: 4.5 },
+          { month: "2025-12", archived: 1, rated: 0, averageRating: null },
+        ] });
+      } catch { return; }
+    }
     if (path === "/tracker/synthetic-entry/rewatches") {
       if (request.method() === "POST") {
         posts.push(request.postDataJSON());
@@ -32,7 +44,7 @@ async function mockRewatches(page: Page, hold = false) {
     }
     return respond({}, 404);
   });
-  return { posts, blocked: () => blocked, release: () => release() };
+  return { posts, monthlyRequests: () => monthlyRequests, blocked: () => blocked, release: () => release() };
 }
 async function login(page: Page, email: string) {
   await page.getByLabel("Email", { exact: true }).fill(email);
@@ -77,4 +89,33 @@ test("late viewing history cannot cross accounts", async ({ page }) => {
   api.release();
   await expect(page.getByRole("region", { name: "Viewing history Synthetic Rewatch", exact: true })).toHaveCount(0);
   await expect(page.getByText("Synthetic Rewatch", { exact: true })).toHaveCount(0);
+});
+
+test("monthly viewing history loads explicitly, retries, and renders archive totals", async ({ page }) => {
+  const api = await mockRewatches(page);
+  await page.goto("/");
+  await login(page, "monthly-history@example.test");
+  await page.getByText("Library summary", { exact: true }).click();
+  const summary = page.getByRole("region", { name: "Monthly viewing history", exact: true });
+  await expect(summary.getByRole("button", { name: "Load monthly viewing history" })).toBeVisible();
+  expect(api.monthlyRequests()).toBe(0);
+  await summary.getByRole("button", { name: "Load monthly viewing history" }).click();
+  await expect(summary.getByRole("alert")).toBeVisible();
+  await summary.getByRole("button", { name: "Load monthly viewing history" }).click();
+  await expect(summary.getByRole("table").getByRole("row").nth(1).getByRole("cell")).toHaveText(["3", "2", "4.5 / 5"]);
+  await expect(summary.getByRole("table").getByRole("row").nth(2).getByRole("cell")).toHaveText(["1", "0", "—"]);
+});
+
+test("late monthly viewing history cannot cross accounts", async ({ page }) => {
+  const api = await mockRewatches(page, true);
+  await page.goto("/");
+  await login(page, "monthly-first@example.test");
+  await page.getByText("Library summary", { exact: true }).click();
+  await page.getByRole("button", { name: "Load monthly viewing history" }).click();
+  await expect.poll(api.blocked).toBe(true);
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await login(page, "monthly-second@example.test");
+  api.release();
+  await expect(page.getByRole("region", { name: "Monthly viewing history" })).toHaveCount(0);
+  await expect(page.getByText("4.5 / 5", { exact: true })).toHaveCount(0);
 });

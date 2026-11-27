@@ -6,6 +6,7 @@ import ReleaseAlerts from "./release-alerts";
 import ReleaseCalendar from "./release-calendar";
 import EpisodeEditor from "./episode-editor";
 import RewatchManager from "./rewatch-manager";
+import MonthlyViewingHistory from "./monthly-viewing-history";
 import NotesEditor from "./notes-editor";
 import CatalogDetails from "./catalog-details";
 import CatalogFilters, { emptyCatalogFilters, type CatalogFilterValues } from "./catalog-filters";
@@ -744,7 +745,8 @@ export default function Home() {
           </button>
         </div>
         {canEdit && !loading && library.length > 0 && (
-          <LibrarySummary key={session?.user.id ?? "local"} entries={library} />
+          <LibrarySummary key={session?.user.id ?? "local"} entries={library}
+            historyClient={mode === "postgres" ? client : undefined} onError={handleError} />
         )}
         {mode === "postgres" && canEdit && showWatchListImport && (
           <form onSubmit={event => { event.preventDefault(); void uploadWatchList(false); }} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
@@ -1103,7 +1105,11 @@ function RatingDistribution({ summary, label }: { summary: RatingSummary; label:
   );
 }
 
-function LibrarySummary({ entries }: { entries: Entry[] }) {
+function LibrarySummary({ entries, historyClient, onError }: {
+  entries: Entry[];
+  historyClient?: ApiClient;
+  onError: (error: unknown) => void;
+}) {
   const summary = useMemo(() => {
     const byStatus = new Map<string, number>();
     const seasonEntries = entries.filter(entry => entry.seasonRatingAvailable);
@@ -1210,6 +1216,7 @@ function LibrarySummary({ entries }: { entries: Entry[] }) {
           </section>
         )}
       </section>
+      {historyClient && <MonthlyViewingHistory client={historyClient} onError={onError} />}
     </details>
   );
 }
