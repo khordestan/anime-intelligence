@@ -61,15 +61,29 @@ type FeedbackComparison struct {
 	WithFeedback    RankingMetrics `json:"withFeedbackMean"`
 }
 
+func (comparison *FeedbackComparison) add(result CaseEvaluation) {
+	comparison.CaseCount++
+	comparison.WithoutFeedback.add(result.PersonalMatch)
+	comparison.WithFeedback.add(result.WithFeedback.Ranking)
+}
+
+func (comparison FeedbackComparison) mean() FeedbackComparison {
+	n := float64(comparison.CaseCount)
+	comparison.WithoutFeedback.divide(n)
+	comparison.WithFeedback.divide(n)
+	return comparison
+}
+
 type EvaluationReport struct {
-	CandidateLimit      int                 `json:"candidateLimit,omitempty"`
-	MeanRetrievalRecall *float64            `json:"meanRetrievalRecall,omitempty"`
-	AlgorithmVersion    string              `json:"algorithmVersion"`
-	K                   int                 `json:"k"`
-	Cases               []CaseEvaluation    `json:"cases"`
-	PersonalMatch       RankingMetrics      `json:"personalMatchMean"`
-	TitleBaseline       RankingMetrics      `json:"titleBaselineMean"`
-	FeedbackComparison  *FeedbackComparison `json:"feedbackComparison,omitempty"`
+	CandidateLimit      int                           `json:"candidateLimit,omitempty"`
+	MeanRetrievalRecall *float64                      `json:"meanRetrievalRecall,omitempty"`
+	AlgorithmVersion    string                        `json:"algorithmVersion"`
+	K                   int                           `json:"k"`
+	Cases               []CaseEvaluation              `json:"cases"`
+	PersonalMatch       RankingMetrics                `json:"personalMatchMean"`
+	TitleBaseline       RankingMetrics                `json:"titleBaselineMean"`
+	FeedbackComparison  *FeedbackComparison           `json:"feedbackComparison,omitempty"`
+	FeedbackByDirection map[string]FeedbackComparison `json:"feedbackByDirection,omitempty"`
 }
 
 // EvaluatePersonalMatch evaluates explicit positive judgments at k. Both
@@ -89,6 +103,7 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 	report := EvaluationReport{AlgorithmVersion: PersonalMatchAlgorithmVersion, K: k, CandidateLimit: suite.CandidateLimit}
 	var retrievalRecall float64
 	var feedback FeedbackComparison
+	feedbackByDirection := make(map[string]FeedbackComparison, 3)
 	caseIDs := make(map[string]struct{}, len(suite.Cases))
 	for index, item := range suite.Cases {
 		_, duplicate := caseIDs[item.ID]
@@ -107,9 +122,11 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 		report.PersonalMatch.add(result.PersonalMatch)
 		report.TitleBaseline.add(result.TitleBaseline)
 		if result.WithFeedback != nil {
-			feedback.CaseCount++
-			feedback.WithoutFeedback.add(result.PersonalMatch)
-			feedback.WithFeedback.add(result.WithFeedback.Ranking)
+			feedback.add(result)
+			direction := feedbackDirection(item.Feedback)
+			comparison := feedbackByDirection[direction]
+			comparison.add(result)
+			feedbackByDirection[direction] = comparison
 		}
 	}
 	n := float64(len(report.Cases))
@@ -120,12 +137,28 @@ func EvaluatePersonalMatch(suite EvaluationSuite, k int) (EvaluationReport, erro
 	report.PersonalMatch.divide(n)
 	report.TitleBaseline.divide(n)
 	if feedback.CaseCount > 0 {
-		paired := float64(feedback.CaseCount)
-		feedback.WithoutFeedback.divide(paired)
-		feedback.WithFeedback.divide(paired)
-		report.FeedbackComparison = &feedback
+		mean := feedback.mean()
+		report.FeedbackComparison = &mean
+		for direction, comparison := range feedbackByDirection {
+			feedbackByDirection[direction] = comparison.mean()
+		}
+		report.FeedbackByDirection = feedbackByDirection
 	}
 	return report, nil
+}
+
+// The fixture has at least one validated reaction. Only fixed group names are reported.
+func feedbackDirection(feedback []EvaluationTitleFeedback) string {
+	direction := feedback[0].Direction
+	for _, item := range feedback[1:] {
+		if item.Direction != direction {
+			return "mixed"
+		}
+	}
+	if direction > 0 {
+		return "positiveOnly"
+	}
+	return "negativeOnly"
 }
 
 func evaluateCase(item EvaluationCase, k, candidateLimit int) (CaseEvaluation, error) {

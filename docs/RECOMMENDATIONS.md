@@ -71,4 +71,6 @@ A v1 Personal Match evaluation case can include up to 100 earlier title reaction
 
 The existing Personal Match metrics run with ratings and declared preferences. When a case supplies reactions, the evaluator runs the same candidate selection and ranking again with title feedback applied. It reports the paired means across cases with reactions and, when a retrieval cap is set, retrieval metrics for both runs. Use synthetic or approved evidence and judgments. A representative longitudinal dataset remains open.
 
+The paired Personal Match report also groups cases with reactions into positive-only, negative-only, and mixed directions. Each present group gets its own case count and paired ranking means. Cases without reaction fixtures contribute only to the unpaired report. Small groups describe the supplied fixtures and need representative judgments before drawing conclusions about deployment.
+
 In **Your feature preferences**, expand **Recent ratings behind** a feature to see up to three of your own series ratings behind its inferred signal. The sample is ordered by rating recency and drawn from the same eligible observations as the displayed supporting count. A neutral series rating does not contribute. The list represents examples from the inference, and a declared preference can take precedence for ranking.

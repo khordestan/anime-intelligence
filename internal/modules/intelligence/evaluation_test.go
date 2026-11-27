@@ -93,6 +93,29 @@ func TestEvaluatePersonalMatchComparesTitleFeedbackOnHeldOutTitles(t *testing.T)
 		report.Cases[1].WithFeedback != nil {
 		t.Fatalf("paired report: %+v %v", report, err)
 	}
+	if len(report.FeedbackByDirection) != 1 || report.FeedbackByDirection["positiveOnly"] != *report.FeedbackComparison {
+		t.Fatalf("single direction comparison: %+v", report.FeedbackByDirection)
+	}
+	negative := withFeedback
+	negative.ID = "negative"
+	negative.Feedback = []EvaluationTitleFeedback{{AnimeID: "negative-training", Direction: -1, Features: []FeatureValue{feature}}}
+	mixed := withFeedback
+	mixed.ID = "mixed"
+	mixed.Feedback = append(append([]EvaluationTitleFeedback(nil), withFeedback.Feedback...), negative.Feedback...)
+	suite.Cases = append(suite.Cases, negative, mixed)
+	report, err = EvaluatePersonalMatch(suite, 1)
+	if err != nil || report.FeedbackComparison == nil || report.FeedbackComparison.CaseCount != 3 || len(report.FeedbackByDirection) != 3 {
+		t.Fatalf("direction comparisons: %+v %v", report, err)
+	}
+	for index, direction := range []string{"positiveOnly", "negativeOnly", "mixed"} {
+		caseIndex := []int{0, 2, 3}[index]
+		group := report.FeedbackByDirection[direction]
+		item := report.Cases[caseIndex]
+		if group.CaseCount != 1 || item.WithFeedback == nil ||
+			group.WithoutFeedback != item.PersonalMatch || group.WithFeedback != item.WithFeedback.Ranking {
+			t.Fatalf("unexpected %s comparison: %+v", direction, group)
+		}
+	}
 	suite.Cases[0].Feedback[0].AnimeID = "held-out"
 	if _, err = EvaluatePersonalMatch(suite, 1); err == nil {
 		t.Fatal("held-out title accepted as reaction training input")
