@@ -138,6 +138,7 @@ func NewPostgresRouterWithPush(logger *slog.Logger, db *postgres.DB, delivery *i
 	registerEpisodeRoutes(mux, db, protect)
 	registerRewatchRoutes(mux, db, protect)
 	mux.HandleFunc("GET /api/v1/tracker/viewing-history-summary", protect(viewingHistorySummary(db)))
+	mux.HandleFunc("POST /api/v1/analysis/library", protect(privateLibraryAnalysis(db)))
 	registerNotesRoutes(mux, db, protect)
 	registerCalendarRoutes(mux, db, protect)
 	registerRecommendationRoutes(mux, db, protect)

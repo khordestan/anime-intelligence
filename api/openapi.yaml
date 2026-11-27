@@ -141,6 +141,44 @@ paths:
         "404": { description: Model assistance unavailable or selected anime not found }
         "429": { description: Request budget exhausted or model work already at capacity }
         "502": { description: Model unavailable or invalid topic selection }
+  /api/v1/analysis/library:
+    post:
+      summary: Answer a verified owner's question about their archived passes and ratings
+      description: Uses deterministic topic matching and the latest twelve UTC archive months.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 400, description: UTF-8 input capped at 400 bytes. }
+      responses:
+        "200":
+          description: Selected owner facts and the UTC archive window when the question matched
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [engine, topicMatched]
+                properties:
+                  engine: { type: string, const: library-history-v1 }
+                  topicMatched: { type: boolean }
+                  fromMonth: { type: string, pattern: '^[0-9]{4}-[0-9]{2}$' }
+                  throughMonth: { type: string, pattern: '^[0-9]{4}-[0-9]{2}$' }
+                  archivedPasses: { type: integer, minimum: 0 }
+                  archiveRatings:
+                    type: object
+                    required: [rated, average]
+                    properties:
+                      rated: { type: integer, minimum: 0 }
+                      average: { type: [number, 'null'], minimum: 1, maximum: 5 }
+        "400": { description: Invalid library question }
+        "401": { description: Missing or invalid session }
+        "403": { description: Verified email required }
   /api/v1/anime:
     get:
       summary: Search or browse the public catalog

@@ -35,3 +35,5 @@ Choose an **Evidence topic** in the dashboard to retrieve those facts directly w
 The OpenAPI contract describes the same typed evidence response on both analysis routes, including staff credits, installment numbering, episode timestamps and continuity links. [OpenAPI](../api/openapi.yaml)
 
 Choose **Curated features** or ask about a title’s features to see up to 20 current, positive reviewed series observations. Each result shows its feature label, curator confidence and observation date. The application uses the same eligibility rules as Personal Match and Discovery. The tool reads catalog observations without reading library data or returning evidence prose or reference URLs.
+
+A verified owner can ask **Monthly viewing history** about previous completed passes or the series ratings saved at archive time. This separate deterministic library tool covers the latest twelve UTC archive months and shows the rating sample size alongside the mean. It reads the owner’s aggregate archive data in the application and returns only the selected facts.
