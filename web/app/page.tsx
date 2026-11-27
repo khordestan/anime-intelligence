@@ -8,6 +8,7 @@ import EpisodeEditor from "./episode-editor";
 import RewatchManager from "./rewatch-manager";
 import MonthlyViewingHistory from "./monthly-viewing-history";
 import NotesEditor from "./notes-editor";
+import PlanningRelink from "./planning-relink";
 import CatalogDetails from "./catalog-details";
 import CatalogFilters, { emptyCatalogFilters, type CatalogFilterValues } from "./catalog-filters";
 import GlobalEssentials from "./global-essentials";
@@ -1021,6 +1022,12 @@ export default function Home() {
                 {mode === "postgres" && session?.user.emailVerified && (
                   <NotesEditor client={client} id={e.id} title={e.title} disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
                 )}
+                {mode === "postgres" && session?.user.emailVerified && e.watchStatus === "PLANNING" &&
+                  e.episodesWatched === 0 && !e.exactProgress && !e.rating && !e.seasonRating &&
+                  (e.watchCycle ?? 1) === 1 && e.updatedAt && (
+                    <PlanningRelink client={client} entryId={e.id} animeId={e.animeId} title={e.title} updatedAt={e.updatedAt}
+                      disabled={busy || !canEdit} onSaved={refresh} onError={handleError} />
+                  )}
                 {e.exactProgress && <p className="mt-2 text-xs text-slate-400">Exact episodes tracked; use the episode editor to change your selection.</p>}
                 <div className="mt-4 border-t border-white/10 pt-3">
                   {removal === e.id ? (
