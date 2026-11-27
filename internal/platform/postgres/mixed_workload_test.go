@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -40,6 +41,18 @@ func runConcurrentDashboardWorkload(t *testing.T, owners, rounds, titles int) {
 		SELECT ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
 		       'Synthetic workload title '||n, 'TV'
 		FROM generate_series(1,$1) n`, titles); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.Exec(setup, `WITH source AS (
+		INSERT INTO data_sources(provider_key,display_name)
+		VALUES ('synthetic-workload','Synthetic workload credits') RETURNING id
+	)
+	INSERT INTO catalog_metadata(anime_id,source_id,observed_at,payload)
+	SELECT ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid, source.id, now(),
+		jsonb_build_object('staffCredits',jsonb_build_array(jsonb_build_object(
+			'name',CASE WHEN n%2=0 THEN 'Synthetic Sample Staff' ELSE 'Synthetic Sample Staff Decoy' END,
+			'role','Director')))
+	FROM generate_series(1,$1) n CROSS JOIN source`, titles); err != nil {
 		t.Fatal(err)
 	}
 	accounts := make([]account, owners)
@@ -78,7 +91,10 @@ func runConcurrentDashboardWorkload(t *testing.T, owners, rounds, titles int) {
 		started := time.Now()
 		defer func() {
 			elapsed := time.Since(started)
-			route, _, _ := strings.Cut(path, "?")
+			route, query, _ := strings.Cut(path, "?")
+			if strings.Contains(query, "&staff=") {
+				route += " (staff filter)"
+			}
 			sampleMu.Lock()
 			samples[method+" "+route] = append(samples[method+" "+route], elapsed)
 			sampleMu.Unlock()
@@ -121,10 +137,24 @@ func runConcurrentDashboardWorkload(t *testing.T, owners, rounds, titles int) {
 						statuses[i] = status
 					})
 				}
-				status, data, err := call(0, "GET", "/api/v1/anime?q=Synthetic+workload+title&limit=12", "", "")
+				search := "/api/v1/anime?q=Synthetic+workload+title&limit=12"
+				filtered := count%2 == 1
+				if filtered {
+					search += "&staff=Synthetic+Sample+Staff"
+				}
+				status, data, err := call(0, "GET", search, "", "")
 				var catalog struct{ Items []store.Anime }
 				if err != nil || status != 200 || json.Unmarshal(data, &catalog) != nil || len(catalog.Items) != 12 {
 					t.Errorf("catalog response status=%d items=%d error=%v", status, len(catalog.Items), err)
+				}
+				if filtered {
+					for _, item := range catalog.Items {
+						suffix := strings.TrimPrefix(item.Title, "Synthetic workload title ")
+						number, err := strconv.Atoi(suffix)
+						if err != nil || number%2 != 0 {
+							t.Errorf("staff filter returned a title outside the exact fixture: %s", item.Title)
+						}
+					}
 				}
 				writes.Wait()
 				if statuses != [2]int{http.StatusOK, http.StatusConflict} && statuses != [2]int{http.StatusConflict, http.StatusOK} {
@@ -144,19 +174,24 @@ func runConcurrentDashboardWorkload(t *testing.T, owners, rounds, titles int) {
 	clients.Wait()
 	t.Logf("completed mixed workload in %v with %d owners, %d rounds and %d catalog titles",
 		time.Since(started), owners, rounds, titles)
-	routes := []string{"GET /api/v1/anime", "GET /api/v1/tracker", "PATCH /api/v1/tracker/bulk-progress"}
+	routes := []struct {
+		name  string
+		count int
+	}{
+		{"GET /api/v1/anime", owners * ((rounds + 1) / 2)},
+		{"GET /api/v1/anime (staff filter)", owners * (rounds / 2)},
+		{"GET /api/v1/tracker", owners * rounds},
+		{"PATCH /api/v1/tracker/bulk-progress", 2 * owners * rounds},
+	}
 	for _, route := range routes {
-		durations := samples[route]
-		expected := owners * rounds
-		if strings.HasPrefix(route, "PATCH ") {
-			expected *= 2
-		}
+		durations := samples[route.name]
+		expected := route.count
 		if len(durations) != expected {
-			t.Errorf("%s recorded %d requests, expected %d", route, len(durations), expected)
+			t.Errorf("%s recorded %d requests, expected %d", route.name, len(durations), expected)
 			continue
 		}
 		slices.Sort(durations)
-		t.Logf("%s: requests=%d p50=%v p95=%v", route, len(durations),
+		t.Logf("%s: requests=%d p50=%v p95=%v", route.name, len(durations),
 			durations[(50*len(durations)+99)/100-1], durations[(95*len(durations)+99)/100-1])
 	}
 }
