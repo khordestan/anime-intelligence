@@ -25,8 +25,9 @@ func TestAssistedAnalysisRequiresVerifiedSession(t *testing.T) {
 		return []string{"episodeCount"}, "synthetic-model", nil
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	first := httpapi.NewPostgresRouterWithAnalyst(logger, db, nil, nil, selector)
-	second := httpapi.NewPostgresRouterWithAnalyst(logger, db, nil, nil, selector)
+	metrics := &httpapi.RequestMetrics{}
+	first := metrics.Wrap(httpapi.NewPostgresRouterWithAnalyst(logger, db, nil, nil, selector))
+	second := metrics.Wrap(httpapi.NewPostgresRouterWithAnalyst(logger, db, nil, nil, selector))
 	request := func(handler http.Handler, token string, status int) {
 		t.Helper()
 		body := `{"question":"How long?","animeIds":["10000000-0000-4000-8000-000000000001"]}`
@@ -69,6 +70,17 @@ func TestAssistedAnalysisRequiresVerifiedSession(t *testing.T) {
 	request(first, other.Token, 429)
 	if calls != 4 {
 		t.Fatalf("provider calls = %d, want 4", calls)
+	}
+	scrape := httptest.NewRecorder()
+	metrics.Handler().ServeHTTP(scrape, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	for _, want := range []string{
+		`anime_assisted_analysis_outcomes_total{outcome="provider_returned"} 4`,
+		`anime_assisted_analysis_outcomes_total{outcome="owner_budget_limit"} 1`,
+		`anime_assisted_analysis_outcomes_total{outcome="deployment_budget_limit"} 1`,
+	} {
+		if !strings.Contains(scrape.Body.String(), want+"\n") {
+			t.Fatalf("assisted metrics omitted %q", want)
+		}
 	}
 	exported, err = db.ExportAccount(ctx, other.Token)
 	if err != nil || !strings.Contains(string(exported.Data["analysisUsage"]), other.User.ID) {

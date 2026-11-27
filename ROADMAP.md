@@ -222,6 +222,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] LLM provider abstraction, OpenAI adapter and process-local usage controls
 - [x] Shared PostgreSQL model budgets across API replicas
 - [x] Offline analyst topic evaluation against reviewed judgments with recorded model output replay
+- [x] Loopback analyst quota and provider outcome metrics with fixed stage labels
 - [ ] Representative model evaluation and deployment quota tuning
 
 ## Milestone 7 — Production readiness
