@@ -60,6 +60,38 @@ func TestCatalogDetailsPublicAndConsistent(t *testing.T) {
 		t.Fatalf("staff facet: %+v, %v", facets, err)
 	}
 	h := httpapi.NewPostgresRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), db)
+	for _, fixture := range []struct {
+		query string
+		count int
+	}{
+		{"character=+SYNTHETIC+HIDDEN+CHARACTER+&staff=Synthetic+Director", 1},
+		{"character=Synthetic+Hidden", 0},
+		{"character=Synthetic+Director", 0},
+	} {
+		response := httptest.NewRecorder()
+		h.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/anime?"+fixture.query, nil))
+		var result struct{ Items []store.Anime }
+		if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &result) != nil ||
+			len(result.Items) != fixture.count || (fixture.count == 1 && result.Items[0].ID != id) ||
+			strings.Contains(response.Body.String(), "Synthetic Hidden Character") {
+			t.Fatalf("invalid character search response: %d %s", response.Code, response.Body)
+		}
+	}
+	requestFacet := func(query string) *httptest.ResponseRecorder {
+		out := httptest.NewRecorder()
+		h.ServeHTTP(out, httptest.NewRequest("GET", "/api/v1/anime/facets?field=characters"+query, nil))
+		return out
+	}
+	if got := requestFacet("&prefix=+++"); got.Code != 400 {
+		t.Fatalf("character suggestions accepted a blank prefix: %d %s", got.Code, got.Body)
+	}
+	response := requestFacet("&prefix=sYnThEtIc&limit=1")
+	var names store.CatalogFacetPage
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &names) != nil ||
+		len(names.Items) != 1 || names.Items[0] != "Synthetic Hidden Character" || names.HasMore {
+		t.Fatalf("character suggestions: %d %s", response.Code, response.Body)
+	}
+
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/anime/"+id+"/details", nil))
 	var out store.CatalogDetails

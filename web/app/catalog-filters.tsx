@@ -14,10 +14,10 @@ export type CatalogFilterValues = {
   sort: string;
   minEpisodes: string; maxEpisodes: string;
   mediaType: string; status: string; releaseYear: string; season: string;
-  genre: string; theme: string; demographic: string; studio: string; staff: string;
+  genre: string; theme: string; demographic: string; studio: string; staff: string; character: string;
 };
 export const emptyCatalogFilters: CatalogFilterValues = {
-  confirmedRelease:"", confirmedTrack:"", seasonNumber:"", partNumber:"", metadataProvider:"", minYear:"", maxYear:"", sort:"", minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "", staff: "",
+  confirmedRelease:"", confirmedTrack:"", seasonNumber:"", partNumber:"", metadataProvider:"", minYear:"", maxYear:"", sort:"", minEpisodes:"", maxEpisodes:"", mediaType: "", status: "", releaseYear: "", season: "", genre: "", theme: "", demographic: "", studio: "", staff: "", character: "",
 };
 export default function CatalogFilters({ client, values, onApply }: {
   client: ApiClient; values: CatalogFilterValues; onApply: (values: CatalogFilterValues) => void;
@@ -33,11 +33,11 @@ export default function CatalogFilters({ client, values, onApply }: {
     <button aria-expanded={open} onClick={() => setOpen(!open)} className="text-sm text-violet-200 underline">{open ? "Hide catalog filters" : "Catalog filters"}{applied ? ` (${applied} applied)` : ""}</button>
     {open && <form aria-label="Catalog metadata filters" className="mt-3 space-y-3 rounded-xl border border-white/10 p-3" onSubmit={event => {
       event.preventDefault();
-      const next = { ...draft, metadataProvider: draft.metadataProvider.trim(), genre: draft.genre.trim(), theme: draft.theme.trim(), demographic: draft.demographic.trim(), studio: draft.studio.trim(), staff: draft.staff.trim() };
+      const next = { ...draft, metadataProvider: draft.metadataProvider.trim(), genre: draft.genre.trim(), theme: draft.theme.trim(), demographic: draft.demographic.trim(), studio: draft.studio.trim(), staff: draft.staff.trim(), character: draft.character.trim() };
       if (next.metadataProvider && !/^[a-zA-Z0-9_.-]{1,128}$/.test(next.metadataProvider)) {
         setError("Use an exact metadata provider key."); return;
       }
-      if ([next.genre, next.theme, next.demographic, next.studio, next.staff].some(value => new TextEncoder().encode(value).length > 256)) { setError("Each source label must be at most 256 UTF-8 bytes."); return; }
+      if ([next.genre, next.theme, next.demographic, next.studio, next.staff, next.character].some(value => new TextEncoder().encode(value).length > 256)) { setError("Each source label must be at most 256 UTF-8 bytes."); return; }
       if(next.minEpisodes!==""&&next.maxEpisodes!==""&&Number(next.minEpisodes)>Number(next.maxEpisodes)){setError("Minimum episodes must not exceed maximum episodes.");return;}
       if(next.minYear!==""&&next.maxYear!==""&&Number(next.minYear)>Number(next.maxYear)){setError("Earliest year must not exceed latest year.");return;}
       for (const key of ["seasonNumber", "partNumber"] as const) {
@@ -78,7 +78,7 @@ export default function CatalogFilters({ client, values, onApply }: {
           </label>
         ))}
         <label className="text-xs text-slate-300">Catalog release year<input aria-label="Catalog release year" type="number" min={1900} max={9999} step={1} value={draft.releaseYear} onChange={event => setDraft(current => ({ ...current, releaseYear: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label>
-        {([["genre", "Source genre"], ["theme", "Source theme (may contain spoilers)"], ["demographic", "Source demographic"], ["studio", "Source studio"], ["staff", "Source staff name"]] as const).map(([key, label]) => <div key={key}><label className="text-xs text-slate-300">{label}<input aria-label={label} maxLength={256} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label><CatalogLabels key={key+":"+labelGeneration} client={client} field={{genre:"genres",theme:"themes",demographic:"demographics",studio:"studios",staff:"staff"}[key]} value={draft[key]} onSelect={value=>setDraft(current=>({...current,[key]:value}))} /></div>)}
+        {([["genre", "Source genre"], ["theme", "Source theme (may contain spoilers)"], ["demographic", "Source demographic"], ["studio", "Source studio"], ["staff", "Source staff name"], ["character", "Source character name (may contain spoilers)"]] as const).map(([key, label]) => <div key={key}><label className="text-xs text-slate-300">{label}<input aria-label={label} maxLength={256} value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-white/10 bg-slate-950 p-2" /></label><CatalogLabels key={key+":"+labelGeneration} client={client} field={{genre:"genres",theme:"themes",demographic:"demographics",studio:"studios",staff:"staff",character:"characters"}[key]} value={draft[key]} onSelect={value=>setDraft(current=>({...current,[key]:value}))} /></div>)}
       </div>
       {error && <p role="alert" className="text-xs text-rose-200">{error}</p>}
       <div className="flex gap-4">

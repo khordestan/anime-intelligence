@@ -49,7 +49,7 @@ func (r *Repository) filterCatalog(ctx context.Context, f store.CatalogFilter, l
  OR EXISTS(SELECT 1 FROM catalog_metadata m WHERE m.anime_id=anime.id AND EXISTS(SELECT 1 FROM jsonb_array_elements_text(COALESCE(m.payload->'synonyms','[]'::jsonb)) alias(value) WHERE strpos(lower(value),lower($1))>0)))
  AND ($4='' OR media_type=$4) AND ($5='' OR status=$5)
  AND ($6::int=0 OR release_year=$6) AND ($7='' OR season_name=$7)
- AND (($8='' AND $9='' AND $10='' AND $11='' AND $25='') OR EXISTS(
+ AND (($8='' AND $9='' AND $10='' AND $11='' AND $25='' AND $26='') OR EXISTS(
  SELECT 1 FROM catalog_metadata m WHERE m.anime_id=anime.id
  AND ($8='' OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(COALESCE(m.payload->'genres','[]'::jsonb)) label(value) WHERE lower(btrim(value))=lower($8)))
  AND ($9='' OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(COALESCE(m.payload->'themes','[]'::jsonb)) label(value) WHERE lower(btrim(value))=lower($9)))
@@ -57,6 +57,10 @@ func (r *Repository) filterCatalog(ctx context.Context, f store.CatalogFilter, l
  AND ($25='' OR EXISTS (
    SELECT 1 FROM jsonb_array_elements(COALESCE(m.payload->'staffCredits','[]'::jsonb)) AS credit(value)
    WHERE lower(btrim(credit.value->>'name'))=lower($25)
+ ))
+ AND ($26='' OR EXISTS (
+   SELECT 1 FROM jsonb_array_elements(COALESCE(m.payload->'characterCredits','[]'::jsonb)) AS credit(value)
+   WHERE lower(btrim(credit.value->>'name'))=lower($26)
  ))
  AND ($11='' OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(COALESCE(m.payload->'studios','[]'::jsonb)) label(value) WHERE lower(btrim(value))=lower($11)))
  ))
@@ -82,7 +86,7 @@ func (r *Repository) filterCatalog(ctx context.Context, f store.CatalogFilter, l
      AND ($24::int IS NULL OR cm.payload->'partNumber' = to_jsonb($24::int))
  ))
  AND ($17::bigint IS NULL OR ((`+sortYear+`),canonical_title,id) > ($17,$18,NULLIF($19,'')::uuid))
- ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`, f.Query, limit, offset, f.MediaType, f.Status, f.ReleaseYear, f.Season, f.Genre, f.Theme, f.Demographic, f.Studio, f.MinEpisodes, f.MaxEpisodes, f.Sort, f.MinYear, f.MaxYear, yearKey, title, id, f.ConfirmedRelease, f.MetadataProvider, f.ConfirmedTrack, f.SeasonNumber, f.PartNumber, f.Staff)
+ ORDER BY (`+sortYear+`),canonical_title,id LIMIT $2 OFFSET $3`, f.Query, limit, offset, f.MediaType, f.Status, f.ReleaseYear, f.Season, f.Genre, f.Theme, f.Demographic, f.Studio, f.MinEpisodes, f.MaxEpisodes, f.Sort, f.MinYear, f.MaxYear, yearKey, title, id, f.ConfirmedRelease, f.MetadataProvider, f.ConfirmedTrack, f.SeasonNumber, f.PartNumber, f.Staff, f.Character)
 	if err != nil {
 		return nil, err
 	}
