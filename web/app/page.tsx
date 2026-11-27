@@ -1111,10 +1111,20 @@ function LibrarySummary({ entries }: { entries: Entry[] }) {
     let withTotal = 0;
     let remaining = 0;
     let exact = 0;
+    let archivedPasses = 0;
+    let rewatchedTitles = 0;
+    let activeRewatches = 0;
     for (const entry of entries) {
       byStatus.set(entry.watchStatus, (byStatus.get(entry.watchStatus) ?? 0) + 1);
       if (entry.exactProgress) exact++;
+      const cycle = entry.watchCycle ?? 1;
+      const isRewatch = Number.isInteger(cycle) && cycle > 1 && cycle <= 1000;
+      if (isRewatch) {
+        archivedPasses += cycle - 1;
+        rewatchedTitles++;
+      }
       if (entry.watchStatus !== "WATCHING" && entry.watchStatus !== "ON_HOLD") continue;
+      if (isRewatch) activeRewatches++;
       active++;
       if (entry.totalEpisodes != null && entry.totalEpisodes > 0) {
         withTotal++;
@@ -1129,7 +1139,7 @@ function LibrarySummary({ entries }: { entries: Entry[] }) {
       else pairedRatings.seriesHigher++;
     }
     return {
-      byStatus, active, withTotal, remaining, exact, pairedRatings,
+      byStatus, active, withTotal, remaining, exact, pairedRatings, archivedPasses, rewatchedTitles, activeRewatches,
       series: summarizeRatings(entries.map(entry => entry.rating)),
       season: summarizeRatings(seasonEntries.map(entry => entry.seasonRating)),
       seasonEntries: seasonEntries.length,
@@ -1170,6 +1180,17 @@ function LibrarySummary({ entries }: { entries: Entry[] }) {
             </p>
           )}
         </div>
+        {summary.rewatchedTitles > 0 && (
+          <section aria-labelledby="viewing-pass-summary">
+            <h3 id="viewing-pass-summary" className="font-medium">Viewing passes</h3>
+            <p className="mt-2 text-slate-300">
+              {summary.archivedPasses} previous completed {summary.archivedPasses === 1 ? "pass" : "passes"} across {summary.rewatchedTitles} {summary.rewatchedTitles === 1 ? "title" : "titles"}
+            </p>
+            <p className="mt-1 text-slate-300">
+              {summary.activeRewatches} active or paused {summary.activeRewatches === 1 ? "rewatch" : "rewatches"}
+            </p>
+          </section>
+        )}
         {summary.seasonEntries > 0 && (
           <section aria-labelledby="season-rating-summary">
             <h3 id="season-rating-summary" className="font-medium">Season and split-part ratings</h3>
