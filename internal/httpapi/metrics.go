@@ -57,9 +57,10 @@ var pushEventNames = [...]string{
 }
 
 type RequestMetrics struct {
-	pushEvents [len(pushEventNames)]uint64
-	mu         sync.Mutex
-	totals     [len(requestGroups)]requestTotals
+	pushEvents     [len(pushEventNames)]uint64
+	pushConfigured int
+	mu             sync.Mutex
+	totals         [len(requestGroups)]requestTotals
 }
 
 func (m *RequestMetrics) Wrap(next http.Handler) http.Handler {
@@ -131,12 +132,22 @@ func (m *RequestMetrics) RecordPush(event PushEvent) {
 	m.mu.Unlock()
 }
 
+// MarkPushWorkerConfigured records that this process enabled browser delivery.
+func (m *RequestMetrics) MarkPushWorkerConfigured() {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	m.pushConfigured = 1
+	m.mu.Unlock()
+}
+
 func (m *RequestMetrics) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) {
 		var output bytes.Buffer
 		m.mu.Lock()
-		totals, pushEvents := m.totals, m.pushEvents
+		totals, pushEvents, pushConfigured := m.totals, m.pushEvents, m.pushConfigured
 		m.mu.Unlock()
 
 		fmt.Fprintln(&output, "# HELP anime_http_requests_total Completed API requests by route group and response class.")
@@ -162,6 +173,10 @@ func (m *RequestMetrics) Handler() http.Handler {
 			fmt.Fprintf(&output, "anime_http_request_duration_seconds_sum{group=%q} %g\n", group, totals[i].totalTime)
 			fmt.Fprintf(&output, "anime_http_request_duration_seconds_count{group=%q} %d\n", group, totals[i].count)
 		}
+
+		fmt.Fprintln(&output, "# HELP anime_release_push_worker_configured Whether this process enabled the browser delivery worker.")
+		fmt.Fprintln(&output, "# TYPE anime_release_push_worker_configured gauge")
+		fmt.Fprintf(&output, "anime_release_push_worker_configured %d\n", pushConfigured)
 
 		fmt.Fprintln(&output, "# HELP anime_release_push_events_total Browser delivery loop events by fixed outcome.")
 		fmt.Fprintln(&output, "# TYPE anime_release_push_events_total counter")

@@ -100,6 +100,7 @@ func main() {
 			}()
 		}
 		if pushSender != nil {
+			metrics.MarkPushWorkerConfigured()
 			ctx, cancel := context.WithCancel(context.Background())
 			done := make(chan struct{})
 			go func() {

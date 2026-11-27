@@ -75,3 +75,20 @@ func TestRequestMetricsBoundedRoutesAndConcurrency(t *testing.T) {
 		}
 	}
 }
+
+func TestPushWorkerConfigurationMetric(t *testing.T) {
+	metrics := &RequestMetrics{}
+	handler := metrics.Handler()
+	scrape := func(expected string) {
+		t.Helper()
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest("GET", "/metrics", nil))
+		if !strings.Contains(response.Body.String(), "anime_release_push_worker_configured "+expected+"\n") {
+			t.Fatalf("worker configuration gauge missing or wrong, want %s", expected)
+		}
+	}
+	scrape("0")
+	(*RequestMetrics)(nil).MarkPushWorkerConfigured()
+	metrics.MarkPushWorkerConfigured()
+	scrape("1")
+}
