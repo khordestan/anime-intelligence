@@ -132,8 +132,12 @@ Apply migration 000032 and reapply the restricted runtime grants. Browser push i
 
 - `RELEASE_PUSH_PUBLIC_KEY` and `RELEASE_PUSH_PRIVATE_KEY` contain matching VAPID P-256 keys encoded as unpadded Base64URL. The server provides the public key to verified clients for browser enrollment.
 - `RELEASE_PUSH_CONTACT` is the deployment's HTTPS contact URL for the VAPID signature.
-- `RELEASE_PUSH_STORAGE_KEY` is a separate 32-byte key encoded as canonical standard Base64. Share it across replicas running the scheduler. Changing the storage key or VAPID key pair requires clearing or re-enrolling existing device subscriptions. The encrypted subscriptions depend on the storage key, and the browser registration binds to the VAPID public key.
+- `RELEASE_PUSH_STORAGE_KEY` is a separate 32-byte key encoded as canonical standard Base64. Share it across replicas running the scheduler. Changing the VAPID key pair requires clearing or re-enrolling existing device subscriptions because the browser registration binds to that public key.
 
 Outbound requests accept the fixed FCM, Mozilla and Apple service hosts and reject redirects, local/private IP resolutions and explicit ports. Use approved HTTPS egress and an HTTPS dashboard origin. Full account export includes the consent time. Account deletion and offline recovery fencing remove stored device subscriptions. Synthetic tests use a mock transport, disposable PostgreSQL and mocked browser permissions.
 
 The optional API loopback listener configured by `HTTP_METRICS_ADDR` exposes `anime_release_push_events_total` with fixed outcomes for provider acceptance, retry and expiration, plus errors while claiming, rechecking, opening or finishing a subscription. Provider acceptance records a transport response. One attempt can also produce a subsequent completion error. Counters reset on process restart and contain no provider endpoint, registration, owner or title labels.
+
+### Stage a browser storage key change
+
+Set the optional `RELEASE_PUSH_ALTERNATE_STORAGE_KEY` to a distinct, canonical Base64 key. New subscriptions are always sealed with the primary key. Reads accept both keys. First deploy the new value as the alternate across every replica while keeping the original primary. Once all replicas can read both, promote the new key to primary and retain the original as alternate on every replica. This also permits reverting the primary while both keys remain installed. Existing subscriptions can retain the old ciphertext indefinitely. Keep the old key available until those enrollments have been replaced or removed through an approved procedure. To re-encrypt a browser with the same subscription details, remove the saved registration before re-enrolling.

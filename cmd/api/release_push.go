@@ -17,10 +17,11 @@ func releasePushFromEnv(getenv func(string) string, postgresql bool) (*releasepu
 	case "1":
 		if postgresql {
 			return releasepush.New(releasepush.Config{
-				PublicKey:  getenv("RELEASE_PUSH_PUBLIC_KEY"),
-				PrivateKey: getenv("RELEASE_PUSH_PRIVATE_KEY"),
-				Contact:    getenv("RELEASE_PUSH_CONTACT"),
-				StorageKey: getenv("RELEASE_PUSH_STORAGE_KEY"),
+				PublicKey:           getenv("RELEASE_PUSH_PUBLIC_KEY"),
+				PrivateKey:          getenv("RELEASE_PUSH_PRIVATE_KEY"),
+				Contact:             getenv("RELEASE_PUSH_CONTACT"),
+				StorageKey:          getenv("RELEASE_PUSH_STORAGE_KEY"),
+				AlternateStorageKey: getenv("RELEASE_PUSH_ALTERNATE_STORAGE_KEY"),
 			})
 		}
 	}

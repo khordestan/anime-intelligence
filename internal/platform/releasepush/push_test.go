@@ -100,3 +100,64 @@ func TestRetryDelayBoundsBeforeConvertingToDuration(t *testing.T) {
 		}
 	}
 }
+
+func TestStorageKeyRolloutReadsBothGenerationsAndWritesOnlyPrimary(t *testing.T) {
+	key, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encode := base64.RawURLEncoding.EncodeToString
+	oldKey := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{5}, 32))
+	newKey := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{6}, 32))
+	config := Config{
+		PublicKey: encode(key.PublicKey().Bytes()), PrivateKey: encode(key.Bytes()),
+		Contact: "https://example.test/contact", StorageKey: oldKey,
+	}
+	subscription := Subscription{
+		Endpoint: "https://fcm.googleapis.com/fcm/send/rotation-fixture",
+		Keys:     Keys{Auth: encode(bytes.Repeat([]byte{9}, 16)), P256DH: encode(key.PublicKey().Bytes())},
+	}
+	senderWith := func(primary, alternate string) *Sender {
+		t.Helper()
+		options := config
+		options.StorageKey, options.AlternateStorageKey = primary, alternate
+		sender, err := New(options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sender
+	}
+	oldOnly, oldPrimary := senderWith(oldKey, ""), senderWith(oldKey, newKey)
+	newPrimary, newOnly := senderWith(newKey, oldKey), senderWith(newKey, "")
+	oldPayload, err := oldPrimary.Seal("owner", subscription)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newPayload, err := newPrimary.Seal("owner", subscription)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, replica := range []*Sender{oldPrimary, newPrimary} {
+		for _, payload := range [][]byte{oldPayload, newPayload} {
+			if value, err := replica.Open("owner", payload); err != nil || value != subscription {
+				t.Fatal("staged replica could not read a supported generation")
+			}
+			if _, err := replica.Open("another-owner", payload); err != ErrSubscription {
+				t.Fatal("alternate key bypassed owner binding")
+			}
+		}
+	}
+	if _, err := oldOnly.Open("owner", newPayload); err != ErrSubscription {
+		t.Fatal("old primary opened a new primary write without its alternate")
+	}
+	if _, err := newOnly.Open("owner", oldPayload); err != ErrSubscription {
+		t.Fatal("new primary opened an old primary write without its alternate")
+	}
+	for _, invalid := range []string{oldKey, base64.StdEncoding.EncodeToString(key.Bytes()), "invalid-base64"} {
+		options := config
+		options.AlternateStorageKey = invalid
+		if _, err := New(options); err != ErrConfiguration {
+			t.Fatal("accepted invalid alternate key")
+		}
+	}
+}
