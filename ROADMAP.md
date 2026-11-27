@@ -161,7 +161,6 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Opt-in durable background browser release alerts with encrypted device subscriptions
 - [x] Loopback browser delivery outcome and worker error counters
 - [x] Inactive browser delivery target and worker error alert rules with Prometheus tests
-- [x] Browser delivery configuration gauge and inactive alert for disabled marked workers
 - [ ] Production release email and browser delivery activation
 - [x] Durable canonical release-event and owned notification duplicate suppression
 
@@ -224,6 +223,7 @@ Build one product for anime tracking and discovery. [PROGRESS.md](PROGRESS.md) d
 - [x] Request-log redaction and bounded live dependency/security-schema readiness checks
 - [x] Loopback-tested ingress source limits for credential and model endpoints
 - [x] Loopback API request counts, response classes, rate-limit counts and latency histograms
+- [x] Browser delivery configuration gauge and inactive alert for disabled marked workers
 - [ ] Production ingress configuration, independent security review and broader observability
 - [x] Synthetic PostgreSQL logical restore/key recovery and offline credential-fencing CI drill
 - [x] Isolated PostgreSQL physical base backup and archived WAL restore to a named recovery point
