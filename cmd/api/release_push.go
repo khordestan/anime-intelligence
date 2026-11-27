@@ -37,7 +37,7 @@ func runReleasePush(ctx context.Context, db *postgres.DB, sender *releasepush.Se
 			return
 		case <-ticker.C:
 			claimCtx, cancelClaim := context.WithTimeout(ctx, 3*time.Second)
-			claim, err := db.ClaimPush(claimCtx)
+			claim, err := db.ClaimPush(claimCtx, sender)
 			if err != nil {
 				cancelClaim()
 				metrics.RecordPush(httpapi.PushClaimError)

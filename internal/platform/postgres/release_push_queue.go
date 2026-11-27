@@ -22,7 +22,7 @@ func (c *PushClaim) Subscription(sender *releasepush.Sender) (releasepush.Subscr
 	return sender.Open(c.owner, c.encrypted)
 }
 
-func (d *DB) ClaimPush(ctx context.Context) (*PushClaim, error) {
+func (d *DB) ClaimPush(ctx context.Context, sender *releasepush.Sender) (*PushClaim, error) {
 	tx, err := d.begin(ctx)
 	if err != nil {
 		return nil, err
@@ -69,6 +69,13 @@ func (d *DB) ClaimPush(ctx context.Context) (*PushClaim, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if refreshed := sender.RefreshStorageEnvelope(claim.owner, claim.encrypted); refreshed != nil {
+		if _, err = tx.Exec(ctx, "UPDATE release_push_subscriptions SET payload=$2 WHERE user_id=$1", claim.owner, refreshed); err != nil {
+			return nil, err
+		}
+		claim.encrypted = refreshed
 	}
 
 	if eligible {

@@ -221,20 +221,43 @@ func (s *Sender) Seal(owner string, subscription Subscription) ([]byte, error) {
 }
 
 func (s *Sender) Open(owner string, encrypted []byte) (Subscription, error) {
+	subscription, _, err := s.open(owner, encrypted)
+	return subscription, err
+}
+
+// RefreshStorageEnvelope reseals a readable alternate-key envelope with the
+// primary key. A failed refresh leaves the existing delivery path unchanged.
+func (s *Sender) RefreshStorageEnvelope(owner string, encrypted []byte) []byte {
+	if s.alternate == nil {
+		return nil
+	}
+	subscription, usedAlternate, err := s.open(owner, encrypted)
+	if err != nil || !usedAlternate {
+		return nil
+	}
+	refreshed, err := s.Seal(owner, subscription)
+	if err != nil {
+		return nil
+	}
+	return refreshed
+}
+
+func (s *Sender) open(owner string, encrypted []byte) (Subscription, bool, error) {
 	var subscription Subscription
 	size := s.aead.NonceSize()
 	if owner == "" || len(encrypted) < size+s.aead.Overhead() || len(encrypted) > 4096 {
-		return subscription, ErrSubscription
+		return subscription, false, ErrSubscription
 	}
 	aad := []byte("anime-browser-push:v1:" + owner)
 	body, err := s.aead.Open(nil, encrypted[:size], encrypted[size:], aad)
-	if err != nil && s.alternate != nil {
+	usedAlternate := err != nil && s.alternate != nil
+	if usedAlternate {
 		body, err = s.alternate.Open(nil, encrypted[:size], encrypted[size:], aad)
 	}
 	if err != nil || json.Unmarshal(body, &subscription) != nil || !subscription.valid() {
-		return Subscription{}, ErrSubscription
+		return Subscription{}, false, ErrSubscription
 	}
-	return subscription, nil
+	return subscription, usedAlternate, nil
 }
 
 type Delivery int

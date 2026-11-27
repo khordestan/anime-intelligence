@@ -108,7 +108,7 @@ func TestBrowserPushConsentLeasesAndOwnerIsolation(t *testing.T) {
 
 	event("wrong-push-track", "DUB")
 	event("after-push-consent", "SUB")
-	claim, err := db.ClaimPush(ctx)
+	claim, err := db.ClaimPush(ctx, sender)
 	if err != nil || claim == nil {
 		t.Fatalf("missing first delivery: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestBrowserPushConsentLeasesAndOwnerIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer replica.Close()
-	if duplicate, err := replica.ClaimPush(ctx); err != nil || duplicate != nil {
+	if duplicate, err := replica.ClaimPush(ctx, sender); err != nil || duplicate != nil {
 		t.Fatalf("same delivery claimed on two replicas: %v", err)
 	}
 	if err = replica.FinishPush(ctx, claim, releasepush.Retry, 5*time.Minute); err != nil {
@@ -137,7 +137,7 @@ func TestBrowserPushConsentLeasesAndOwnerIsolation(t *testing.T) {
 		}
 	}
 	due()
-	retry, err := replica.ClaimPush(ctx)
+	retry, err := replica.ClaimPush(ctx, sender)
 	if err != nil || retry == nil {
 		t.Fatalf("missing retry: %v", err)
 	}
@@ -156,12 +156,12 @@ func TestBrowserPushConsentLeasesAndOwnerIsolation(t *testing.T) {
 		t.Fatalf("wrong delivery event %s: %v", deliveredEvent, err)
 	}
 	due()
-	if duplicate, err := db.ClaimPush(ctx); err != nil || duplicate != nil {
+	if duplicate, err := db.ClaimPush(ctx, sender); err != nil || duplicate != nil {
 		t.Fatalf("delivered event was replayed: %v", err)
 	}
 	event("revoked-push-event", "SUB")
 	due()
-	pending, err := db.ClaimPush(ctx)
+	pending, err := db.ClaimPush(ctx, sender)
 	if err != nil || pending == nil {
 		t.Fatalf("missing pending event: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestBrowserPushConsentLeasesAndOwnerIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	event("replacement-push-event", "SUB")
-	newClaim, err := db.ClaimPush(ctx)
+	newClaim, err := db.ClaimPush(ctx, sender)
 	if err != nil || newClaim == nil {
 		t.Fatalf("replacement device blocked by stale removal: %v", err)
 	}
@@ -185,5 +185,81 @@ func TestBrowserPushConsentLeasesAndOwnerIsolation(t *testing.T) {
 	}
 	if newRegistration.ID == original.ID || !strings.Contains(request("GET", "", first.Token, nil, 200), `"registration":null`) {
 		t.Fatal("gone provider endpoint remained registered")
+	}
+}
+
+func TestBrowserPushWorkerResealsDormantRegistrations(t *testing.T) {
+	db, admin, _, runtimeDSN := testDB(t)
+	ctx := context.Background()
+	account, err := db.Register(ctx, "push-rotation@example.test", "synthetic-rotation-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyAccount(t, db, account.Token)
+
+	key, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encode := base64.RawURLEncoding.EncodeToString
+	oldStorage := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{21}, 32))
+	newStorage := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{22}, 32))
+	senderWith := func(primary, alternate string) *releasepush.Sender {
+		t.Helper()
+		sender, err := releasepush.New(releasepush.Config{
+			PublicKey: encode(key.PublicKey().Bytes()), PrivateKey: encode(key.Bytes()),
+			Contact: "https://example.test/contact", StorageKey: primary, AlternateStorageKey: alternate,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sender
+	}
+	oldSender := senderWith(oldStorage, "")
+	rotatedSender := senderWith(newStorage, oldStorage)
+	finalSender := senderWith(newStorage, "")
+	subscription := releasepush.Subscription{
+		Endpoint: "https://fcm.googleapis.com/fcm/send/dormant-rotation-fixture",
+		Keys:     releasepush.Keys{Auth: encode(bytes.Repeat([]byte{9}, 16)), P256DH: encode(key.PublicKey().Bytes())},
+	}
+	repo := db.Repository(account.Token)
+	original, err := repo.RegisterPush(ctx, oldSender, subscription)
+	if err != nil || original == nil {
+		t.Fatal("initial enrollment", err)
+	}
+	storedPayload := func() []byte {
+		t.Helper()
+		var payload []byte
+		if err := admin.QueryRow(ctx, "SELECT payload FROM release_push_subscriptions WHERE user_id=$1", account.User.ID).Scan(&payload); err != nil {
+			t.Fatal(err)
+		}
+		return payload
+	}
+	before := storedPayload()
+	if _, err := finalSender.Open(account.User.ID, before); err != releasepush.ErrSubscription {
+		t.Fatal("fixture was already encrypted with the new key")
+	}
+
+	replica, err := postgres.Open(ctx, runtimeDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(replica.Close)
+	if claim, err := replica.ClaimPush(ctx, rotatedSender); err != nil || claim != nil {
+		t.Fatal("dormant registration minted a delivery", err)
+	}
+	after := storedPayload()
+	if actual, err := finalSender.Open(account.User.ID, after); err != nil || actual != subscription {
+		t.Fatal("new primary cannot read resealed registration", err)
+	}
+	if _, err := oldSender.Open(account.User.ID, after); err != releasepush.ErrSubscription {
+		t.Fatal("old primary still opens the resealed registration")
+	}
+	current, err := repo.PushRegistration(ctx)
+	if err != nil || current == nil || *current != *original {
+		t.Fatal("resealing changed the registration or original consent time", err)
+	}
+	if result := rotatedSender.RefreshStorageEnvelope(account.User.ID, after); result != nil {
+		t.Fatal("one key generation resealed an already current envelope")
 	}
 }
