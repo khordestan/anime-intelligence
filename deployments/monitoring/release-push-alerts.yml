@@ -1,0 +1,27 @@
+groups:
+  - name: anime-release-push
+    interval: 30s
+    rules:
+      - alert: AnimeReleasePushMonitorTargetDown
+        expr: up{anime_release_push_monitor="true"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Browser release delivery monitoring target is unreachable'}
+      - alert: AnimeReleasePushMetricsMissing
+        expr: >-
+          (up{anime_release_push_monitor="true"} == 1)
+          unless on(job, instance) anime_release_push_events_total{anime_release_push_monitor="true",outcome="provider_accepted"}
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Browser release delivery metrics are missing on a reachable target'}
+      - alert: AnimeReleasePushWorkerErrors
+        expr: >-
+          (
+            sum by (job, instance, anime_release_push_monitor) (
+              increase(anime_release_push_events_total{anime_release_push_monitor="true",outcome=~"claim_error|recheck_error|subscription_error|finish_error"}[10m])
+            ) >= 5
+          )
+          and on(job, instance) (up{anime_release_push_monitor="true"} == 1)
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Browser release delivery worker is reporting repeated errors'}

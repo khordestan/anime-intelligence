@@ -61,3 +61,9 @@ Set `HTTP_METRICS_ADDR=127.0.0.1:9091` to start a separate, loopback-only `/metr
 Counters are per process and reset on restart. Request count uses fixed route groups and response classes. The rate-limit counter counts API-generated 429 responses. The duration histogram measures handler time through response completion. It excludes time spent at the ingress and requests rejected there. Unmatched paths and preflight requests are classified under `other`. Metrics omit path values, query strings, credentials, account identifiers and client addresses.
 
 For cross-replica rates use `sum by (group, status_class) (rate(anime_http_requests_total[5m]))`. To compare p95 handler latency across groups, use `histogram_quantile(0.95, sum by (group, le) (rate(anime_http_request_duration_seconds_bucket[5m])))`. Use representative traffic when choosing alert thresholds.
+
+## Browser release delivery rules
+
+The optional `release-push-alerts.yml` evaluates only dedicated loopback API targets marked `anime_release_push_monitor="true"`. Add the rule file and target label after verifying a scrape from each authorized browser delivery replica. The rules distinguish unreachable targets from reachable targets missing browser delivery metrics. Repeated worker errors trigger a warning after the estimated count of claim, recheck, subscription or completion errors over ten minutes stays at five or more for two minutes. Provider retry and expired registration outcomes are available separately for investigation.
+
+Review thresholds and receiver routing against representative traffic. The counters describe worker activity and provider responses. Browser display and recipient delivery require separate verification. Run `promtool test rules deployments/monitoring/release-push-alerts.test.yml` to verify persistence, recovery and target scoping.

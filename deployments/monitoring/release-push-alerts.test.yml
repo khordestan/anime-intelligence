@@ -1,0 +1,51 @@
+rule_files:
+  - release-push-alerts.yml
+evaluation_interval: 30s
+tests:
+  - name: browser-delivery-worker-errors-persist-and-clear
+    interval: 1m
+    input_series:
+      - series: 'up{job="release-push",instance="worker",anime_release_push_monitor="true"}'
+        values: 1+0x25
+      - series: 'anime_release_push_events_total{job="release-push",instance="worker",anime_release_push_monitor="true",outcome="provider_accepted"}'
+        values: 0+0x25
+      - series: 'anime_release_push_events_total{job="release-push",instance="worker",anime_release_push_monitor="true",outcome="finish_error"}'
+        values: 0+3x8 24+0x16
+      - series: 'up{job="release-push",instance="unmarked"}'
+        values: 1+0x25
+      - series: 'anime_release_push_events_total{job="release-push",instance="unmarked",outcome="finish_error"}'
+        values: 0+9x25
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: AnimeReleasePushWorkerErrors
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: AnimeReleasePushWorkerErrors
+        exp_alerts:
+          - exp_labels: {job: release-push, instance: worker, anime_release_push_monitor: 'true', severity: warning}
+            exp_annotations: {summary: 'Browser release delivery worker is reporting repeated errors'}
+      - eval_time: 22m
+        alertname: AnimeReleasePushWorkerErrors
+        exp_alerts: []
+  - name: browser-delivery-distinguishes-missing-and-down-targets
+    interval: 1m
+    input_series:
+      - series: 'up{job="release-push",instance="down",anime_release_push_monitor="true"}'
+        values: 0+0x8
+      - series: 'up{job="release-push",instance="missing",anime_release_push_monitor="true"}'
+        values: 1+0x8
+      - series: 'up{job="release-push",instance="healthy",anime_release_push_monitor="true"}'
+        values: 1+0x8
+      - series: 'anime_release_push_events_total{job="release-push",instance="healthy",anime_release_push_monitor="true",outcome="provider_accepted"}'
+        values: 0+0x8
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AnimeReleasePushMonitorTargetDown
+        exp_alerts:
+          - exp_labels: {job: release-push, instance: down, anime_release_push_monitor: 'true', severity: warning}
+            exp_annotations: {summary: 'Browser release delivery monitoring target is unreachable'}
+      - eval_time: 3m
+        alertname: AnimeReleasePushMetricsMissing
+        exp_alerts:
+          - exp_labels: {job: release-push, instance: missing, anime_release_push_monitor: 'true', severity: warning}
+            exp_annotations: {summary: 'Browser release delivery metrics are missing on a reachable target'}
